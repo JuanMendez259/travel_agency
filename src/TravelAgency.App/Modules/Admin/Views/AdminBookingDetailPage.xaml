@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminBookingDetailPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
+    Title="Detalle de Reserva">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="10">
+
+            <Label x:Name="TripLabel" FontSize="20" FontAttributes="Bold" />
+            <Label x:Name="ClientLabel" FontSize="15" TextColor="Gray" />
+            <Label x:Name="InfoLabel" FontSize="14" />
+            <Label x:Name="StatusLabel" FontSize="15" FontAttributes="Bold" />
+
+            <HorizontalStackLayout Spacing="10">
+                <Button x:Name="ConfirmButton" Text="Confirmar" Clicked="OnConfirmClicked" />
+                <Button x:Name="CancelButton" Text="Cancelar" Clicked="OnCancelClicked" BackgroundColor="#B00020" />
+            </HorizontalStackLayout>
+
+            <Button x:Name="PaymentButton" Text="Registrar pago" Clicked="OnRegisterPaymentClicked" />
+
+            <Label Text="Pagos registrados" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" />
+            <CollectionView x:Name="PaymentsList" SelectionMode="None" Footer=" ">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:Payment">
+                        <Border Margin="0,4" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
+                            <VerticalStackLayout Padding="12" Spacing="2">
+                                <HorizontalStackLayout Spacing="4">
+                                    <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="Gray" />
+                                    <Label Text="·" TextColor="Gray" />
+                                    <Label Text="{Binding Method}" TextColor="Gray" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Spacing="4">
+                                    <Label Text="{Binding Amount, StringFormat='{0:C}'}" FontAttributes="Bold" />
+                                    <Label Text="·" />
+                                    <Label Text="{Binding Status}" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

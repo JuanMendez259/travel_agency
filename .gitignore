@@ -433,5 +433,6 @@ FodyWeavers.xsd
 
 **/ios/**/*.xcarchive
 **/*.ipa
-**/*.app
+**/bin/**/*.app
+**/obj/**/*.app
 .DS_Store

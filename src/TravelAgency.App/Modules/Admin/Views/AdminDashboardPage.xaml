@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminDashboardPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Administración">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="10">
+
+            <Label Text="Nuevo viaje" FontSize="20" FontAttributes="Bold" />
+
+            <Label Text="Título" />
+            <Entry x:Name="TitleEntry" />
+
+            <Label Text="Destino" />
+            <Entry x:Name="DestinationEntry" />
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <VerticalStackLayout>
+                    <Label Text="Fecha de inicio" />
+                    <DatePicker x:Name="StartDatePicker" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1">
+                    <Label Text="Fecha de fin" />
+                    <DatePicker x:Name="EndDatePicker" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                <VerticalStackLayout>
+                    <Label Text="Precio (por asiento)" />
+                    <Entry x:Name="PriceEntry" Keyboard="Numeric" />
+                </VerticalStackLayout>
+                <VerticalStackLayout Grid.Column="1">
+                    <Label Text="Asientos disponibles" />
+                    <Entry x:Name="SeatsEntry" Keyboard="Numeric" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <Label Text="Descripción" />
+            <Editor x:Name="DescriptionEditor" HeightRequest="100" />
+
+            <Button x:Name="SaveButton" Text="Guardar viaje" Clicked="OnSaveClicked" />
+
+            <Label Text="Mis viajes publicados" FontSize="18" FontAttributes="Bold" Margin="0,20,0,0" />
+            <CollectionView x:Name="MyTripsList" SelectionMode="None" Footer=" ">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="0,4" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
+                            <VerticalStackLayout Padding="12" Spacing="2">
+                                <Label Text="{Binding Title}" FontAttributes="Bold" />
+                                <Label Text="{Binding Destination}" TextColor="Gray" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

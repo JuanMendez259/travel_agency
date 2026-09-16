@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminBookingsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
+    Title="Reservas">
+
+    <Grid RowDefinitions="Auto,*">
+        <ActivityIndicator x:Name="Loading"
+                           IsRunning="False"
+                           IsVisible="False"
+                           Margin="0,10"
+                           HorizontalOptions="Center" />
+
+        <CollectionView x:Name="BookingsList"
+                        Grid.Row="1"
+                        SelectionMode="None"
+                        Footer=" "
+                        EmptyView="Aún no hay reservas.">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:Booking">
+                    <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
+                        <VerticalStackLayout Padding="12" Spacing="4">
+                            <Label Text="{Binding Trip.Title}" FontSize="17" FontAttributes="Bold" />
+                            <Label Text="{Binding User.Name}" FontSize="14" TextColor="Gray" />
+                            <HorizontalStackLayout Spacing="4">
+                                <Label Text="{Binding NumberOfSeats}" />
+                                <Label Text="asientos ·" />
+                                <Label Text="{Binding TotalAmount, StringFormat='{0:C}'}" FontAttributes="Bold" />
+                                <Label Text="·" />
+                                <Label Text="{Binding Status}" TextColor="{AppThemeBinding Light=#1976D2, Dark=#82B1FF}" />
+                            </HorizontalStackLayout>
+                            <Button Text="Ver detalle"
+                                    Clicked="OnDetailClicked"
+                                    CommandParameter="{Binding .}"
+                                    Margin="0,8,0,0" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

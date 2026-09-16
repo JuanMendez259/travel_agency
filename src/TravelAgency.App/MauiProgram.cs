@@ -1,0 +1,34 @@
+﻿using Microsoft.Extensions.Logging;
+using TravelAgency.App.Modules.Admin.Views;
+using TravelAgency.App.Modules.Client.Views;
+using TravelAgency.App.Services;
+
+namespace TravelAgency.App;
+
+public static class MauiProgram
+{
+	public static MauiApp CreateMauiApp()
+	{
+		var builder = MauiApp.CreateBuilder();
+		builder
+			.UseMauiApp<App>()
+			.ConfigureFonts(fonts =>
+			{
+				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+				fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+			});
+
+		builder.Services.AddSingleton<ApiService>();
+		builder.Services.AddTransient<ClientHomePage>();
+		builder.Services.AddTransient<ClientTripDetailPage>();
+		builder.Services.AddTransient<AdminDashboardPage>();
+		builder.Services.AddTransient<AdminBookingsPage>();
+		builder.Services.AddTransient<AdminBookingDetailPage>();
+
+#if DEBUG
+		builder.Logging.AddDebug();
+#endif
+
+		return builder.Build();
+	}
+}

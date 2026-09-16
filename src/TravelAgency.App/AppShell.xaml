@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="TravelAgency.App.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:client="clr-namespace:TravelAgency.App.Modules.Client.Views"
+    xmlns:admin="clr-namespace:TravelAgency.App.Modules.Admin.Views"
+    Title="TravelAgency">
+
+    <TabBar>
+        <ShellContent
+            Title="Explorar"
+            ContentTemplate="{DataTemplate client:ClientHomePage}"
+            Route="home" />
+        <ShellContent
+            Title="Reservas"
+            ContentTemplate="{DataTemplate admin:AdminBookingsPage}"
+            Route="bookings" />
+        <ShellContent
+            Title="Admin"
+            ContentTemplate="{DataTemplate admin:AdminDashboardPage}"
+            Route="admin" />
+    </TabBar>
+
+</Shell>
