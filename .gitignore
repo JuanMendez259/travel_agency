@@ -435,4 +435,6 @@ FodyWeavers.xsd
 **/*.ipa
 **/bin/**/*.app
 **/obj/**/*.app
-.DS_Store
+.DS_Store*.db
+*.db-shm
+*.db-wal
