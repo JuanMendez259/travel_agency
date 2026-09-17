@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Auth.Views.LoginPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="TravelAgency">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="12" VerticalOptions="Center">
+
+            <Label Text="TravelAgency"
+                   FontSize="34"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+            <Label Text="Tu agencia de viajes"
+                   FontSize="15"
+                   TextColor="Gray"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,20" />
+
+            <Label x:Name="FormTitleLabel" Text="Iniciar sesión" FontSize="20" FontAttributes="Bold" />
+
+            <Entry x:Name="NameEntry"
+                   Placeholder="Nombre"
+                   IsVisible="False" />
+
+            <Entry x:Name="EmailEntry"
+                   Placeholder="Correo electrónico"
+                   Keyboard="Email" />
+
+            <Entry x:Name="PasswordEntry"
+                   Placeholder="Contraseña"
+                   IsPassword="True" />
+
+            <Button x:Name="SubmitButton" Text="Entrar" Clicked="OnSubmitClicked" />
+            <Button x:Name="ToggleButton"
+                    Text="¿No tienes cuenta? Crea una"
+                    BackgroundColor="Transparent"
+                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#82B1FF}"
+                    Clicked="OnToggleClicked" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

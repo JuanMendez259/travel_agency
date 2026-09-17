@@ -43,4 +43,10 @@ public partial class AdminBookingsPage : ContentPage
         if ((sender as Button)?.CommandParameter is not Booking booking) return;
         await Shell.Current.GoToAsync($"booking?id={booking.Id}");
     }
+
+    private async void OnLogoutClicked(object? sender, EventArgs e)
+    {
+        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de la cuenta de administrador?", "Sí", "No");
+        if (confirm) App.GoToLogin();
+    }
 }

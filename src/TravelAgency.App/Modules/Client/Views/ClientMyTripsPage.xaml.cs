@@ -3,33 +3,38 @@ using TravelAgency.Shared.Models;
 
 namespace TravelAgency.App.Modules.Client.Views;
 
-public partial class ClientHomePage : ContentPage
+public partial class ClientMyTripsPage : ContentPage
 {
     private readonly ApiService _api;
+    private readonly SessionService _session;
 
-    public ClientHomePage(ApiService api)
+    public ClientMyTripsPage(ApiService api, SessionService session)
     {
         InitializeComponent();
         _api = api;
+        _session = session;
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadTripsAsync();
+        Title = $"Mis Viajes - {_session.UserName}";
+        await LoadMyTripsAsync();
     }
 
-    private async Task LoadTripsAsync()
+    private async Task LoadMyTripsAsync()
     {
+        if (_session.UserId == 0) return;
+
         Loading.IsRunning = true;
         Loading.IsVisible = true;
         try
         {
-            TripsList.ItemsSource = await _api.GetTripsAsync();
+            MyTripsList.ItemsSource = await _api.GetUserBookingsAsync(_session.UserId);
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("Error", $"No se pudo cargar los viajes: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"No se pudieron cargar tus viajes: {ex.Message}", "OK");
         }
         finally
         {
@@ -38,10 +43,10 @@ public partial class ClientHomePage : ContentPage
         }
     }
 
-    private async void OnBookClicked(object? sender, EventArgs e)
+    private async void OnPaymentsClicked(object? sender, EventArgs e)
     {
-        if ((sender as Button)?.CommandParameter is not Trip trip) return;
-        await Shell.Current.GoToAsync($"trip?id={trip.Id}");
+        if ((sender as Button)?.CommandParameter is not Booking booking) return;
+        await Shell.Current.GoToAsync($"mybooking?id={booking.Id}");
     }
 
     private async void OnLogoutClicked(object? sender, EventArgs e)

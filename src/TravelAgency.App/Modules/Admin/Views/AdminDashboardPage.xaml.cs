@@ -6,6 +6,7 @@ namespace TravelAgency.App.Modules.Admin.Views;
 public partial class AdminDashboardPage : ContentPage
 {
     private readonly ApiService _api;
+    private FileResult? _selectedImage;
 
     public AdminDashboardPage(ApiService api)
     {
@@ -53,7 +54,17 @@ public partial class AdminDashboardPage : ContentPage
                 return;
             }
 
-            await _api.CreateTripAsync(trip);
+            var created = await _api.CreateTripAsync(trip);
+
+            if (_selectedImage is not null && created is not null)
+            {
+                var updated = await _api.UploadTripImageAsync(created.Id, _selectedImage);
+                if (updated?.ImageUrl is not null)
+                {
+                    created.ImageUrl = updated.ImageUrl;
+                }
+            }
+
             ClearForm();
             await LoadMyTripsAsync();
             await DisplayAlertAsync("Listo", "Viaje publicado.", "OK");
@@ -75,5 +86,45 @@ public partial class AdminDashboardPage : ContentPage
         PriceEntry.Text = string.Empty;
         SeatsEntry.Text = string.Empty;
         DescriptionEditor.Text = string.Empty;
+        _selectedImage = null;
+        ImagePreview.Source = null;
+        ImagePreview.IsVisible = false;
+        ImageNameLabel.Text = string.Empty;
+        ImageNameLabel.IsVisible = false;
+    }
+
+    private async void OnPickImageClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var results = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
+            {
+                Title = "Selecciona una imagen del viaje"
+            });
+
+            var result = results?.FirstOrDefault();
+            if (result is null) return;
+
+            using var stream = await result.OpenReadAsync();
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+
+            ImagePreview.Source = ImageSource.FromStream(() => new MemoryStream(memory.ToArray()));
+            ImagePreview.IsVisible = true;
+            ImageNameLabel.Text = result.FileName;
+            ImageNameLabel.IsVisible = true;
+
+            _selectedImage = result;
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
+
+    private async void OnLogoutClicked(object? sender, EventArgs e)
+    {
+        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de la cuenta de administrador?", "Sí", "No");
+        if (confirm) App.GoToLogin();
     }
 }

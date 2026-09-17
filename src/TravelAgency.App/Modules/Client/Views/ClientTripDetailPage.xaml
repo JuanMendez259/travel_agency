@@ -8,6 +8,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="12">
 
+            <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill" />
             <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" />
             <Label x:Name="DestinationLabel" FontSize="16" TextColor="Gray" />
             <Label x:Name="DatesLabel" FontSize="15" />

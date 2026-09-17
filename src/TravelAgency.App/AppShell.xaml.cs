@@ -6,6 +6,7 @@ public partial class AppShell : Shell
     {
         InitializeComponent();
         Routing.RegisterRoute("trip", typeof(TravelAgency.App.Modules.Client.Views.ClientTripDetailPage));
+        Routing.RegisterRoute("mybooking", typeof(TravelAgency.App.Modules.Client.Views.ClientMyBookingDetailPage));
         Routing.RegisterRoute("booking", typeof(TravelAgency.App.Modules.Admin.Views.AdminBookingDetailPage));
     }
 }

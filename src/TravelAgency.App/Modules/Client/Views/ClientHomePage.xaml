@@ -6,6 +6,10 @@
     xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
     Title="Explorar Viajes">
 
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
+    </ContentPage.ToolbarItems>
+
     <Grid RowDefinitions="Auto,*">
         <ActivityIndicator x:Name="Loading"
                            IsRunning="False"
@@ -21,24 +25,27 @@
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:Trip">
                     <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
-                        <VerticalStackLayout Padding="12" Spacing="4">
-                            <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold" />
-                            <Label Text="{Binding Destination}" FontSize="14" TextColor="Gray" />
-                            <HorizontalStackLayout Spacing="4">
-                                <Label Text="{Binding StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
-                                <Label Text="al" />
-                                <Label Text="{Binding EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
-                            </HorizontalStackLayout>
-                            <HorizontalStackLayout Spacing="4">
-                                <Label Text="{Binding Price, StringFormat='{0:C}'}" FontAttributes="Bold" />
-                                <Label Text="·" />
-                                <Label Text="{Binding AvailableSeats}" />
-                                <Label Text="asientos disponibles" />
-                            </HorizontalStackLayout>
-                            <Button Text="Reservar"
-                                    Clicked="OnBookClicked"
-                                    CommandParameter="{Binding .}"
-                                    Margin="0,8,0,0" />
+                        <VerticalStackLayout Spacing="4">
+                            <Image Source="{Binding ImageUrl}" HeightRequest="140" Aspect="AspectFill" />
+                            <VerticalStackLayout Padding="12" Spacing="4">
+                                <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold" />
+                                <Label Text="{Binding Destination}" FontSize="14" TextColor="Gray" />
+                                <HorizontalStackLayout Spacing="4">
+                                    <Label Text="{Binding StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                    <Label Text="al" />
+                                    <Label Text="{Binding EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Spacing="4">
+                                    <Label Text="{Binding Price, StringFormat='{0:C}'}" FontAttributes="Bold" />
+                                    <Label Text="·" />
+                                    <Label Text="{Binding AvailableSeats}" />
+                                    <Label Text="asientos disponibles" />
+                                </HorizontalStackLayout>
+                                <Button Text="Reservar"
+                                        Clicked="OnBookClicked"
+                                        CommandParameter="{Binding .}"
+                                        Margin="0,8,0,0" />
+                            </VerticalStackLayout>
                         </VerticalStackLayout>
                     </Border>
                 </DataTemplate>

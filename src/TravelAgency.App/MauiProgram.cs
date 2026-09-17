@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using TravelAgency.App.Modules.Admin.Views;
+using TravelAgency.App.Modules.Auth.Views;
 using TravelAgency.App.Modules.Client.Views;
 using TravelAgency.App.Services;
 
@@ -19,8 +20,13 @@ public static class MauiProgram
 			});
 
 		builder.Services.AddSingleton<ApiService>();
+		builder.Services.AddSingleton<SessionService>();
+		builder.Services.AddSingleton<AppShell>();
+		builder.Services.AddTransient<LoginPage>();
 		builder.Services.AddTransient<ClientHomePage>();
 		builder.Services.AddTransient<ClientTripDetailPage>();
+		builder.Services.AddTransient<ClientMyTripsPage>();
+		builder.Services.AddTransient<ClientMyBookingDetailPage>();
 		builder.Services.AddTransient<AdminDashboardPage>();
 		builder.Services.AddTransient<AdminBookingsPage>();
 		builder.Services.AddTransient<AdminBookingDetailPage>();

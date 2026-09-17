@@ -5,6 +5,10 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Administración">
 
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
+    </ContentPage.ToolbarItems>
+
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="10">
 
@@ -41,6 +45,17 @@
             <Label Text="Descripción" />
             <Editor x:Name="DescriptionEditor" HeightRequest="100" />
 
+            <Button Text="Seleccionar imagen" Clicked="OnPickImageClicked" />
+            <Image x:Name="ImagePreview"
+                   HeightRequest="140"
+                   Aspect="AspectFill"
+                   IsVisible="False"
+                   Margin="0,8,0,0" />
+            <Label x:Name="ImageNameLabel"
+                   FontSize="12"
+                   TextColor="Gray"
+                   IsVisible="False" />
+
             <Button x:Name="SaveButton" Text="Guardar viaje" Clicked="OnSaveClicked" />
 
             <Label Text="Mis viajes publicados" FontSize="18" FontAttributes="Bold" Margin="0,20,0,0" />
@@ -48,10 +63,13 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Border Margin="0,4" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
-                            <VerticalStackLayout Padding="12" Spacing="2">
-                                <Label Text="{Binding Title}" FontAttributes="Bold" />
-                                <Label Text="{Binding Destination}" TextColor="Gray" />
-                            </VerticalStackLayout>
+                            <Grid ColumnDefinitions="80,*" ColumnSpacing="10" Padding="8">
+                                <Image Source="{Binding ImageUrl}" HeightRequest="80" Aspect="AspectFill" />
+                                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" />
+                                    <Label Text="{Binding Destination}" TextColor="Gray" />
+                                </VerticalStackLayout>
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

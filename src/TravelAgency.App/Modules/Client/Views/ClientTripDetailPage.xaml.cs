@@ -7,14 +7,16 @@ namespace TravelAgency.App.Modules.Client.Views;
 public partial class ClientTripDetailPage : ContentPage
 {
     private readonly ApiService _api;
+    private readonly SessionService _session;
     private Trip? _trip;
 
     public string TripId { get; set; } = string.Empty;
 
-    public ClientTripDetailPage(ApiService api)
+    public ClientTripDetailPage(ApiService api, SessionService session)
     {
         InitializeComponent();
         _api = api;
+        _session = session;
     }
 
     protected override async void OnAppearing()
@@ -37,6 +39,9 @@ public partial class ClientTripDetailPage : ContentPage
             PriceLabel.Text = _trip.Price.ToString("C");
             DescriptionLabel.Text = _trip.Description;
             SeatsLabel.Text = $"{_trip.AvailableSeats} asientos disponibles";
+
+            if (!string.IsNullOrEmpty(_trip.ImageUrl))
+                TripImage.Source = _trip.ImageUrl;
         }
     }
 
@@ -55,7 +60,7 @@ public partial class ClientTripDetailPage : ContentPage
         {
             var booking = new Booking
             {
-                UserId = 1,
+                UserId = _session.UserId,
                 TripId = _trip.Id,
                 NumberOfSeats = seats,
             };

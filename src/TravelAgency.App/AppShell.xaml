@@ -13,6 +13,10 @@
             ContentTemplate="{DataTemplate client:ClientHomePage}"
             Route="home" />
         <ShellContent
+            Title="Mis Viajes"
+            ContentTemplate="{DataTemplate client:ClientMyTripsPage}"
+            Route="mytrips" />
+        <ShellContent
             Title="Reservas"
             ContentTemplate="{DataTemplate admin:AdminBookingsPage}"
             Route="bookings" />
