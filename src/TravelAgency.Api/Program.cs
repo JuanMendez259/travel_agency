@@ -389,6 +389,12 @@ app.MapPost("/api/bookings", async (Booking booking, AppDbContext db, ClaimsPrin
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
 
+    var userName = await db.Users
+        .Where(u => u.Id == booking.UserId)
+        .Select(u => u.Name)
+        .FirstOrDefaultAsync() ?? "Cliente";
+    await SendToAdminsAsync(db, $"Nueva reserva de {userName} para \"{trip.Title}\" ({booking.NumberOfSeats} asiento(s)).");
+
     return Results.Created($"/api/bookings/{booking.Id}", booking);
 }).RequireAuthorization();
 
@@ -413,16 +419,56 @@ app.MapGet("/api/bookings/{id}/payments", async (int id, AppDbContext db) =>
 
 app.MapPost("/api/bookings/{id}/payments", async (int id, Payment payment, AppDbContext db) =>
 {
-    var booking = await db.Bookings.FindAsync(id);
+    var booking = await db.Bookings
+        .Include(b => b.Trip)
+        .FirstOrDefaultAsync(b => b.Id == id);
     if (booking is null) return Results.NotFound("Reserva no encontrada.");
 
+    if (booking.Status == BookingStatus.Cancelled)
+        return Results.BadRequest("No se puede registrar el pago de una reserva cancelada.");
+
+    var paid = await db.Payments
+        .Where(p => p.BookingId == id)
+        .SumAsync(p => p.Amount);
+    var remaining = booking.TotalAmount - paid;
+
+    if (payment.Amount <= 0)
+        return Results.BadRequest("Indica un monto válido.");
+
+    if (payment.Amount > remaining)
+        return Results.BadRequest($"El monto supera el saldo pendiente ({remaining:C}).");
+
+    payment.Amount = Math.Round(payment.Amount, 2);
     payment.BookingId = id;
     payment.PaymentDate = DateTime.UtcNow;
-    payment.Amount = booking.TotalAmount;
     payment.Status = PaymentStatus.Completed;
 
     db.Payments.Add(payment);
-    booking.Status = BookingStatus.Confirmed;
+    paid += payment.Amount;
+
+    var liquidated = paid >= booking.TotalAmount;
+    if (liquidated)
+        booking.Status = BookingStatus.Confirmed;
+
+    await db.SaveChangesAsync();
+
+    db.Notifications.Add(new UserNotification
+    {
+        UserId = booking.UserId,
+        Message = $"Pago de {payment.Amount:C} recibido. Su pago fue por medio de {PaymentMethodName(payment.Method)}.",
+        CreatedAt = DateTime.UtcNow
+    });
+
+    if (liquidated)
+    {
+        db.Notifications.Add(new UserNotification
+        {
+            UserId = booking.UserId,
+            Message = $"Su reserva para \"{booking.Trip?.Title}\" ha sido liquidada y confirmada.",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
     await db.SaveChangesAsync();
     return Results.Created($"/api/bookings/{id}/payments/{payment.Id}", payment);
 }).RequireAuthorization("AdminOnly");
@@ -431,6 +477,7 @@ app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusReques
 {
     var booking = await db.Bookings
         .Include(b => b.Trip)
+        .Include(b => b.User)
         .FirstOrDefaultAsync(b => b.Id == id);
     if (booking is null) return Results.NotFound("Reserva no encontrada.");
 
@@ -446,6 +493,9 @@ app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusReques
         await RecomputeAvailabilityAsync(db, booking.Trip);
         await db.SaveChangesAsync();
     }
+
+    if (request.Status == BookingStatus.Cancelled && booking.User is not null)
+        await SendToAdminsAsync(db, $"La reserva de {booking.User.Name} para \"{booking.Trip?.Title}\" fue cancelada.");
 
     return Results.Ok(booking);
 }).RequireAuthorization("AdminOnly");
@@ -470,6 +520,13 @@ app.MapPost("/api/trips/{id}/capacity-requests", async (int id, CapacityRequest 
 
     db.CapacityRequests.Add(entity);
     await db.SaveChangesAsync();
+
+    var userName = await db.Users
+        .Where(u => u.Id == userId)
+        .Select(u => u.Name)
+        .FirstOrDefaultAsync() ?? "Cliente";
+    await SendToAdminsAsync(db, $"{userName} solicitó {entity.RequestedSeats} asiento(s) para \"{trip.Title}\".");
+
     return Results.Created($"/api/trips/{id}/capacity-requests/{entity.Id}", entity);
 }).RequireAuthorization();
 
@@ -480,6 +537,19 @@ app.MapGet("/api/trips/{id}/capacity-requests", async (int id, AppDbContext db) 
         .OrderByDescending(c => c.CreatedAt)
         .ToListAsync()).RequireAuthorization("AdminOnly");
 
+app.MapGet("/api/trips/{id}/bookings", async (int id, AppDbContext db) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    return Results.Ok(await db.Bookings
+        .Include(b => b.User)
+        .Include(b => b.Payments)
+        .Where(b => b.TripId == id)
+        .OrderByDescending(b => b.BookingDate)
+        .ToListAsync());
+}).RequireAuthorization("AdminOnly");
+
 app.Run();
 
 static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)
@@ -488,6 +558,37 @@ static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)
         .Where(b => b.TripId == trip.Id && b.Status != BookingStatus.Cancelled)
         .SumAsync(b => (int?)b.NumberOfSeats) ?? 0;
     trip.AvailableSeats = trip.Capacity - sold;
+}
+
+static string PaymentMethodName(PaymentMethod method) => method switch
+{
+    PaymentMethod.CreditCard => "tarjeta de crédito",
+    PaymentMethod.DebitCard => "tarjeta de débito",
+    PaymentMethod.BankTransfer => "transferencia bancaria",
+    PaymentMethod.Cash => "efectivo",
+    PaymentMethod.PayPal => "PayPal",
+    PaymentMethod.MercadoPago => "Mercado Pago",
+    _ => "otro medio"
+};
+
+static async Task SendToAdminsAsync(AppDbContext db, string message)
+{
+    var adminIds = await db.Users
+        .Where(u => u.Role == UserRole.Admin)
+        .Select(u => u.Id)
+        .ToListAsync();
+    if (adminIds.Count == 0) return;
+
+    foreach (var adminId in adminIds)
+    {
+        db.Notifications.Add(new UserNotification
+        {
+            UserId = adminId,
+            Message = message,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+    await db.SaveChangesAsync();
 }
 
 static string HashPassword(string password)

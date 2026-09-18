@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Client.Views.ClientNotificationsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:viewmodels="clr-namespace:TravelAgency.App.Modules.Client.ViewModels"
+    Title="Avisos"
+    BackgroundColor="{AppThemeBinding Light=#EDEDED, Dark=#111B21}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,*">
+
+        <Border Grid.Row="0"
+                StrokeThickness="0"
+                Padding="12"
+                BackgroundColor="{AppThemeBinding Light=#128C7E, Dark=#075E54}">
+            <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                <Border StrokeThickness="2" Stroke="White" BackgroundColor="White"
+                        StrokeShape="RoundRectangle 22"
+                        WidthRequest="44" HeightRequest="44">
+                    <Image Source="logo.jpg" Aspect="AspectFit" Margin="2" />
+                </Border>
+                <VerticalStackLayout Spacing="0" VerticalOptions="Center">
+                    <Label Text="TravelAgency"
+                           TextColor="White"
+                           FontSize="17"
+                           FontAttributes="Bold" />
+                    <Label Text="en línea"
+                           TextColor="#C8E9E2"
+                           FontSize="12" />
+                </VerticalStackLayout>
+            </HorizontalStackLayout>
+        </Border>
+
+        <CollectionView x:Name="MessagesList"
+                        Grid.Row="1"
+                        SelectionMode="None"
+                        Footer=" "
+                        EmptyView="No hay avisos todavía. Cuando la agencia te escriba, aparecerá aquí.">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="viewmodels:NotificationItem">
+                    <Grid Padding="10,3">
+                        <VerticalStackLayout HorizontalOptions="Start" MaximumWidthRequest="340">
+                            <Border StrokeThickness="0" Padding="0"
+                                    BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#262D31}">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="2,12,12,12" />
+                                </Border.StrokeShape>
+                                <VerticalStackLayout Padding="12,8" Spacing="2">
+                                    <Label Text="TravelAgency · Agencia"
+                                           TextColor="#128C7E"
+                                           FontSize="12"
+                                           FontAttributes="Bold" />
+                                    <Label Text="{Binding Message}" FontSize="14" />
+                                    <HorizontalStackLayout Spacing="5" HorizontalOptions="End">
+                                        <Label Text="{Binding TimeText}" FontSize="11" TextColor="Gray" />
+                                        <Label Text="✓✓" FontSize="11" TextColor="#53BDEB" />
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                            </Border>
+                        </VerticalStackLayout>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>

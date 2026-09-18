@@ -13,8 +13,9 @@
             <Label x:Name="ClientLabel" FontSize="15" TextColor="Gray" />
             <Label x:Name="InfoLabel" FontSize="14" />
             <Label x:Name="StatusLabel" FontSize="15" FontAttributes="Bold" />
+            <Label x:Name="BalanceLabel" FontSize="15" FontAttributes="Bold" TextColor="#1976D2" />
 
-            <Button x:Name="PaymentButton" Text="Registrar pago y confirmar" Clicked="OnRegisterPaymentClicked" />
+            <Button x:Name="PaymentButton" Text="Registrar pago" Clicked="OnRegisterPaymentClicked" />
             <Button x:Name="CancelButton" Text="Cancelar reserva" Clicked="OnCancelClicked" BackgroundColor="#B00020" />
 
             <Button Text="Volver a reservas" Clicked="OnBackClicked" Margin="0,5,0,0" />

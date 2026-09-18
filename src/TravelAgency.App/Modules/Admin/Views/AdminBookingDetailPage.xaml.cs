@@ -1,3 +1,4 @@
+using System.Globalization;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
 
@@ -47,7 +48,14 @@ public partial class AdminBookingDetailPage : ContentPage
             StatusLabel.Text = $"Estado: {_booking.Status}";
             PaymentsList.ItemsSource = _booking.Payments;
 
-            PaymentButton.IsVisible = _booking.Status != BookingStatus.Cancelled;
+            var paid = _booking.Payments?.Sum(p => p.Amount) ?? 0;
+            var remaining = _booking.TotalAmount - paid;
+            BalanceLabel.Text = remaining <= 0m
+                ? "Liquidado"
+                : $"Pagado {paid:C} de {_booking.TotalAmount:C} · Saldo pendiente {remaining:C}";
+
+            PaymentButton.IsVisible = _booking.Status == BookingStatus.Pending;
+            CancelButton.IsVisible = _booking.Status != BookingStatus.Cancelled;
         }
     }
 
@@ -64,7 +72,8 @@ public partial class AdminBookingDetailPage : ContentPage
         {
             _booking = await _api.UpdateBookingStatusAsync(_booking!.Id, status);
             StatusLabel.Text = $"Estado: {_booking!.Status}";
-            PaymentButton.IsVisible = _booking.Status != BookingStatus.Cancelled;
+            PaymentButton.IsVisible = _booking.Status == BookingStatus.Pending;
+            CancelButton.IsVisible = _booking.Status != BookingStatus.Cancelled;
             await DisplayAlertAsync("Listo", $"Reserva {status}.", "OK");
             await Shell.Current.GoToAsync("..");
         }
@@ -83,6 +92,15 @@ public partial class AdminBookingDetailPage : ContentPage
     {
         if (_booking is null) return;
 
+        var paid = _booking.Payments?.Sum(p => p.Amount) ?? 0;
+        var remaining = _booking.TotalAmount - paid;
+
+        if (remaining <= 0m)
+        {
+            await DisplayAlertAsync("Listo", "La reserva ya está liquidada.", "OK");
+            return;
+        }
+
         var methods = Enum.GetNames<PaymentMethod>();
         var selected = await DisplayActionSheetAsync(
             "Método de pago",
@@ -94,13 +112,42 @@ public partial class AdminBookingDetailPage : ContentPage
 
         if (!Enum.TryParse<PaymentMethod>(selected, out var method)) return;
 
+        var input = await DisplayPromptAsync(
+            "Registrar pago",
+            $"Total {_booking.TotalAmount:C}. Saldo pendiente: {remaining:C}. ¿Cuánto recibes?",
+            accept: "Registrar",
+            cancel: "Cancelar",
+            placeholder: remaining.ToString("0.00", CultureInfo.InvariantCulture),
+            keyboard: Keyboard.Numeric);
+
+        if (!decimal.TryParse(input, NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)) return;
+        if (amount <= 0m) return;
+
+        if (amount > remaining) amount = remaining;
+        if (amount <= 0m) return;
+
         try
         {
-            await _api.CreatePaymentAsync(new Payment { BookingId = _booking.Id, Method = method });
+            var payment = await _api.CreatePaymentAsync(new Payment
+            {
+                BookingId = _booking.Id,
+                Method = method,
+                Amount = amount
+            });
+
             await LoadBookingAsync();
-            await DisplayAlertAsync("Pago registrado",
-                $"Pago de {_booking.TotalAmount:C} registrado. La reserva quedó confirmada.", "OK");
-            await Shell.Current.GoToAsync("..");
+
+            var newRemaining = _booking!.TotalAmount - ((_booking.Payments?.Sum(p => p.Amount) ?? 0));
+            if (newRemaining <= 0m)
+            {
+                await DisplayAlertAsync("Reserva liquidada",
+                    $"Pago de {payment.Amount:C} registrado. La reserva quedó confirmada.", "OK");
+            }
+            else
+            {
+                await DisplayAlertAsync("Pago registrado",
+                    $"Pago de {payment.Amount:C} registrado. Saldo pendiente: {newRemaining:C}.", "OK");
+            }
         }
         catch (Exception ex)
         {

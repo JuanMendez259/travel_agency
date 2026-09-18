@@ -31,17 +31,6 @@ public partial class ClientMyTripsPage : ContentPage
         try
         {
             MyTripsList.ItemsSource = await _api.GetUserBookingsAsync(_session.UserId);
-
-            var notifications = await _api.GetNotificationsAsync(_session.UserId);
-            if (notifications is { Count: > 0 })
-            {
-                NotificationsList.ItemsSource = notifications;
-                NotificationsSection.IsVisible = true;
-            }
-            else
-            {
-                NotificationsSection.IsVisible = false;
-            }
         }
         catch (Exception ex)
         {
