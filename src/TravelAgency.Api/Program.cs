@@ -245,18 +245,23 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
             .Where(c => c.TripId == id && !c.IsResolved)
             .ToListAsync();
 
+        var satisfied = 0;
         foreach (var request in pendingRequests)
         {
+            if (trip.AvailableSeats < request.RequestedSeats)
+                continue;
+
             db.Notifications.Add(new UserNotification
             {
                 UserId = request.UserId,
-                Message = $"Se habilitó más cupo para \"{trip.Title}\". ¡Ya puedes reservar!",
+                Message = $"Se habilitó más cupo para \"{trip.Title}\". ¡Ya puedes reservar con {request.RequestedSeats} asiento(s)!",
                 CreatedAt = DateTime.UtcNow
             });
             request.IsResolved = true;
+            satisfied++;
         }
 
-        if (pendingRequests.Count > 0)
+        if (satisfied > 0)
             await db.SaveChangesAsync();
     }
 

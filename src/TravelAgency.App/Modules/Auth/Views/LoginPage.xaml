@@ -8,6 +8,12 @@
     <ScrollView>
         <VerticalStackLayout Padding="30" Spacing="12" VerticalOptions="Center">
 
+            <Image Source="logo.jpg"
+                   HeightRequest="180"
+                   Aspect="AspectFit"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,10" />
+
             <Label Text="TravelAgency"
                    FontSize="34"
                    FontAttributes="Bold"
