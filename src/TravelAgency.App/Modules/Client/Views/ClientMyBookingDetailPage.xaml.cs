@@ -21,19 +21,31 @@ public partial class ClientMyBookingDetailPage : ContentPage
         base.OnAppearing();
         if (int.TryParse(BookingId, out var id))
         {
-            var booking = await _api.GetBookingAsync(id);
-            if (booking is null)
+            try
             {
-                await DisplayAlertAsync("Error", "No se encontró la reserva.", "OK");
-                return;
+                await LoadBookingAsync(id);
             }
-
-            TripLabel.Text = booking.Trip?.Title;
-            DestinationLabel.Text = booking.Trip?.Destination;
-            DatesLabel.Text = $"{booking.Trip?.StartDate:dd/MM/yyyy} al {booking.Trip?.EndDate:dd/MM/yyyy}";
-            InfoLabel.Text = $"{booking.NumberOfSeats} asientos · Total {booking.TotalAmount:C}";
-            StatusLabel.Text = $"Estado: {booking.Status}";
-            PaymentsList.ItemsSource = booking.Payments;
+            catch (Exception ex)
+            {
+                await DisplayAlertAsync("Error", $"No se pudo cargar la reserva: {ex.Message}", "OK");
+            }
         }
+    }
+
+    private async Task LoadBookingAsync(int id)
+    {
+        var booking = await _api.GetBookingAsync(id);
+        if (booking is null)
+        {
+            await DisplayAlertAsync("Error", "No se encontró la reserva.", "OK");
+            return;
+        }
+
+        TripLabel.Text = booking.Trip?.Title;
+        DestinationLabel.Text = booking.Trip?.Destination;
+        DatesLabel.Text = $"{booking.Trip?.StartDate:dd/MM/yyyy} al {booking.Trip?.EndDate:dd/MM/yyyy}";
+        InfoLabel.Text = $"{booking.NumberOfSeats} asientos · Total {booking.TotalAmount:C}";
+        StatusLabel.Text = $"Estado: {booking.Status}";
+        PaymentsList.ItemsSource = booking.Payments;
     }
 }

@@ -9,10 +9,19 @@ public class Trip
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal Price { get; set; }
+    public int Capacity { get; set; }
     public int AvailableSeats { get; set; }
+    public TransportType TransportType { get; set; }
     public string? ImageUrl { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+    public ICollection<CapacityRequest> CapacityRequests { get; set; } = new List<CapacityRequest>();
+}
+
+public enum TransportType
+{
+    Camion = 0,
+    Camioneta = 1
 }

@@ -14,12 +14,10 @@
             <Label x:Name="InfoLabel" FontSize="14" />
             <Label x:Name="StatusLabel" FontSize="15" FontAttributes="Bold" />
 
-            <HorizontalStackLayout Spacing="10">
-                <Button x:Name="ConfirmButton" Text="Confirmar" Clicked="OnConfirmClicked" />
-                <Button x:Name="CancelButton" Text="Cancelar" Clicked="OnCancelClicked" BackgroundColor="#B00020" />
-            </HorizontalStackLayout>
+            <Button x:Name="PaymentButton" Text="Registrar pago y confirmar" Clicked="OnRegisterPaymentClicked" />
+            <Button x:Name="CancelButton" Text="Cancelar reserva" Clicked="OnCancelClicked" BackgroundColor="#B00020" />
 
-            <Button x:Name="PaymentButton" Text="Registrar pago" Clicked="OnRegisterPaymentClicked" />
+            <Button Text="Volver a reservas" Clicked="OnBackClicked" Margin="0,5,0,0" />
 
             <Label Text="Pagos registrados" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" />
             <CollectionView x:Name="PaymentsList" SelectionMode="None" Footer=" ">

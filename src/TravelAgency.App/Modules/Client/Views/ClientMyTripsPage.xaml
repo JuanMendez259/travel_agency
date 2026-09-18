@@ -10,15 +10,38 @@
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
         <ActivityIndicator x:Name="Loading"
                            IsRunning="False"
                            IsVisible="False"
                            Margin="0,10"
                            HorizontalOptions="Center" />
 
+        <VerticalStackLayout x:Name="NotificationsSection"
+                             Grid.Row="1"
+                             IsVisible="False"
+                             Margin="10,5">
+            <Label Text="Avisos" FontSize="16" FontAttributes="Bold" Margin="0,0,0,4" />
+            <CollectionView x:Name="NotificationsList"
+                            SelectionMode="None"
+                            Footer=" ">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:UserNotification">
+                        <Border Margin="0,3" StrokeThickness="0"
+                                BackgroundColor="{AppThemeBinding Light=#FFE9C7, Dark=#5A4A2A}">
+                            <VerticalStackLayout Padding="10" Spacing="2">
+                                <Label Text="{Binding CreatedAt, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
+                                       FontSize="11" TextColor="Gray" />
+                                <Label Text="{Binding Message}" FontSize="13" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+
         <CollectionView x:Name="MyTripsList"
-                        Grid.Row="1"
+                        Grid.Row="2"
                         SelectionMode="None"
                         Footer=" "
                         EmptyView="Todavía no tienes reservas. Explora la pestaña 'Explorar'.">

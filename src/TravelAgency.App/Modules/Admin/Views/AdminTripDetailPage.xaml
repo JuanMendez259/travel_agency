@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripDetailPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Detalle del Viaje">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="10">
+
+            <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill" />
+            <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" />
+            <Label x:Name="DestinationLabel" FontSize="16" TextColor="Gray" />
+            <Label x:Name="DatesLabel" FontSize="15" />
+            <Label x:Name="PriceLabel" FontSize="18" FontAttributes="Bold" />
+            <Label x:Name="TransportLabel" FontSize="15" />
+            <Label x:Name="StatusLabel" FontSize="15" FontAttributes="Bold" />
+
+            <Border Margin="0,10,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
+                <Grid Padding="16" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
+                    <VerticalStackLayout>
+                        <Label Text="Vendidos" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label x:Name="SoldLabel" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1">
+                        <Label Text="Disponibles" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label x:Name="AvailableLabel" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="2">
+                        <Label Text="Capacidad" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label x:Name="CapacityLabel" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <Label Text="Descripción" FontSize="16" FontAttributes="Bold" Margin="0,10,0,0" />
+            <Label x:Name="DescriptionLabel" FontSize="14" />
+
+            <Label x:Name="CapacityRequestsHeader" Text="Solicitudes de cupo" FontSize="16" FontAttributes="Bold" Margin="0,10,0,0" IsVisible="False" />
+            <VerticalStackLayout x:Name="CapacityRequestsLayout" Spacing="8" />
+
+            <HorizontalStackLayout Spacing="10" Margin="0,20,0,0">
+                <Button Text="Editar"
+                        Clicked="OnEditClicked"
+                        BackgroundColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"
+                        TextColor="White" />
+                <Button Text="Eliminar"
+                        Clicked="OnDeleteClicked"
+                        BackgroundColor="#C53030"
+                        TextColor="White" />
+            </HorizontalStackLayout>
+
+            <Button Text="Volver a mis viajes" Clicked="OnBackClicked" Margin="0,10,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

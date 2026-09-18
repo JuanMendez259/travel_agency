@@ -9,7 +9,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using TravelAgency.Api.Data;
+using TravelAgency.Api.Services;
 using TravelAgency.Shared.Models;
+
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,13 +26,18 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var provider = builder.Configuration["Database:Provider"] ?? "sqlite";
 var sqlServerConnection = builder.Configuration.GetConnectionString("SqlServer");
+var supabaseConnection = builder.Configuration.GetConnectionString("Supabase");
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     if (provider == "sqlserver" && !string.IsNullOrEmpty(sqlServerConnection))
         options.UseSqlServer(sqlServerConnection);
+    else if (provider == "supabase" && !string.IsNullOrEmpty(supabaseConnection))
+        options.UseNpgsql(supabaseConnection);
     else
         options.UseSqlite("Data Source=travelagency.db");
 });
+
+builder.Services.AddSingleton<ImageStorageService>();
 
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "TravelAgencyApi";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "TravelAgencyApp";
@@ -58,26 +66,59 @@ builder.Services.AddAuthorizationBuilder()
 
 var app = builder.Build();
 
+var storage = app.Services.GetRequiredService<ImageStorageService>();
+await storage.EnsureBucketAsync();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
 
-    using var scope = app.Services.CreateScope();
+using (var scope = app.Services.CreateScope())
+{
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
+    if (provider == "sqlite")
+    {
+        await db.Database.EnsureCreatedAsync();
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS "Notifications" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_Notifications" PRIMARY KEY AUTOINCREMENT,
+                "UserId" INTEGER NOT NULL,
+                "Message" TEXT NOT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                CONSTRAINT "FK_Notifications_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE RESTRICT
+            );
+            CREATE INDEX IF NOT EXISTS "IX_Notifications_UserId" ON "Notifications" ("UserId");
+            """);
+    }
+    else
+    {
+        var schemaExists = (await db.Database
+            .SqlQueryRaw<int>("SELECT COUNT(*)::int AS \"Value\" FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'Trips'")
+            .ToListAsync()).FirstOrDefault() > 0;
+
+        if (!schemaExists)
+        {
+            await db.Database.ExecuteSqlRawAsync(db.Database.GenerateCreateScript());
+        }
+    }
+    await EnsureTransportTypeColumnAsync(db, provider);
     await EnsureSeedUsersAsync(db);
 }
 
 app.UseHttpsRedirection();
 
-var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? Directory.GetCurrentDirectory(), "uploads");
-Directory.CreateDirectory(uploadsPath);
-
-app.UseStaticFiles(new StaticFileOptions
+if (!storage.IsSupabase)
 {
-    FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/uploads"
-});
+    var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? Directory.GetCurrentDirectory(), "uploads");
+    Directory.CreateDirectory(uploadsPath);
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(uploadsPath),
+        RequestPath = "/uploads"
+    });
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -139,18 +180,26 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, AppDbContext d
 app.MapGet("/api/trips", async (AppDbContext db) =>
     await db.Trips.Where(t => t.IsActive).OrderByDescending(t => t.StartDate).ToListAsync());
 
+app.MapGet("/api/trips/manage", async (AppDbContext db) =>
+    await db.Trips
+        .Include(t => t.Bookings)
+        .Include(t => t.CapacityRequests)
+        .OrderByDescending(t => t.StartDate)
+        .ToListAsync()).RequireAuthorization("AdminOnly");
+
 app.MapGet("/api/trips/{id}", async (int id, AppDbContext db) =>
     await db.Trips.FindAsync(id) is Trip trip ? Results.Ok(trip) : Results.NotFound());
 
 app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
 {
     trip.CreatedAt = DateTime.UtcNow;
+    trip.AvailableSeats = trip.Capacity;
     db.Trips.Add(trip);
     await db.SaveChangesAsync();
     return Results.Created($"/api/trips/{trip.Id}", trip);
 }).RequireAuthorization("AdminOnly");
 
-app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbContext db) =>
+app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbContext db, ImageStorageService storage) =>
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
@@ -162,37 +211,117 @@ app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbCo
     var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
     if (!allowed.Contains(extension)) return Results.BadRequest("Formato no permitido. Usa JPG, PNG o WebP.");
 
-    var fileName = $"{Guid.NewGuid():N}{extension}";
-    var filePath = Path.Combine(uploadsPath, fileName);
+    await using var stream = file.OpenReadStream();
+    var imageUrl = await storage.UploadAsync(stream, extension, file.ContentType ?? "application/octet-stream");
 
-    await using (var stream = File.Create(filePath))
-    {
-        await file.CopyToAsync(stream);
-    }
-
-    trip.ImageUrl = $"/uploads/{fileName}";
+    trip.ImageUrl = imageUrl;
     await db.SaveChangesAsync();
     return Results.Ok(trip);
 }).RequireAuthorization("AdminOnly");
 
-app.MapDelete("/api/trips/{id}", async (int id, AppDbContext db) =>
+app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
-    var bookings = await db.Bookings.Where(b => b.TripId == id).ToListAsync();
-    db.Bookings.RemoveRange(bookings);
+    var capacityIncreased = input.Capacity > trip.Capacity;
+
+    trip.Title = input.Title;
+    trip.Destination = input.Destination;
+    trip.Description = input.Description;
+    trip.StartDate = input.StartDate;
+    trip.EndDate = input.EndDate;
+    trip.Price = input.Price;
+    trip.Capacity = input.Capacity;
+    trip.TransportType = input.TransportType;
+    trip.IsActive = input.IsActive;
+
+    await RecomputeAvailabilityAsync(db, trip);
+    await db.SaveChangesAsync();
+
+    if (capacityIncreased)
+    {
+        var pendingRequests = await db.CapacityRequests
+            .Where(c => c.TripId == id && !c.IsResolved)
+            .ToListAsync();
+
+        foreach (var request in pendingRequests)
+        {
+            db.Notifications.Add(new UserNotification
+            {
+                UserId = request.UserId,
+                Message = $"Se habilitó más cupo para \"{trip.Title}\". ¡Ya puedes reservar!",
+                CreatedAt = DateTime.UtcNow
+            });
+            request.IsResolved = true;
+        }
+
+        if (pendingRequests.Count > 0)
+            await db.SaveChangesAsync();
+    }
+
+    return Results.Ok(trip);
+}).RequireAuthorization("AdminOnly");
+
+app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContext db, ImageStorageService storage) =>
+{
+    var trip = await db.Trips
+        .Include(t => t.Bookings)
+        .FirstOrDefaultAsync(t => t.Id == id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    string? message = null;
+    try
+    {
+        using var reader = new StreamReader(request.Body);
+        var body = await reader.ReadToEndAsync();
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            var dto = JsonSerializer.Deserialize<DeleteTripRequest>(body,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            message = dto?.Message;
+        }
+    }
+    catch
+    {
+        // Sin cuerpo JSON: se usa el mensaje por defecto.
+    }
+
+    if (string.IsNullOrWhiteSpace(message))
+        message = $"Tu reserva para \"{trip.Title}\" fue cancelada porque el viaje fue eliminado.";
+
+    var notified = 0;
+    foreach (var booking in trip.Bookings)
+    {
+        if (booking.Status is BookingStatus.Pending or BookingStatus.Confirmed)
+        {
+            db.Notifications.Add(new UserNotification
+            {
+                UserId = booking.UserId,
+                Message = message,
+                CreatedAt = DateTime.UtcNow
+            });
+            notified++;
+        }
+    }
+
+    var bookingIds = trip.Bookings.Select(b => b.Id).ToList();
+    var payments = await db.Payments.Where(p => bookingIds.Contains(p.BookingId)).ToListAsync();
+    db.Payments.RemoveRange(payments);
+    db.Bookings.RemoveRange(trip.Bookings);
+
+    var capacityRequests = await db.CapacityRequests.Where(c => c.TripId == id).ToListAsync();
+    db.CapacityRequests.RemoveRange(capacityRequests);
+
     db.Trips.Remove(trip);
     await db.SaveChangesAsync();
 
     if (!string.IsNullOrEmpty(trip.ImageUrl))
     {
-        var fileName = Path.GetFileName(trip.ImageUrl);
-        var filePath = Path.Combine(uploadsPath, fileName);
-        if (File.Exists(filePath)) File.Delete(filePath);
+        await storage.DeleteAsync(trip.ImageUrl);
     }
 
-    return Results.NoContent();
+    return Results.Ok(new { Notified = notified });
 }).RequireAuthorization("AdminOnly");
 
 app.MapGet("/api/users", async (AppDbContext db) =>
@@ -212,14 +341,34 @@ app.MapGet("/api/users/{id}/bookings", async (int id, AppDbContext db, ClaimsPri
         .ToListAsync());
 }).RequireAuthorization();
 
+app.MapGet("/api/users/{id}/notifications", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var tokenUserId = GetUserId(principal);
+    if (tokenUserId != id && !principal.IsInRole("Admin"))
+        return Results.Forbid();
+
+    return Results.Ok(await db.Notifications
+        .Where(n => n.UserId == id)
+        .OrderByDescending(n => n.CreatedAt)
+        .ToListAsync());
+}).RequireAuthorization();
+
 app.MapGet("/api/bookings", async (AppDbContext db) =>
-    await db.Bookings.Include(b => b.Trip).Include(b => b.User).ToListAsync())
+    await db.Bookings
+        .Where(b => b.Status == BookingStatus.Pending)
+        .Include(b => b.Trip)
+        .Include(b => b.User)
+        .OrderByDescending(b => b.BookingDate)
+        .ToListAsync())
     .RequireAuthorization("AdminOnly");
 
 app.MapPost("/api/bookings", async (Booking booking, AppDbContext db, ClaimsPrincipal principal) =>
 {
     var trip = await db.Trips.FindAsync(booking.TripId);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    if (booking.NumberOfSeats < 1)
+        return Results.BadRequest("Indica al menos un asiento.");
 
     if (booking.NumberOfSeats > trip.AvailableSeats)
         return Results.BadRequest("No hay suficientes asientos disponibles.");
@@ -229,9 +378,12 @@ app.MapPost("/api/bookings", async (Booking booking, AppDbContext db, ClaimsPrin
     booking.Status = BookingStatus.Pending;
     booking.TotalAmount = trip.Price * booking.NumberOfSeats;
 
-    trip.AvailableSeats -= booking.NumberOfSeats;
     db.Bookings.Add(booking);
     await db.SaveChangesAsync();
+
+    await RecomputeAvailabilityAsync(db, trip);
+    await db.SaveChangesAsync();
+
     return Results.Created($"/api/bookings/{booking.Id}", booking);
 }).RequireAuthorization();
 
@@ -277,19 +429,61 @@ app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusReques
         .FirstOrDefaultAsync(b => b.Id == id);
     if (booking is null) return Results.NotFound("Reserva no encontrada.");
 
-    if (request.Status == BookingStatus.Cancelled && booking.Status != BookingStatus.Cancelled)
-        booking.Trip!.AvailableSeats += booking.NumberOfSeats;
-
-    if (request.Status == BookingStatus.Confirmed && booking.Status != BookingStatus.Confirmed
-        && booking.Trip!.AvailableSeats < booking.NumberOfSeats)
-        return Results.BadRequest("No hay suficientes asientos disponibles.");
+    if (request.Status == BookingStatus.Confirmed &&
+        !await db.Payments.AnyAsync(p => p.BookingId == id))
+        return Results.BadRequest("Registra la forma de pago antes de confirmar la reserva.");
 
     booking.Status = request.Status;
     await db.SaveChangesAsync();
+
+    if (booking.Trip is not null)
+    {
+        await RecomputeAvailabilityAsync(db, booking.Trip);
+        await db.SaveChangesAsync();
+    }
+
     return Results.Ok(booking);
 }).RequireAuthorization("AdminOnly");
 
+app.MapPost("/api/trips/{id}/capacity-requests", async (int id, CapacityRequest request, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var userId = GetUserId(principal);
+    if (userId == 0) return Results.Forbid();
+
+    var entity = new CapacityRequest
+    {
+        TripId = id,
+        UserId = userId,
+        RequestedSeats = request.RequestedSeats < 1 ? 1 : request.RequestedSeats,
+        Message = string.IsNullOrWhiteSpace(request.Message) ? null : request.Message.Trim(),
+        IsResolved = false,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    db.CapacityRequests.Add(entity);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/trips/{id}/capacity-requests/{entity.Id}", entity);
+}).RequireAuthorization();
+
+app.MapGet("/api/trips/{id}/capacity-requests", async (int id, AppDbContext db) =>
+    await db.CapacityRequests
+        .Include(c => c.User)
+        .Where(c => c.TripId == id)
+        .OrderByDescending(c => c.CreatedAt)
+        .ToListAsync()).RequireAuthorization("AdminOnly");
+
 app.Run();
+
+static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)
+{
+    var sold = await db.Bookings
+        .Where(b => b.TripId == trip.Id && b.Status != BookingStatus.Cancelled)
+        .SumAsync(b => (int?)b.NumberOfSeats) ?? 0;
+    trip.AvailableSeats = trip.Capacity - sold;
+}
 
 static string HashPassword(string password)
 {
@@ -347,6 +541,86 @@ static string GenerateToken(User user, SymmetricSecurityKey key, string issuer, 
     return new JwtSecurityTokenHandler().WriteToken(token);
 }
 
+static async Task EnsureTransportTypeColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "TransportType", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"TransportType\" INTEGER NOT NULL DEFAULT 0;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"TransportType\" integer NOT NULL DEFAULT 0;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Trips", "Capacity", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"Capacity\" INTEGER NOT NULL DEFAULT 0;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"Capacity\" integer NOT NULL DEFAULT 0;");
+
+        await TryExecAsync(db, provider == "sqlite"
+            ? "UPDATE \"Trips\" SET \"Capacity\" = \"AvailableSeats\" + COALESCE((SELECT SUM(\"NumberOfSeats\") FROM \"Bookings\" WHERE \"Bookings\".\"TripId\" = \"Trips\".\"Id\" AND \"Status\" <> 2), 0);"
+            : "UPDATE \"Trips\" t SET \"Capacity\" = t.\"AvailableSeats\" + COALESCE((SELECT SUM(b.\"NumberOfSeats\") FROM \"Bookings\" b WHERE b.\"TripId\" = t.\"Id\" AND b.\"Status\" <> 2), 0);");
+
+        Console.WriteLine("Bootstrap: columna Trips.Capacity agregada y backfilled.");
+    }
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? """
+          CREATE TABLE IF NOT EXISTS "CapacityRequests" (
+              "Id" INTEGER NOT NULL CONSTRAINT "PK_CapacityRequests" PRIMARY KEY AUTOINCREMENT,
+              "TripId" INTEGER NOT NULL,
+              "UserId" INTEGER NOT NULL,
+              "RequestedSeats" INTEGER NOT NULL,
+              "Message" TEXT NULL,
+              "IsResolved" INTEGER NOT NULL DEFAULT 0,
+              "CreatedAt" TEXT NOT NULL,
+              FOREIGN KEY ("TripId") REFERENCES "Trips" ("Id") ON DELETE RESTRICT,
+              FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE RESTRICT
+          );
+          """
+        : """
+          CREATE TABLE IF NOT EXISTS "CapacityRequests" (
+              "Id" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              "TripId" integer NOT NULL,
+              "UserId" integer NOT NULL,
+              "RequestedSeats" integer NOT NULL,
+              "Message" character varying(1000) NULL,
+              "IsResolved" boolean NOT NULL DEFAULT false,
+              "CreatedAt" timestamp without time zone NOT NULL,
+              CONSTRAINT "FK_CapacityRequests_Trips_TripId" FOREIGN KEY ("TripId") REFERENCES "Trips" ("Id") ON DELETE RESTRICT,
+              CONSTRAINT "FK_CapacityRequests_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE RESTRICT
+          );
+          """);
+
+    await TryExecAsync(db, "CREATE INDEX IF NOT EXISTS \"IX_CapacityRequests_TripId\" ON \"CapacityRequests\" (\"TripId\");");
+}
+
+static async Task<bool> ColumnExistsAsync(AppDbContext db, string table, string column, string provider)
+{
+    try
+    {
+        var sql = provider == "sqlite"
+            ? $"SELECT COUNT(*) AS \"Value\" FROM pragma_table_info('{table}') WHERE name = '{column}'"
+            : $"SELECT COUNT(*)::int AS \"Value\" FROM information_schema.columns WHERE table_name = '{table}' AND column_name = '{column}'";
+        return (await db.Database.SqlQueryRaw<int>(sql).ToListAsync()).FirstOrDefault() > 0;
+    }
+    catch
+    {
+        return false;
+    }
+}
+
+static async Task TryExecAsync(AppDbContext db, string sql)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync(sql);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Bootstrap: {ex.Message}");
+    }
+}
+
 static async Task EnsureSeedUsersAsync(AppDbContext db)
 {
     var adminEmail = "admin@travelagency.com";
@@ -386,3 +660,4 @@ static async Task EnsureSeedUsersAsync(AppDbContext db)
 }
 
 record UpdateBookingStatusRequest(BookingStatus Status);
+record DeleteTripRequest(string? Message);

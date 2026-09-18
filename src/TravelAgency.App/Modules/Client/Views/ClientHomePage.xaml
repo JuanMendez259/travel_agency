@@ -4,7 +4,14 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
+    xmlns:viewmodels="clr-namespace:TravelAgency.App.ViewModels"
+    xmlns:conv="clr-namespace:TravelAgency.App.Converters"
     Title="Explorar Viajes">
+
+    <ContentPage.Resources>
+        <conv:HasValueConverter x:Key="HasValue" />
+        <conv:TransportTypeConverter x:Key="TransportType" />
+    </ContentPage.Resources>
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
@@ -23,27 +30,28 @@
                         Footer=" "
                         EmptyView="No hay viajes disponibles.">
             <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="models:Trip">
+                <DataTemplate x:DataType="viewmodels:TripListItem">
                     <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
                         <VerticalStackLayout Spacing="4">
-                            <Image Source="{Binding ImageUrl}" HeightRequest="140" Aspect="AspectFill" />
+                            <Image Source="{Binding Thumb}" IsVisible="{Binding Thumb, Converter={StaticResource HasValue}}"
+                                   HeightRequest="140" Aspect="AspectFill" />
                             <VerticalStackLayout Padding="12" Spacing="4">
-                                <Label Text="{Binding Title}" FontSize="18" FontAttributes="Bold" />
-                                <Label Text="{Binding Destination}" FontSize="14" TextColor="Gray" />
+                                <Label Text="{Binding Trip.Title}" FontSize="18" FontAttributes="Bold" />
+                                <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
                                 <HorizontalStackLayout Spacing="4">
-                                    <Label Text="{Binding StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                    <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
                                     <Label Text="al" />
-                                    <Label Text="{Binding EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                    <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Spacing="4">
-                                    <Label Text="{Binding Price, StringFormat='{0:C}'}" FontAttributes="Bold" />
+                                    <Label Text="{Binding Trip.Price, StringFormat='{0:C}'}" FontAttributes="Bold" />
                                     <Label Text="·" />
-                                    <Label Text="{Binding AvailableSeats}" />
-                                    <Label Text="asientos disponibles" />
+                                    <Label Text="{Binding AvailabilityText}" TextColor="Gray" />
                                 </HorizontalStackLayout>
-                                <Button Text="Reservar"
+                                <Label Text="{Binding Trip.TransportType, Converter={StaticResource TransportType}}" FontSize="12" TextColor="Gray" />
+                                <Button Text="{Binding BookButtonText}"
                                         Clicked="OnBookClicked"
-                                        CommandParameter="{Binding .}"
+                                        CommandParameter="{Binding Trip}"
                                         Margin="0,8,0,0" />
                             </VerticalStackLayout>
                         </VerticalStackLayout>

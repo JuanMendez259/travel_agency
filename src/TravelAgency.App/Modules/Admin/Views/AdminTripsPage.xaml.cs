@@ -2,13 +2,13 @@ using TravelAgency.App.Services;
 using TravelAgency.App.ViewModels;
 using TravelAgency.Shared.Models;
 
-namespace TravelAgency.App.Modules.Client.Views;
+namespace TravelAgency.App.Modules.Admin.Views;
 
-public partial class ClientHomePage : ContentPage
+public partial class AdminTripsPage : ContentPage
 {
     private readonly ApiService _api;
 
-    public ClientHomePage(ApiService api)
+    public AdminTripsPage(ApiService api)
     {
         InitializeComponent();
         _api = api;
@@ -17,7 +17,14 @@ public partial class ClientHomePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadTripsAsync();
+        try
+        {
+            await LoadTripsAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", $"No se pudieron cargar los viajes: {ex.Message}", "OK");
+        }
     }
 
     private async Task LoadTripsAsync()
@@ -26,7 +33,7 @@ public partial class ClientHomePage : ContentPage
         Loading.IsVisible = true;
         try
         {
-            var trips = await _api.GetTripsAsync();
+            var trips = await _api.GetAdminTripsAsync();
             var items = new List<TripListItem>();
             if (trips is not null)
             {
@@ -38,10 +45,6 @@ public partial class ClientHomePage : ContentPage
             }
             TripsList.ItemsSource = items;
         }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("Error", $"No se pudo cargar los viajes: {ex.Message}", "OK");
-        }
         finally
         {
             Loading.IsRunning = false;
@@ -49,15 +52,15 @@ public partial class ClientHomePage : ContentPage
         }
     }
 
-    private async void OnBookClicked(object? sender, EventArgs e)
+    private async void OnDetailClicked(object? sender, EventArgs e)
     {
         if ((sender as Button)?.CommandParameter is not Trip trip) return;
-        await Shell.Current.GoToAsync($"trip?id={trip.Id}");
+        await Shell.Current.GoToAsync($"admintrip?id={trip.Id}");
     }
 
     private async void OnLogoutClicked(object? sender, EventArgs e)
     {
-        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de tu cuenta?", "Sí", "No");
+        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de la cuenta de administrador?", "Sí", "No");
         if (confirm) App.GoToLogin();
     }
 }
