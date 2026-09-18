@@ -25,7 +25,32 @@ public partial class App : Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        return new Window(Services.GetRequiredService<LoginPage>());
+        var window = new Window(Services.GetRequiredService<LoginPage>());
+#if WINDOWS
+        window.HandlerChanged += (_, _) =>
+        {
+            window.Dispatcher.Dispatch(() =>
+            {
+                try
+                {
+                    if (window.Handler?.PlatformView is not Microsoft.UI.Xaml.Window win)
+                        return;
+
+                    var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(win);
+                    var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
+                    var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
+
+                    var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+                    if (File.Exists(iconPath))
+                        appWindow.SetIcon(iconPath);
+                }
+                catch
+                {
+                }
+            });
+        };
+#endif
+        return window;
     }
 
     public static void GoToMainShell()
