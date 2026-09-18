@@ -20,7 +20,14 @@ public partial class AdminBookingDetailPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadBookingAsync();
+        try
+        {
+            await LoadBookingAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", $"No se pudo cargar la reserva: {ex.Message}", "OK");
+        }
     }
 
     private async Task LoadBookingAsync()
@@ -44,11 +51,6 @@ public partial class AdminBookingDetailPage : ContentPage
         }
     }
 
-    private async void OnConfirmClicked(object? sender, EventArgs e)
-    {
-        await ChangeStatusAsync(BookingStatus.Confirmed);
-    }
-
     private async void OnCancelClicked(object? sender, EventArgs e)
     {
         var confirm = await DisplayAlertAsync("Cancelar reserva",
@@ -64,11 +66,17 @@ public partial class AdminBookingDetailPage : ContentPage
             StatusLabel.Text = $"Estado: {_booking!.Status}";
             PaymentButton.IsVisible = _booking.Status != BookingStatus.Cancelled;
             await DisplayAlertAsync("Listo", $"Reserva {status}.", "OK");
+            await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
         {
             await DisplayAlertAsync("Error", ex.Message, "OK");
         }
+    }
+
+    private async void OnBackClicked(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync("..");
     }
 
     private async void OnRegisterPaymentClicked(object? sender, EventArgs e)
@@ -92,6 +100,7 @@ public partial class AdminBookingDetailPage : ContentPage
             await LoadBookingAsync();
             await DisplayAlertAsync("Pago registrado",
                 $"Pago de {_booking.TotalAmount:C} registrado. La reserva quedó confirmada.", "OK");
+            await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
         {

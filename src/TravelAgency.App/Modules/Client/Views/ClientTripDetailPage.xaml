@@ -14,14 +14,27 @@
             <Label x:Name="DatesLabel" FontSize="15" />
             <Label x:Name="PriceLabel" FontSize="18" FontAttributes="Bold" />
             <Label x:Name="DescriptionLabel" FontSize="14" />
+            <Label x:Name="TransportLabel" FontSize="14" />
             <Label x:Name="SeatsLabel" FontSize="14" TextColor="Gray" />
 
-            <Border Margin="0,20,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
+            <Border x:Name="BookPanel" Margin="0,20,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
                 <VerticalStackLayout Padding="16" Spacing="8">
                     <Label Text="Reservar viaje" FontSize="16" FontAttributes="Bold" />
                     <Label Text="Número de asientos" FontSize="14" />
                     <Entry x:Name="SeatsEntry" Keyboard="Numeric" Text="1" />
                     <Button x:Name="BookButton" Text="Confirmar reserva" Clicked="OnBookClicked" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border x:Name="NoCapacityPanel" IsVisible="False" Margin="0,20,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
+                <VerticalStackLayout Padding="16" Spacing="8">
+                    <Label Text="Sin cupo disponible" FontSize="16" FontAttributes="Bold" />
+                    <Label Text="Puedes pedirle al administrador que amplíe la capacidad de este viaje." FontSize="14" />
+                    <Label Text="¿Cuántos asientos necesitas?" FontSize="14" />
+                    <Entry x:Name="RequestedSeatsEntry" Keyboard="Numeric" Text="1" />
+                    <Label Text="Mensaje (opcional)" FontSize="14" />
+                    <Editor x:Name="RequestMessageEditor" HeightRequest="80" />
+                    <Button x:Name="RequestCapacityButton" Text="Solicitar más cupo" Clicked="OnRequestCapacityClicked" />
                 </VerticalStackLayout>
             </Border>
         </VerticalStackLayout>

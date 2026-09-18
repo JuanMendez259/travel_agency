@@ -10,6 +10,8 @@ public static class MauiProgram
 {
 	public static MauiApp CreateMauiApp()
 	{
+		CrashLogger.Attach();
+
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
@@ -21,13 +23,15 @@ public static class MauiProgram
 
 		builder.Services.AddSingleton<ApiService>();
 		builder.Services.AddSingleton<SessionService>();
-		builder.Services.AddSingleton<AppShell>();
+		builder.Services.AddTransient<AppShell>();
 		builder.Services.AddTransient<LoginPage>();
 		builder.Services.AddTransient<ClientHomePage>();
 		builder.Services.AddTransient<ClientTripDetailPage>();
 		builder.Services.AddTransient<ClientMyTripsPage>();
 		builder.Services.AddTransient<ClientMyBookingDetailPage>();
 		builder.Services.AddTransient<AdminDashboardPage>();
+		builder.Services.AddTransient<AdminTripsPage>();
+		builder.Services.AddTransient<AdminTripDetailPage>();
 		builder.Services.AddTransient<AdminBookingsPage>();
 		builder.Services.AddTransient<AdminBookingDetailPage>();
 

@@ -11,6 +11,8 @@ public class AppDbContext : DbContext
     public DbSet<Trip> Trips => Set<Trip>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<UserNotification> Notifications => Set<UserNotification>();
+    public DbSet<CapacityRequest> CapacityRequests => Set<CapacityRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +53,31 @@ public class AppDbContext : DbContext
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<UserNotification>(entity =>
+        {
+            entity.ToTable("Notifications");
+            entity.Property(n => n.Message).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(n => n.UserId);
+            entity.HasOne(n => n.User)
+                  .WithMany(u => u.Notifications)
+                  .HasForeignKey(n => n.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CapacityRequest>(entity =>
+        {
+            entity.Property(c => c.Message).HasMaxLength(1000);
+            entity.HasIndex(c => c.TripId);
+            entity.HasOne(c => c.Trip)
+                  .WithMany(t => t.CapacityRequests)
+                  .HasForeignKey(c => c.TripId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(c => c.User)
+                  .WithMany()
+                  .HasForeignKey(c => c.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<User>().HasData(
             new User { Id = 1, Name = "Administrador", Email = "admin@travelagency.com", PasswordHash = "CHANGE_ME", Role = UserRole.Admin, CreatedAt = DateTime.UtcNow }
         );
@@ -66,6 +93,8 @@ public class AppDbContext : DbContext
                 EndDate = new DateTime(2026, 10, 17),
                 Price = 12500m,
                 AvailableSeats = 20,
+                Capacity = 20,
+                TransportType = TransportType.Camion,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             },
@@ -79,6 +108,8 @@ public class AppDbContext : DbContext
                 EndDate = new DateTime(2026, 11, 12),
                 Price = 9800m,
                 AvailableSeats = 15,
+                Capacity = 15,
+                TransportType = TransportType.Camioneta,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             }

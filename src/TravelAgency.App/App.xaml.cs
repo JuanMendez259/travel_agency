@@ -12,6 +12,15 @@ public partial class App : Application
     {
         InitializeComponent();
         Services = services;
+#if WINDOWS
+        Microsoft.UI.Xaml.Application.Current.UnhandledException += (_, e) =>
+        {
+            CrashLogger.Write("WinUI", e.Exception);
+            if (e.Exception is InvalidOperationException ioe &&
+                ioe.Message.Contains("Pending Navigations", StringComparison.OrdinalIgnoreCase))
+                e.Handled = true;
+        };
+#endif
     }
 
     protected override Window CreateWindow(IActivationState? activationState)
@@ -29,7 +38,7 @@ public partial class App : Application
         if (session.IsAdmin)
         {
             foreach (var item in tabs)
-                item.IsVisible = item.Route is "bookings" or "admin";
+                item.IsVisible = item.Route is "admintrips" or "bookings" or "admin";
         }
         else
         {

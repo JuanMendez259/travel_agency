@@ -26,6 +26,17 @@ public class ApiService
         "https://tu-servidor-produccion.com";
 #endif
 
+    public static string? ResolveUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return url;
+        if (url.StartsWith('/'))
+            return BaseUrl + url;
+        return url;
+    }
+
     public void SetAuthToken(string? token)
     {
         _http.DefaultRequestHeaders.Authorization =
@@ -49,6 +60,12 @@ public class ApiService
     public Task<List<Trip>?> GetTripsAsync() =>
         _http.GetFromJsonAsync<List<Trip>>("/api/trips", JsonOptions);
 
+    public Task<List<Trip>?> GetAdminTripsAsync() =>
+        _http.GetFromJsonAsync<List<Trip>>("/api/trips/manage", JsonOptions);
+
+    public Task<List<UserNotification>?> GetNotificationsAsync(int userId) =>
+        _http.GetFromJsonAsync<List<UserNotification>>($"/api/users/{userId}/notifications", JsonOptions);
+
     public Task<Trip?> GetTripAsync(int id) =>
         _http.GetFromJsonAsync<Trip>($"/api/trips/{id}", JsonOptions);
 
@@ -66,6 +83,35 @@ public class ApiService
         var response = await _http.PostAsJsonAsync("/api/trips", trip, JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
+    public async Task<Trip?> UpdateTripAsync(int id, Trip trip)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{id}", trip, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
+    public async Task<CapacityRequest?> CreateCapacityRequestAsync(int tripId, int seats, string? message)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/trips/{tripId}/capacity-requests",
+            new CapacityRequest { TripId = tripId, RequestedSeats = seats, Message = message }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CapacityRequest>(JsonOptions);
+    }
+
+    public async Task DeleteTripAsync(int id, string? notificationMessage = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/trips/{id}");
+        if (!string.IsNullOrEmpty(notificationMessage))
+        {
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(new { Message = notificationMessage }, JsonOptions),
+                System.Text.Encoding.UTF8, "application/json");
+        }
+
+        var response = await _http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
     }
 
     public async Task<Trip?> UploadTripImageAsync(int tripId, FileResult file)
@@ -110,5 +156,22 @@ public class ApiService
         using var response = await _http.GetAsync(url);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsByteArrayAsync();
+    }
+
+    public async Task<Microsoft.Maui.Controls.ImageSource?> GetTripImageAsync(string? url)
+    {
+        var absolute = ResolveUrl(url);
+        if (absolute is null) return null;
+
+        try
+        {
+            var bytes = await _http.GetByteArrayAsync(absolute);
+            if (bytes.Length == 0) return null;
+            return Microsoft.Maui.Controls.ImageSource.FromStream(() => new MemoryStream(bytes));
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
