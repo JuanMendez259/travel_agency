@@ -63,12 +63,12 @@ public partial class App : Application
         if (session.IsAdmin)
         {
             foreach (var item in tabs)
-                item.IsVisible = item.Route is "admintrips" or "bookings" or "admin";
+                item.IsVisible = item.Route is "admintrips" or "bookings" or "admin" or "notifications";
         }
         else
         {
             foreach (var item in tabs)
-                item.IsVisible = item.Route is "home" or "mytrips";
+                item.IsVisible = item.Route is "home" or "mytrips" or "notifications";
         }
 
         Application.Current!.Windows[0].Page = shell;

@@ -92,6 +92,12 @@ public partial class AdminTripDetailPage : ContentPage
         }
     }
 
+    private async void OnPaymentsClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+        await Shell.Current.GoToAsync($"tripbookings?id={_trip.Id}");
+    }
+
     private async void OnEditClicked(object? sender, EventArgs e)
     {
         if (_trip is null) return;
