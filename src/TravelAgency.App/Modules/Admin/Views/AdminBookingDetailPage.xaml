@@ -18,6 +18,8 @@
             <Button x:Name="PaymentButton" Text="Registrar pago" Clicked="OnRegisterPaymentClicked" />
             <Button x:Name="CancelButton" Text="Cancelar reserva" Clicked="OnCancelClicked" BackgroundColor="#B00020" />
 
+            <Button Text="Historial de cambios" Clicked="OnAuditClicked" Margin="0,5,0,0" />
+
             <Button Text="Volver a reservas" Clicked="OnBackClicked" Margin="0,5,0,0" />
 
             <Label Text="Pagos registrados" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" />

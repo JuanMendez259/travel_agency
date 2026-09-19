@@ -177,6 +177,12 @@ public partial class AdminTripDetailPage : ContentPage
         await Shell.Current.GoToAsync($"tripmap?id={_trip.Id}");
     }
 
+    private async void OnAuditClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+        await Shell.Current.GoToAsync($"auditlog?entity=Trip&id={_trip.Id}");
+    }
+
     private async void OnEditClicked(object? sender, EventArgs e)
     {
         if (_trip is null) return;

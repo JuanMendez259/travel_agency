@@ -83,6 +83,12 @@ public partial class AdminBookingDetailPage : ContentPage
         }
     }
 
+    private async void OnAuditClicked(object? sender, EventArgs e)
+    {
+        if (_booking is null) return;
+        await Shell.Current.GoToAsync($"auditlog?entity=Booking&id={_booking.Id}");
+    }
+
     private async void OnBackClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync("..");
