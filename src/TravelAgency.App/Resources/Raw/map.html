@@ -23,6 +23,7 @@
   var poiData = [];
   var poly = null;
   var mode = 'pan';
+  var readOnly = false;
   var HINT = document.getElementById('hint');
   var LOADING = document.getElementById('loading');
 
@@ -32,6 +33,7 @@
   window.app_call = function(u){ send(u); };
 
   function updateHint(){
+    if (readOnly) { HINT.textContent = 'Recorrido del viaje · Origen (O), destino (D) y puntos de interés.'; return; }
     var t;
     if (mode === 'origin') t = 'Haz clic en el mapa (o arrastra el marcador verde O) para fijar el ORIGEN.';
     else if (mode === 'dest') t = 'Haz clic en el mapa (o arrastra el marcador rojo D) para fijar el DESTINO.';
@@ -58,11 +60,13 @@
   function placeOrigin(lat, lng){
     if (oMark) { oMark.setPosition({lat:lat, lng:lng}); }
     else {
-      oMark = new google.maps.Marker({ position:{lat:lat,lng:lng}, map:map, title:'Origen', label:{text:'O', color:'#ffffff', fontWeight:'bold'}, icon:makeCircle('#00C853'), draggable:true });
-      oMark.addListener('dragend', function(e){
-        drawRoute();
-        send('route?kind=origin&lat=' + e.latLng.lat().toFixed(6) + '&lng=' + e.latLng.lng().toFixed(6));
-      });
+      oMark = new google.maps.Marker({ position:{lat:lat,lng:lng}, map:map, title:'Origen', label:{text:'O', color:'#ffffff', fontWeight:'bold'}, icon:makeCircle('#00C853'), draggable:!readOnly });
+      if (!readOnly) {
+        oMark.addListener('dragend', function(e){
+          drawRoute();
+          send('route?kind=origin&lat=' + e.latLng.lat().toFixed(6) + '&lng=' + e.latLng.lng().toFixed(6));
+        });
+      }
     }
     map.panTo({lat:lat, lng:lng});
     drawRoute();
@@ -71,11 +75,13 @@
   function placeDest(lat, lng){
     if (dMark) { dMark.setPosition({lat:lat, lng:lng}); }
     else {
-      dMark = new google.maps.Marker({ position:{lat:lat,lng:lng}, map:map, title:'Destino', label:{text:'D', color:'#ffffff', fontWeight:'bold'}, icon:makeCircle('#D32F2F'), draggable:true });
-      dMark.addListener('dragend', function(e){
-        drawRoute();
-        send('route?kind=dest&lat=' + e.latLng.lat().toFixed(6) + '&lng=' + e.latLng.lng().toFixed(6));
-      });
+      dMark = new google.maps.Marker({ position:{lat:lat,lng:lng}, map:map, title:'Destino', label:{text:'D', color:'#ffffff', fontWeight:'bold'}, icon:makeCircle('#D32F2F'), draggable:!readOnly });
+      if (!readOnly) {
+        dMark.addListener('dragend', function(e){
+          drawRoute();
+          send('route?kind=dest&lat=' + e.latLng.lat().toFixed(6) + '&lng=' + e.latLng.lng().toFixed(6));
+        });
+      }
     }
     map.panTo({lat:lat, lng:lng});
     drawRoute();
@@ -85,10 +91,13 @@
     var html = '<div style="min-width:160px;font-family:Segoe UI,Arial,sans-serif;">';
     html += '<b>' + esc(p.name) + '</b><br/>';
     html += '<span style="color:#555;font-size:12px;">' + (esc(p.description) || '—') + '</span><br/>';
-    html += '<div style="margin-top:8px;">';
-    html += '<a href="#" onclick="event.preventDefault(); app_call(\'edit-poi?id=' + p.id + '&lat=' + p.lat + '&lng=' + p.lng + '\');">✏️ Editar</a> &nbsp; ';
-    html += '<a href="#" style="color:#c62828;" onclick="event.preventDefault(); app_call(\'del-poi?id=' + p.id + '\');">🗑️ Eliminar</a>';
-    html += '</div></div>';
+    if (!readOnly) {
+      html += '<div style="margin-top:8px;">';
+      html += '<a href="#" onclick="event.preventDefault(); app_call(\'edit-poi?id=' + p.id + '&lat=' + p.lat + '&lng=' + p.lng + '\');">✏️ Editar</a> &nbsp; ';
+      html += '<a href="#" style="color:#c62828;" onclick="event.preventDefault(); app_call(\'del-poi?id=' + p.id + '\');">🗑️ Eliminar</a>';
+      html += '</div>';
+    }
+    html += '</div>';
     return html;
   }
 
@@ -99,16 +108,18 @@
       position:{lat:p.lat, lng:p.lng}, map:map, title:p.name,
       label:{ text:String(poiData.length + 1), color:'#ffffff', fontWeight:'bold' },
       icon:makeCircle('#1E88E5'),
-      draggable:true
+      draggable:!readOnly
     });
     var rec = { id:p.id, name:p.name, description:p.description, lat:p.lat, lng:p.lng, marker:marker };
     poiData.push(rec);
     marker.addListener('click', function(){ iw.setContent(poiInfo(rec)); iw.open(map, marker); });
-    marker.addListener('dragend', function(e){
-      rec.lat = e.latLng.lat(); rec.lng = e.latLng.lng();
-      drawRoute();
-      send('poi-move?id=' + rec.id + '&lat=' + rec.lat.toFixed(6) + '&lng=' + rec.lng.toFixed(6));
-    });
+    if (!readOnly) {
+      marker.addListener('dragend', function(e){
+        rec.lat = e.latLng.lat(); rec.lng = e.latLng.lng();
+        drawRoute();
+        send('poi-move?id=' + rec.id + '&lat=' + rec.lat.toFixed(6) + '&lng=' + rec.lng.toFixed(6));
+      });
+    }
     map.panTo({lat:p.lat, lng:p.lng});
     drawRoute();
   }
@@ -143,6 +154,7 @@
       HINT.textContent = 'No se pudo cargar Google Maps. Verifica la API key (MapConfig.GoogleMapsApiKey).';
       return;
     }
+    readOnly = !!CFG.readOnly;
     var hasOrigin = CFG.originLat != null;
     var hasDest = CFG.destLat != null;
     var center = hasDest ? {lat:CFG.destLat, lng:CFG.destLng} : (hasOrigin ? {lat:CFG.originLat, lng:CFG.originLng} : {lat:19.4326, lng:-99.1332});
@@ -153,18 +165,20 @@
       fullscreenControl: true
     });
 
-    map.addListener('click', function(e){
-      var lat = e.latLng.lat(); var lng = e.latLng.lng();
-      if (mode === 'origin') {
-        placeOrigin(lat, lng);
-        send('route?kind=origin&lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
-      } else if (mode === 'dest') {
-        placeDest(lat, lng);
-        send('route?kind=dest&lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
-      } else if (mode === 'poi') {
-        send('pick?lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
-      }
-    });
+    if (!readOnly) {
+      map.addListener('click', function(e){
+        var lat = e.latLng.lat(); var lng = e.latLng.lng();
+        if (mode === 'origin') {
+          placeOrigin(lat, lng);
+          send('route?kind=origin&lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+        } else if (mode === 'dest') {
+          placeDest(lat, lng);
+          send('route?kind=dest&lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+        } else if (mode === 'poi') {
+          send('pick?lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+        }
+      });
+    }
 
     if (CFG.originLat != null && CFG.originLng != null) placeOrigin(CFG.originLat, CFG.originLng);
     if (CFG.destLat != null && CFG.destLng != null) placeDest(CFG.destLat, CFG.destLng);
