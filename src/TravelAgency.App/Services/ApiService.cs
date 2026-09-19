@@ -84,6 +84,16 @@ public class ApiService
     public Task<AdminStats?> GetAdminStatsAsync() =>
         _http.GetFromJsonAsync<AdminStats>("/api/admin/stats", JsonOptions);
 
+    public Task<List<AuditLog>?> GetAuditLogsAsync(string? entity = null, int? id = null)
+    {
+        var url = "/api/admin/auditlog";
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(entity)) parts.Add($"entity={entity}");
+        if (id.HasValue) parts.Add($"id={id.Value}");
+        if (parts.Count > 0) url += "?" + string.Join("&", parts);
+        return _http.GetFromJsonAsync<List<AuditLog>>(url, JsonOptions);
+    }
+
     public async Task<Trip?> UpdateTripRouteAsync(int tripId, double? originLat, double? originLng, double? destLat, double? destLng)
     {
         var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/route",

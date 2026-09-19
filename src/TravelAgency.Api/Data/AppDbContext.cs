@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<UserNotification> Notifications => Set<UserNotification>();
     public DbSet<CapacityRequest> CapacityRequests => Set<CapacityRequest>();
     public DbSet<TripPointOfInterest> TripPointsOfInterest => Set<TripPointOfInterest>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -89,6 +90,17 @@ public class AppDbContext : DbContext
                   .WithMany(t => t.PointsOfInterest)
                   .HasForeignKey(p => p.TripId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("AuditLogs");
+            entity.Property(a => a.UserName).HasMaxLength(120);
+            entity.Property(a => a.EntityType).HasMaxLength(30).IsRequired();
+            entity.Property(a => a.Action).HasMaxLength(20).IsRequired();
+            entity.Property(a => a.Summary).HasMaxLength(1000);
+            entity.HasIndex(a => new { a.EntityType, a.EntityId });
+            entity.HasIndex(a => a.CreatedAt);
         });
 
         modelBuilder.Entity<User>().HasData(
