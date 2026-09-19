@@ -638,6 +638,69 @@ app.MapDelete("/api/trips/{id}/pois/{poiId}", async (int id, int poiId, AppDbCon
     return Results.Ok();
 }).RequireAuthorization("AdminOnly");
 
+app.MapGet("/api/admin/stats", async (AppDbContext db) =>
+{
+    var now = DateTime.UtcNow;
+    var trips = await db.Trips.Include(t => t.Bookings).ToListAsync();
+
+    var activeBookings = trips
+        .SelectMany(t => t.Bookings)
+        .Where(b => b.Status != BookingStatus.Cancelled)
+        .ToList();
+    var seatsSold = activeBookings.Sum(b => b.NumberOfSeats);
+    var capacityTotal = trips.Sum(t => t.Capacity);
+
+    var payments = await db.Payments
+        .Where(p => p.Status == PaymentStatus.Completed)
+        .ToListAsync();
+
+    var stats = new AdminStats
+    {
+        TripsCount = trips.Count,
+        BookingsCount = activeBookings.Count,
+        SeatsSold = seatsSold,
+        RevenueTotal = Math.Round(payments.Sum(p => p.Amount), 2),
+        OccupancyPercent = capacityTotal > 0 ? Math.Round(seatsSold * 100.0 / capacityTotal, 1) : 0,
+        MonthlyRevenue = payments
+            .Where(p => p.PaymentDate >= now.AddMonths(-11))
+            .GroupBy(p => new DateTime(p.PaymentDate.Year, p.PaymentDate.Month, 1))
+            .OrderBy(g => g.Key)
+            .Select(g => new MonthlyRevenue
+            {
+                Month = g.Key.ToString("yyyy-MM"),
+                Amount = Math.Round(g.Sum(p => p.Amount), 2)
+            })
+            .ToList(),
+        OccupancyByTrip = trips
+            .Select(t =>
+            {
+                var sold = t.Bookings.Where(b => b.Status != BookingStatus.Cancelled).Sum(b => b.NumberOfSeats);
+                return new TripOccupancy
+                {
+                    TripId = t.Id,
+                    Title = t.Title ?? "",
+                    Capacity = t.Capacity,
+                    Sold = sold,
+                    Percent = t.Capacity > 0 ? Math.Round(sold * 100.0 / t.Capacity, 1) : 0
+                };
+            })
+            .OrderByDescending(o => o.Percent)
+            .ToList(),
+        TopDestinations = trips
+            .GroupBy(t => t.Destination ?? "Sin destino")
+            .Select(g => new TopDestination
+            {
+                Destination = g.Key,
+                Seats = g.Sum(t => t.Bookings.Where(b => b.Status != BookingStatus.Cancelled).Sum(b => b.NumberOfSeats))
+            })
+            .OrderByDescending(d => d.Seats)
+            .Take(5)
+            .ToList()
+    };
+
+    return Results.Ok(stats);
+}).RequireAuthorization("AdminOnly");
+
 app.Run();
 
 static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)

@@ -29,6 +29,10 @@
             ContentTemplate="{DataTemplate admin:AdminBookingsPage}"
             Route="bookings" />
         <ShellContent
+            Title="Estadísticas"
+            ContentTemplate="{DataTemplate admin:AdminStatsPage}"
+            Route="adminstats" />
+        <ShellContent
             Title="Admin"
             ContentTemplate="{DataTemplate admin:AdminDashboardPage}"
             Route="admin" />
