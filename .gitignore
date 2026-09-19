@@ -438,3 +438,5 @@ FodyWeavers.xsd
 .DS_Store*.db
 *.db-shm
 *.db-wal
+
+MapConfigSecrets.cs
