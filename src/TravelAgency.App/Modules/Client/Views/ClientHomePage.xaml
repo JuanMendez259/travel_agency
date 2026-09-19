@@ -24,11 +24,13 @@
                            Margin="0,10"
                            HorizontalOptions="Center" />
 
-        <CollectionView x:Name="TripsList"
-                        Grid.Row="1"
-                        SelectionMode="None"
-                        Footer=" "
-                        EmptyView="No hay viajes disponibles.">
+        <RefreshView x:Name="TripsRefresh"
+                     Grid.Row="1"
+                     Refreshing="OnRefreshing">
+            <CollectionView x:Name="TripsList"
+                            SelectionMode="None"
+                            Footer=" "
+                            EmptyView="No hay viajes disponibles.">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="viewmodels:TripListItem">
                     <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
@@ -59,5 +61,6 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+        </RefreshView>
     </Grid>
 </ContentPage>

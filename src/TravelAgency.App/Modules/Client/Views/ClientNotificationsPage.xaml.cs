@@ -38,6 +38,18 @@ public partial class ClientNotificationsPage : ContentPage
         }
     }
 
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try
+        {
+            await LoadAsync();
+        }
+        finally
+        {
+            MessagesRefresh.IsRefreshing = false;
+        }
+    }
+
     private async void OnLogoutClicked(object? sender, EventArgs e)
     {
         var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de tu cuenta?", "Sí", "No");

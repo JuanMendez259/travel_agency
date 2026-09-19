@@ -27,10 +27,13 @@ public partial class AdminTripsPage : ContentPage
         }
     }
 
-    private async Task LoadTripsAsync()
+    private async Task LoadTripsAsync(bool showLoading = true)
     {
-        Loading.IsRunning = true;
-        Loading.IsVisible = true;
+        if (showLoading)
+        {
+            Loading.IsRunning = true;
+            Loading.IsVisible = true;
+        }
         try
         {
             var trips = await _api.GetAdminTripsAsync();
@@ -47,8 +50,27 @@ public partial class AdminTripsPage : ContentPage
         }
         finally
         {
-            Loading.IsRunning = false;
-            Loading.IsVisible = false;
+            if (showLoading)
+            {
+                Loading.IsRunning = false;
+                Loading.IsVisible = false;
+            }
+        }
+    }
+
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try
+        {
+            await LoadTripsAsync(false);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", $"No se pudieron cargar los viajes: {ex.Message}", "OK");
+        }
+        finally
+        {
+            TripsRefresh.IsRefreshing = false;
         }
     }
 

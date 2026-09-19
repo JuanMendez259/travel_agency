@@ -52,6 +52,18 @@ public partial class AdminAuditPage : ContentPage
         }
     }
 
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try
+        {
+            await LoadLogs();
+        }
+        finally
+        {
+            AuditRefresh.IsRefreshing = false;
+        }
+    }
+
     private async void OnBackClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync("..");

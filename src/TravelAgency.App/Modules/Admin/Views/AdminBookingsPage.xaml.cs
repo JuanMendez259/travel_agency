@@ -19,10 +19,13 @@ public partial class AdminBookingsPage : ContentPage
         await LoadBookingsAsync();
     }
 
-    private async Task LoadBookingsAsync()
+    private async Task LoadBookingsAsync(bool showLoading = true)
     {
-        Loading.IsRunning = true;
-        Loading.IsVisible = true;
+        if (showLoading)
+        {
+            Loading.IsRunning = true;
+            Loading.IsVisible = true;
+        }
         try
         {
             BookingsList.ItemsSource = await _api.GetBookingsAsync();
@@ -33,8 +36,23 @@ public partial class AdminBookingsPage : ContentPage
         }
         finally
         {
-            Loading.IsRunning = false;
-            Loading.IsVisible = false;
+            if (showLoading)
+            {
+                Loading.IsRunning = false;
+                Loading.IsVisible = false;
+            }
+        }
+    }
+
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try
+        {
+            await LoadBookingsAsync(false);
+        }
+        finally
+        {
+            BookingsRefresh.IsRefreshing = false;
         }
     }
 
