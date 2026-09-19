@@ -16,8 +16,14 @@ public class Trip
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    public double? OriginLatitude { get; set; }
+    public double? OriginLongitude { get; set; }
+    public double? DestinationLatitude { get; set; }
+    public double? DestinationLongitude { get; set; }
+
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     public ICollection<CapacityRequest> CapacityRequests { get; set; } = new List<CapacityRequest>();
+    public ICollection<TripPointOfInterest> PointsOfInterest { get; set; } = new List<TripPointOfInterest>();
 }
 
 public enum TransportType

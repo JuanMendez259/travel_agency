@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Mapa del viaje</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", Arial, sans-serif; }
+  #map { height: 100%; width: 100%; }
+  #hint { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.72); color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 13px; z-index: 10; pointer-events: none; max-width: 92%; text-align: center; }
+  #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #444; font-family: "Segoe UI", Arial, sans-serif; font-size: 14px; z-index: 5; }
+</style>
+</head>
+<body>
+<div id="hint">Cargando mapa…</div>
+<div id="loading">Cargando mapa…</div>
+<div id="map"></div>
+<script>
+  {{CFG}}
+
+  var map = null;
+  var oMark = null, dMark = null;
+  var poiData = [];
+  var poly = null;
+  var mode = 'pan';
+  var HINT = document.getElementById('hint');
+  var LOADING = document.getElementById('loading');
+
+  function esc(s){ return (s == null ? '' : String(s)).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  function send(u){ window.location.href = 'app://' + u; }
+  window.app_call = function(u){ send(u); };
+
+  function updateHint(){
+    var t;
+    if (mode === 'origin') t = 'Haz clic en el mapa (o arrastra el marcador verde O) para fijar el ORIGEN.';
+    else if (mode === 'dest') t = 'Haz clic en el mapa (o arrastra el marcador rojo D) para fijar el DESTINO.';
+    else if (mode === 'poi') t = 'Haz clic en el mapa para agregar un PUNTO DE INTERÉS.';
+    else t = 'Modo: navegar. Usa los botones inferiores para marcar origen, destino o agregar puntos.';
+    HINT.textContent = t;
+  }
+
+  function drawRoute(){
+    if (poly) { poly.setMap(null); poly = null; }
+    var path = [];
+    if (oMark) path.push(oMark.getPosition());
+    poiData.forEach(function(p){ path.push(p.marker.getPosition()); });
+    if (dMark) path.push(dMark.getPosition());
+    if (path.length < 2) return;
+    poly = new google.maps.Polyline({ path: path, geodesic: true, strokeColor: '#1565C0', strokeOpacity: .85, strokeWeight: 4 });
+    poly.setMap(map);
+  }
+
+  function makeCircle(color){
+    return { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: color, fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 };
+  }
+
+  function placeOrigin(lat, lng){
+    if (oMark) { oMark.setPosition({lat:lat, lng:lng}); }
+    else {
+      oMark = new google.maps.Marker({ position:{lat:lat,lng:lng}, map:map, title:'Origen', label:{text:'O', color:'#ffffff', fontWeight:'bold'}, icon:makeCircle('#00C853'), draggable:true });
+      oMark.addListener('dragend', function(e){
+        drawRoute();
+        send('route?kind=origin&lat=' + e.latLng.lat().toFixed(6) + '&lng=' + e.latLng.lng().toFixed(6));
+      });
+    }
+    map.panTo({lat:lat, lng:lng});
+    drawRoute();
+  }
+
+  function placeDest(lat, lng){
+    if (dMark) { dMark.setPosition({lat:lat, lng:lng}); }
+    else {
+      dMark = new google.maps.Marker({ position:{lat:lat,lng:lng}, map:map, title:'Destino', label:{text:'D', color:'#ffffff', fontWeight:'bold'}, icon:makeCircle('#D32F2F'), draggable:true });
+      dMark.addListener('dragend', function(e){
+        drawRoute();
+        send('route?kind=dest&lat=' + e.latLng.lat().toFixed(6) + '&lng=' + e.latLng.lng().toFixed(6));
+      });
+    }
+    map.panTo({lat:lat, lng:lng});
+    drawRoute();
+  }
+
+  function poiInfo(p){
+    var html = '<div style="min-width:160px;font-family:Segoe UI,Arial,sans-serif;">';
+    html += '<b>' + esc(p.name) + '</b><br/>';
+    html += '<span style="color:#555;font-size:12px;">' + (esc(p.description) || '—') + '</span><br/>';
+    html += '<div style="margin-top:8px;">';
+    html += '<a href="#" onclick="event.preventDefault(); app_call(\'edit-poi?id=' + p.id + '&lat=' + p.lat + '&lng=' + p.lng + '\');">✏️ Editar</a> &nbsp; ';
+    html += '<a href="#" style="color:#c62828;" onclick="event.preventDefault(); app_call(\'del-poi?id=' + p.id + '\');">🗑️ Eliminar</a>';
+    html += '</div></div>';
+    return html;
+  }
+
+  var iw = new google.maps.InfoWindow();
+
+  function addPoi(p){
+    var marker = new google.maps.Marker({
+      position:{lat:p.lat, lng:p.lng}, map:map, title:p.name,
+      label:{ text:String(poiData.length + 1), color:'#ffffff', fontWeight:'bold' },
+      icon:makeCircle('#1E88E5'),
+      draggable:true
+    });
+    var rec = { id:p.id, name:p.name, description:p.description, lat:p.lat, lng:p.lng, marker:marker };
+    poiData.push(rec);
+    marker.addListener('click', function(){ iw.setContent(poiInfo(rec)); iw.open(map, marker); });
+    marker.addListener('dragend', function(e){
+      rec.lat = e.latLng.lat(); rec.lng = e.latLng.lng();
+      drawRoute();
+      send('poi-move?id=' + rec.id + '&lat=' + rec.lat.toFixed(6) + '&lng=' + rec.lng.toFixed(6));
+    });
+    map.panTo({lat:p.lat, lng:p.lng});
+    drawRoute();
+  }
+
+  function updatePoi(id, p){
+    var rec = null;
+    for (var i=0;i<poiData.length;i++){ if (poiData[i].id === id) { rec = poiData[i]; break; } }
+    if (!rec) return;
+    if (p.name) rec.name = p.name;
+    if (p.description !== undefined) rec.description = p.description;
+    if (rec.marker) rec.marker.setTitle(rec.name);
+    if (iw && iw.getMap()) iw.setContent(poiInfo(rec));
+  }
+
+  function removePoi(id){
+    for (var i=0;i<poiData.length;i++){
+      if (poiData[i].id === id){
+        if (poiData[i].marker) { poiData[i].marker.setMap(null); }
+        poiData.splice(i,1);
+        break;
+      }
+    }
+    if (iw) iw.close();
+    drawRoute();
+  }
+
+  function setMode(m){ mode = m; updateHint(); }
+
+  function initMap(){
+    LOADING.style.display = 'none';
+    if (typeof google === 'undefined' || !google.maps){
+      HINT.textContent = 'No se pudo cargar Google Maps. Verifica la API key (MapConfig.GoogleMapsApiKey).';
+      return;
+    }
+    var hasOrigin = CFG.originLat != null;
+    var hasDest = CFG.destLat != null;
+    var center = hasDest ? {lat:CFG.destLat, lng:CFG.destLng} : (hasOrigin ? {lat:CFG.originLat, lng:CFG.originLng} : {lat:19.4326, lng:-99.1332});
+    map = new google.maps.Map(document.getElementById('map'), {
+      center: center,
+      zoom: (hasOrigin || hasDest) ? 7 : 5,
+      mapTypeControl: true,
+      fullscreenControl: true
+    });
+
+    map.addListener('click', function(e){
+      var lat = e.latLng.lat(); var lng = e.latLng.lng();
+      if (mode === 'origin') {
+        placeOrigin(lat, lng);
+        send('route?kind=origin&lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+      } else if (mode === 'dest') {
+        placeDest(lat, lng);
+        send('route?kind=dest&lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+      } else if (mode === 'poi') {
+        send('pick?lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+      }
+    });
+
+    if (CFG.originLat != null && CFG.originLng != null) placeOrigin(CFG.originLat, CFG.originLng);
+    if (CFG.destLat != null && CFG.destLng != null) placeDest(CFG.destLat, CFG.destLng);
+    (CFG.pois || []).forEach(function(p){ addPoi(p); });
+    drawRoute();
+    updateHint();
+  }
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{KEY}}&callback=initMap"></script>
+</body>
+</html>
