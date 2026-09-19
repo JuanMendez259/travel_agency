@@ -81,6 +81,9 @@ public class ApiService
     public Task<List<Booking>?> GetTripBookingsAsync(int tripId) =>
         _http.GetFromJsonAsync<List<Booking>>($"/api/trips/{tripId}/bookings", JsonOptions);
 
+    public Task<AdminStats?> GetAdminStatsAsync() =>
+        _http.GetFromJsonAsync<AdminStats>("/api/admin/stats", JsonOptions);
+
     public async Task<Trip?> UpdateTripRouteAsync(int tripId, double? originLat, double? originLng, double? destLat, double? destLng)
     {
         var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/route",
