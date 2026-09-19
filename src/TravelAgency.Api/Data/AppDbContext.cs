@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<UserNotification> Notifications => Set<UserNotification>();
     public DbSet<CapacityRequest> CapacityRequests => Set<CapacityRequest>();
+    public DbSet<TripPointOfInterest> TripPointsOfInterest => Set<TripPointOfInterest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,6 +76,18 @@ public class AppDbContext : DbContext
             entity.HasOne(c => c.User)
                   .WithMany()
                   .HasForeignKey(c => c.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TripPointOfInterest>(entity =>
+        {
+            entity.ToTable("TripPointsOfInterest");
+            entity.Property(p => p.Name).HasMaxLength(200);
+            entity.Property(p => p.Description).HasMaxLength(1000);
+            entity.HasIndex(p => p.TripId);
+            entity.HasOne(p => p.Trip)
+                  .WithMany(t => t.PointsOfInterest)
+                  .HasForeignKey(p => p.TripId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 

@@ -61,9 +61,82 @@ public partial class AdminTripDetailPage : ContentPage
         CapacityLabel.Text = _trip.Capacity.ToString();
 
         RenderCapacityRequests();
+        RenderPassengers();
 
         TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
         TripImage.IsVisible = TripImage.Source is not null;
+    }
+
+    private void RenderPassengers()
+    {
+        var bookings = _trip?.Bookings?
+            .OrderByDescending(b => b.BookingDate)
+            .ToList() ?? new List<Booking>();
+
+        PassengersHeader.IsVisible = bookings.Count > 0;
+        PassengersTotalLabel.IsVisible = bookings.Count > 0;
+        PassengersLayout.Children.Clear();
+
+        foreach (var booking in bookings)
+        {
+            var name = booking.User?.Name ?? booking.User?.Email ?? $"Usuario #{booking.UserId}";
+            var isCancelled = booking.Status == BookingStatus.Cancelled;
+
+            var row = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto),
+                    new ColumnDefinition(GridLength.Auto)
+                },
+                Padding = new Thickness(0, 3)
+            };
+
+            var nameLabel = new Label
+            {
+                Text = name,
+                FontSize = 14,
+                FontAttributes = FontAttributes.Bold,
+                VerticalOptions = LayoutOptions.Center
+            };
+            var seatsLabel = new Label
+            {
+                Text = $"{booking.NumberOfSeats} asiento(s) · {booking.TotalAmount:C}",
+                FontSize = 13,
+                VerticalOptions = LayoutOptions.Center,
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+            var statusLabel = new Label
+            {
+                Text = booking.Status.ToString(),
+                FontSize = 13,
+                FontAttributes = FontAttributes.Bold,
+                VerticalOptions = LayoutOptions.Center,
+                Margin = new Thickness(8, 0, 0, 0),
+                TextColor = booking.Status switch
+                {
+                    BookingStatus.Confirmed => Color.FromArgb("#2F855A"),
+                    BookingStatus.Pending => Color.FromArgb("#B7791F"),
+                    _ => Colors.Gray
+                }
+            };
+
+            Grid.SetColumn(seatsLabel, 1);
+            Grid.SetColumn(statusLabel, 2);
+            row.Add(nameLabel);
+            row.Add(seatsLabel);
+            row.Add(statusLabel);
+
+            PassengersLayout.Children.Add(row);
+        }
+
+        var nonCancelled = bookings.Where(b => b.Status != BookingStatus.Cancelled).ToList();
+        var totalSeats = nonCancelled.Sum(b => b.NumberOfSeats);
+        var totalAmount = nonCancelled.Sum(b => b.TotalAmount);
+
+        PassengersHeader.Text = $"Pasajeros ({bookings.Count})";
+        PassengersTotalLabel.Text = $"Total: {totalSeats} asiento(s) vendidos · {totalAmount:C}";
     }
 
     private void RenderCapacityRequests()
@@ -96,6 +169,12 @@ public partial class AdminTripDetailPage : ContentPage
     {
         if (_trip is null) return;
         await Shell.Current.GoToAsync($"tripbookings?id={_trip.Id}");
+    }
+
+    private async void OnMapClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+        await Shell.Current.GoToAsync($"tripmap?id={_trip.Id}");
     }
 
     private async void OnEditClicked(object? sender, EventArgs e)

@@ -81,6 +81,37 @@ public class ApiService
     public Task<List<Booking>?> GetTripBookingsAsync(int tripId) =>
         _http.GetFromJsonAsync<List<Booking>>($"/api/trips/{tripId}/bookings", JsonOptions);
 
+    public async Task<Trip?> UpdateTripRouteAsync(int tripId, double? originLat, double? originLng, double? destLat, double? destLng)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/route",
+            new { OriginLatitude = originLat, OriginLongitude = originLng, DestinationLatitude = destLat, DestinationLongitude = destLng },
+            JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
+    public async Task<TripPointOfInterest?> AddPoiAsync(int tripId, TripPointOfInterest poi)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/trips/{tripId}/pois",
+            new { poi.Name, poi.Description, poi.Latitude, poi.Longitude }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripPointOfInterest>(JsonOptions);
+    }
+
+    public async Task<TripPointOfInterest?> UpdatePoiAsync(int tripId, int poiId, TripPointOfInterest poi)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/pois/{poiId}",
+            new { poi.Name, poi.Description, poi.Latitude, poi.Longitude }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripPointOfInterest>(JsonOptions);
+    }
+
+    public async Task DeletePoiAsync(int tripId, int poiId)
+    {
+        var response = await _http.DeleteAsync($"/api/trips/{tripId}/pois/{poiId}");
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<Trip?> CreateTripAsync(Trip trip)
     {
         var response = await _http.PostAsJsonAsync("/api/trips", trip, JsonOptions);

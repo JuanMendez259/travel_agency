@@ -103,6 +103,7 @@ using (var scope = app.Services.CreateScope())
         }
     }
     await EnsureTransportTypeColumnAsync(db, provider);
+    await EnsureTripMapColumnsAsync(db, provider);
     await EnsureSeedUsersAsync(db);
 }
 
@@ -183,12 +184,16 @@ app.MapGet("/api/trips", async (AppDbContext db) =>
 app.MapGet("/api/trips/manage", async (AppDbContext db) =>
     await db.Trips
         .Include(t => t.Bookings)
+            .ThenInclude(b => b.User)
         .Include(t => t.CapacityRequests)
+        .Include(t => t.PointsOfInterest)
         .OrderByDescending(t => t.StartDate)
         .ToListAsync()).RequireAuthorization("AdminOnly");
 
 app.MapGet("/api/trips/{id}", async (int id, AppDbContext db) =>
-    await db.Trips.FindAsync(id) is Trip trip ? Results.Ok(trip) : Results.NotFound());
+    await db.Trips
+        .Include(t => t.PointsOfInterest)
+        .FirstOrDefaultAsync(t => t.Id == id) is Trip trip ? Results.Ok(trip) : Results.NotFound());
 
 app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
 {
@@ -235,6 +240,10 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     trip.Capacity = input.Capacity;
     trip.TransportType = input.TransportType;
     trip.IsActive = input.IsActive;
+    trip.OriginLatitude = input.OriginLatitude;
+    trip.OriginLongitude = input.OriginLongitude;
+    trip.DestinationLatitude = input.DestinationLatitude;
+    trip.DestinationLongitude = input.DestinationLongitude;
 
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
@@ -550,6 +559,85 @@ app.MapGet("/api/trips/{id}/bookings", async (int id, AppDbContext db) =>
         .ToListAsync());
 }).RequireAuthorization("AdminOnly");
 
+app.MapPut("/api/trips/{id}/route", async (int id, UpdateTripRouteRequest request, AppDbContext db) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    trip.OriginLatitude = request.OriginLatitude;
+    trip.OriginLongitude = request.OriginLongitude;
+    trip.DestinationLatitude = request.DestinationLatitude;
+    trip.DestinationLongitude = request.DestinationLongitude;
+    await db.SaveChangesAsync();
+    return Results.Ok(trip);
+}).RequireAuthorization("AdminOnly");
+
+app.MapGet("/api/trips/{id}/pois", async (int id, AppDbContext db) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    return Results.Ok(await db.TripPointsOfInterest
+        .Where(p => p.TripId == id)
+        .OrderBy(p => p.Order)
+        .ToListAsync());
+}).RequireAuthorization("AdminOnly");
+
+app.MapPost("/api/trips/{id}/pois", async (int id, UpsertPoiRequest request, AppDbContext db) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var order = (await db.TripPointsOfInterest
+        .Where(p => p.TripId == id)
+        .MaxAsync(p => (int?)p.Order)) + 1 ?? 1;
+
+    var poi = new TripPointOfInterest
+    {
+        TripId = id,
+        Name = string.IsNullOrWhiteSpace(request.Name) ? "Punto de interés" : request.Name.Trim(),
+        Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+        Latitude = request.Latitude,
+        Longitude = request.Longitude,
+        Order = order
+    };
+
+    db.TripPointsOfInterest.Add(poi);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/trips/{id}/pois/{poi.Id}", poi);
+}).RequireAuthorization("AdminOnly");
+
+app.MapPut("/api/trips/{id}/pois/{poiId}", async (int id, int poiId, UpsertPoiRequest request, AppDbContext db) =>
+{
+    var poi = await db.TripPointsOfInterest.FirstOrDefaultAsync(p => p.Id == poiId && p.TripId == id);
+    if (poi is null) return Results.NotFound("Punto de interés no encontrado.");
+
+    poi.Name = string.IsNullOrWhiteSpace(request.Name) ? poi.Name : request.Name.Trim();
+    poi.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+    poi.Latitude = request.Latitude;
+    poi.Longitude = request.Longitude;
+    await db.SaveChangesAsync();
+    return Results.Ok(poi);
+}).RequireAuthorization("AdminOnly");
+
+app.MapDelete("/api/trips/{id}/pois/{poiId}", async (int id, int poiId, AppDbContext db) =>
+{
+    var poi = await db.TripPointsOfInterest.FirstOrDefaultAsync(p => p.Id == poiId && p.TripId == id);
+    if (poi is null) return Results.NotFound("Punto de interés no encontrado.");
+
+    db.TripPointsOfInterest.Remove(poi);
+    await db.SaveChangesAsync();
+
+    var remaining = await db.TripPointsOfInterest
+        .Where(p => p.TripId == id)
+        .OrderBy(p => p.Order)
+        .ToListAsync();
+    for (var i = 0; i < remaining.Count; i++) remaining[i].Order = i + 1;
+    await db.SaveChangesAsync();
+
+    return Results.Ok();
+}).RequireAuthorization("AdminOnly");
+
 app.Run();
 
 static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)
@@ -700,6 +788,55 @@ static async Task EnsureTransportTypeColumnAsync(AppDbContext db, string provide
     await TryExecAsync(db, "CREATE INDEX IF NOT EXISTS \"IX_CapacityRequests_TripId\" ON \"CapacityRequests\" (\"TripId\");");
 }
 
+static async Task EnsureTripMapColumnsAsync(AppDbContext db, string provider)
+{
+    var mapColumns = new[]
+    {
+        "OriginLatitude", "OriginLongitude",
+        "DestinationLatitude", "DestinationLongitude"
+    };
+
+    foreach (var column in mapColumns)
+    {
+        if (!await ColumnExistsAsync(db, "Trips", column, provider))
+        {
+            await TryExecAsync(db, provider == "sqlite"
+                ? $"ALTER TABLE \"Trips\" ADD COLUMN \"{column}\" REAL NULL;"
+                : $"ALTER TABLE \"Trips\" ADD COLUMN \"{column}\" double precision NULL;");
+        }
+    }
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? """
+          CREATE TABLE IF NOT EXISTS "TripPointsOfInterest" (
+              "Id" INTEGER NOT NULL CONSTRAINT "PK_TripPointsOfInterest" PRIMARY KEY AUTOINCREMENT,
+              "TripId" INTEGER NOT NULL,
+              "Name" TEXT NULL,
+              "Description" TEXT NULL,
+              "Latitude" REAL NOT NULL,
+              "Longitude" REAL NOT NULL,
+              "Order" INTEGER NOT NULL,
+              FOREIGN KEY ("TripId") REFERENCES "Trips" ("Id") ON DELETE RESTRICT
+          );
+          """
+        : """
+          CREATE TABLE IF NOT EXISTS "TripPointsOfInterest" (
+              "Id" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              "TripId" integer NOT NULL,
+              "Name" character varying(200) NULL,
+              "Description" character varying(1000) NULL,
+              "Latitude" double precision NOT NULL,
+              "Longitude" double precision NOT NULL,
+              "Order" integer NOT NULL,
+              CONSTRAINT "FK_TripPointsOfInterest_Trips_TripId" FOREIGN KEY ("TripId") REFERENCES "Trips" ("Id") ON DELETE RESTRICT
+          );
+          """);
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? "CREATE INDEX IF NOT EXISTS \"IX_TripPointsOfInterest_TripId\" ON \"TripPointsOfInterest\" (\"TripId\");"
+        : "CREATE INDEX IF NOT EXISTS \"IX_TripPointsOfInterest_TripId\" ON \"TripPointsOfInterest\" (\"TripId\");");
+}
+
 static async Task<bool> ColumnExistsAsync(AppDbContext db, string table, string column, string provider)
 {
     try
@@ -767,3 +904,5 @@ static async Task EnsureSeedUsersAsync(AppDbContext db)
 
 record UpdateBookingStatusRequest(BookingStatus Status);
 record DeleteTripRequest(string? Message);
+record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);
+record UpsertPoiRequest(string? Name, string? Description, double Latitude, double Longitude);
