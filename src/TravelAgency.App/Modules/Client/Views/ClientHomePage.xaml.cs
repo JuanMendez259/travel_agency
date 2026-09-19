@@ -20,10 +20,13 @@ public partial class ClientHomePage : ContentPage
         await LoadTripsAsync();
     }
 
-    private async Task LoadTripsAsync()
+    private async Task LoadTripsAsync(bool showLoading = true)
     {
-        Loading.IsRunning = true;
-        Loading.IsVisible = true;
+        if (showLoading)
+        {
+            Loading.IsRunning = true;
+            Loading.IsVisible = true;
+        }
         try
         {
             var trips = await _api.GetTripsAsync();
@@ -44,8 +47,23 @@ public partial class ClientHomePage : ContentPage
         }
         finally
         {
-            Loading.IsRunning = false;
-            Loading.IsVisible = false;
+            if (showLoading)
+            {
+                Loading.IsRunning = false;
+                Loading.IsVisible = false;
+            }
+        }
+    }
+
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try
+        {
+            await LoadTripsAsync(false);
+        }
+        finally
+        {
+            TripsRefresh.IsRefreshing = false;
         }
     }
 

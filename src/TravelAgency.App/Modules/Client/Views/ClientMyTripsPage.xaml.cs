@@ -22,12 +22,15 @@ public partial class ClientMyTripsPage : ContentPage
         await LoadMyTripsAsync();
     }
 
-    private async Task LoadMyTripsAsync()
+    private async Task LoadMyTripsAsync(bool showLoading = true)
     {
         if (_session.UserId == 0) return;
 
-        Loading.IsRunning = true;
-        Loading.IsVisible = true;
+        if (showLoading)
+        {
+            Loading.IsRunning = true;
+            Loading.IsVisible = true;
+        }
         try
         {
             MyTripsList.ItemsSource = await _api.GetUserBookingsAsync(_session.UserId);
@@ -38,8 +41,23 @@ public partial class ClientMyTripsPage : ContentPage
         }
         finally
         {
-            Loading.IsRunning = false;
-            Loading.IsVisible = false;
+            if (showLoading)
+            {
+                Loading.IsRunning = false;
+                Loading.IsVisible = false;
+            }
+        }
+    }
+
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try
+        {
+            await LoadMyTripsAsync(false);
+        }
+        finally
+        {
+            MyTripsRefresh.IsRefreshing = false;
         }
     }
 

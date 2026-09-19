@@ -10,6 +10,8 @@ public partial class AdminTripBookingsPage : ContentPage
 
     public string TripId { get; set; } = string.Empty;
 
+    private int _tripId;
+
     public AdminTripBookingsPage(ApiService api)
     {
         InitializeComponent();
@@ -20,12 +22,22 @@ public partial class AdminTripBookingsPage : ContentPage
     {
         base.OnAppearing();
         if (!int.TryParse(TripId, out var id) || id == 0) return;
+        _tripId = id;
+        await LoadBookingsAsync();
+    }
 
-        Loading.IsRunning = true;
-        Loading.IsVisible = true;
+    private async Task LoadBookingsAsync(bool showLoading = true)
+    {
+        if (_tripId == 0) return;
+
+        if (showLoading)
+        {
+            Loading.IsRunning = true;
+            Loading.IsVisible = true;
+        }
         try
         {
-            var bookings = await _api.GetTripBookingsAsync(id);
+            var bookings = await _api.GetTripBookingsAsync(_tripId);
             BookingsList.ItemsSource = bookings?
                 .Select(b => new TripBookingItem(b))
                 .ToList();
@@ -36,8 +48,23 @@ public partial class AdminTripBookingsPage : ContentPage
         }
         finally
         {
-            Loading.IsRunning = false;
-            Loading.IsVisible = false;
+            if (showLoading)
+            {
+                Loading.IsRunning = false;
+                Loading.IsVisible = false;
+            }
+        }
+    }
+
+    private async void OnRefreshing(object? sender, EventArgs e)
+    {
+        try
+        {
+            await LoadBookingsAsync(false);
+        }
+        finally
+        {
+            BookingsRefresh.IsRefreshing = false;
         }
     }
 
