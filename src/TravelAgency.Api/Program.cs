@@ -71,7 +71,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    .AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"))
+    .AddPolicy("StaffOnly", policy => policy.RequireRole("Admin", "Coordinador"));
 
 var app = builder.Build();
 
@@ -198,7 +199,7 @@ app.MapGet("/api/trips/manage", async (AppDbContext db) =>
         .Include(t => t.CapacityRequests)
         .Include(t => t.PointsOfInterest)
         .OrderByDescending(t => t.StartDate)
-        .ToListAsync()).RequireAuthorization("AdminOnly");
+        .ToListAsync()).RequireAuthorization("StaffOnly");
 
 app.MapGet("/api/trips/{id}", async (int id, AppDbContext db) =>
     await db.Trips
@@ -351,6 +352,30 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
 app.MapGet("/api/users", async (AppDbContext db) =>
     await db.Users.ToListAsync()).RequireAuthorization("AdminOnly");
 
+app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var user = await db.Users.FindAsync(id);
+    if (user is null) return Results.NotFound("Usuario no encontrado.");
+
+    if (!Enum.IsDefined(typeof(UserRole), request.Role))
+        return Results.BadRequest("Rol inválido.");
+
+    var actorId = GetUserId(principal);
+    if (user.Id == actorId)
+        return Results.BadRequest("No puedes cambiar tu propio rol.");
+
+    if (user.Role == UserRole.Admin && request.Role != UserRole.Admin)
+    {
+        var adminsCount = await db.Users.CountAsync(u => u.Role == UserRole.Admin);
+        if (adminsCount <= 1)
+            return Results.BadRequest("Debe quedar al menos un administrador.");
+    }
+
+    user.Role = request.Role;
+    await db.SaveChangesAsync();
+    return Results.Ok(user);
+}).RequireAuthorization("AdminOnly");
+
 app.MapGet("/api/users/{id}/bookings", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
 {
     var tokenUserId = GetUserId(principal);
@@ -412,7 +437,7 @@ app.MapPost("/api/bookings", async (Booking booking, AppDbContext db, ClaimsPrin
         .Where(u => u.Id == booking.UserId)
         .Select(u => u.Name)
         .FirstOrDefaultAsync() ?? "Cliente";
-    await SendToAdminsAsync(db, $"Nueva reserva de {userName} para \"{trip.Title}\" ({booking.NumberOfSeats} asiento(s)).");
+    await SendToStaffAsync(db, $"Nueva reserva de {userName} para \"{trip.Title}\" ({booking.NumberOfSeats} asiento(s)).");
 
     return Results.Created($"/api/bookings/{booking.Id}", booking);
 }).RequireAuthorization();
@@ -514,7 +539,7 @@ app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusReques
     }
 
     if (request.Status == BookingStatus.Cancelled && booking.User is not null)
-        await SendToAdminsAsync(db, $"La reserva de {booking.User.Name} para \"{booking.Trip?.Title}\" fue cancelada.");
+        await SendToStaffAsync(db, $"La reserva de {booking.User.Name} para \"{booking.Trip?.Title}\" fue cancelada.");
 
     return Results.Ok(booking);
 }).RequireAuthorization("AdminOnly");
@@ -544,7 +569,7 @@ app.MapPost("/api/trips/{id}/capacity-requests", async (int id, CapacityRequest 
         .Where(u => u.Id == userId)
         .Select(u => u.Name)
         .FirstOrDefaultAsync() ?? "Cliente";
-    await SendToAdminsAsync(db, $"{userName} solicitó {entity.RequestedSeats} asiento(s) para \"{trip.Title}\".");
+    await SendToStaffAsync(db, $"{userName} solicitó {entity.RequestedSeats} asiento(s) para \"{trip.Title}\".");
 
     return Results.Created($"/api/trips/{id}/capacity-requests/{entity.Id}", entity);
 }).RequireAuthorization();
@@ -751,10 +776,10 @@ static string PaymentMethodName(PaymentMethod method) => method switch
     _ => "otro medio"
 };
 
-static async Task SendToAdminsAsync(AppDbContext db, string message)
+static async Task SendToStaffAsync(AppDbContext db, string message)
 {
     var adminIds = await db.Users
-        .Where(u => u.Role == UserRole.Admin)
+        .Where(u => u.Role == UserRole.Admin || u.Role == UserRole.Coordinador)
         .Select(u => u.Id)
         .ToListAsync();
     if (adminIds.Count == 0) return;

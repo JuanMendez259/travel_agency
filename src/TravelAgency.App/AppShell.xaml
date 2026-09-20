@@ -17,10 +17,6 @@
             ContentTemplate="{DataTemplate client:ClientMyTripsPage}"
             Route="mytrips" />
         <ShellContent
-            Title="Avisos"
-            ContentTemplate="{DataTemplate client:ClientNotificationsPage}"
-            Route="notifications" />
-        <ShellContent
             Title="Mis Viajes"
             ContentTemplate="{DataTemplate admin:AdminTripsPage}"
             Route="admintrips" />
@@ -36,6 +32,10 @@
             Title="Admin"
             ContentTemplate="{DataTemplate admin:AdminDashboardPage}"
             Route="admin" />
+        <ShellContent
+            Title="Avisos"
+            ContentTemplate="{DataTemplate client:ClientNotificationsPage}"
+            Route="notifications" />
     </TabBar>
 
 </Shell>

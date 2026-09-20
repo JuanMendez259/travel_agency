@@ -8,14 +8,24 @@ namespace TravelAgency.App.Modules.Admin.Views;
 public partial class AdminTripDetailPage : ContentPage
 {
     private readonly ApiService _api;
+    private readonly SessionService _session;
     private Trip? _trip;
 
     public string TripId { get; set; } = string.Empty;
 
-    public AdminTripDetailPage(ApiService api)
+    public AdminTripDetailPage(ApiService api, SessionService session)
     {
         InitializeComponent();
         _api = api;
+        _session = session;
+
+        if (_session.IsCoordinator)
+        {
+            PaymentsButton.IsVisible = false;
+            MapButton.IsVisible = false;
+            AuditButton.IsVisible = false;
+            EditActions.IsVisible = false;
+        }
     }
 
     protected override async void OnAppearing()
@@ -236,7 +246,7 @@ public partial class AdminTripDetailPage : ContentPage
 
     private async void OnLogoutClicked(object? sender, EventArgs e)
     {
-        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de la cuenta de administrador?", "Sí", "No");
+        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de tu cuenta?", "Sí", "No");
         if (confirm) App.GoToLogin();
     }
 

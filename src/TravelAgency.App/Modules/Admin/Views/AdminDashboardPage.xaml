@@ -64,6 +64,22 @@
                     Text="Cancelar edición"
                     Clicked="OnCancelEditClicked"
                     IsVisible="False" />
+
+            <BoxView HeightRequest="1" Color="#DDDDDD" Margin="0,20,0,10" />
+
+            <Label Text="Usuarios y roles" FontSize="20" FontAttributes="Bold" />
+            <Label Text="Asigna el rol de cada usuario: Administrador, Coordinador o Cliente."
+                   FontSize="13"
+                   TextColor="Gray" />
+
+            <VerticalStackLayout x:Name="UsersLayout" Spacing="8" Margin="0,6,0,0" />
+
+            <Label x:Name="UsersErrorLabel"
+                   Text="No se pudieron cargar los usuarios."
+                   TextColor="#C53030"
+                   FontSize="13"
+                   Margin="0,6,0,0"
+                   IsVisible="False" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

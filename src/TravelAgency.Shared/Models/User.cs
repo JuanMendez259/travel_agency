@@ -20,5 +20,6 @@ public class User
 public enum UserRole
 {
     Client = 0,
-    Admin = 1
+    Admin = 1,
+    Coordinador = 2
 }

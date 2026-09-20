@@ -63,6 +63,17 @@ public class ApiService
     public Task<List<Trip>?> GetAdminTripsAsync() =>
         _http.GetFromJsonAsync<List<Trip>>("/api/trips/manage", JsonOptions);
 
+    public Task<List<User>?> GetUsersAsync() =>
+        _http.GetFromJsonAsync<List<User>>("/api/users", JsonOptions);
+
+    public async Task<User?> UpdateUserRoleAsync(int userId, UserRole role)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/users/{userId}/role",
+            new UpdateUserRoleRequest { Role = role }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<User>(JsonOptions);
+    }
+
     public Task<List<UserNotification>?> GetNotificationsAsync(int userId) =>
         _http.GetFromJsonAsync<List<UserNotification>>($"/api/users/{userId}/notifications", JsonOptions);
 

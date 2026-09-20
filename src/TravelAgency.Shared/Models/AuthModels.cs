@@ -21,3 +21,8 @@ public class AuthResponse
     public string? Email { get; set; }
     public UserRole Role { get; set; }
 }
+
+public class UpdateUserRoleRequest
+{
+    public UserRole Role { get; set; }
+}

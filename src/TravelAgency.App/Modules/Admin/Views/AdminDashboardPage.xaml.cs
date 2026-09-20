@@ -6,16 +6,27 @@ namespace TravelAgency.App.Modules.Admin.Views;
 
 public partial class AdminDashboardPage : ContentPage, IQueryAttributable
 {
+    private static readonly string[] RoleNames = { "Administrador", "Coordinador", "Cliente" };
+    private static readonly UserRole[] RoleValues = { UserRole.Admin, UserRole.Coordinador, UserRole.Client };
+
     private readonly ApiService _api;
+    private readonly SessionService _session;
     private FileResult? _selectedImage;
     private Trip? _editingTrip;
 
-    public AdminDashboardPage(ApiService api)
+    public AdminDashboardPage(ApiService api, SessionService session)
     {
         InitializeComponent();
         _api = api;
+        _session = session;
         TransportTypePicker.ItemsSource = TransportTypeConverter.Options.ToList();
         TransportTypePicker.SelectedIndex = 0;
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await LoadUsersAsync();
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -219,5 +230,128 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
     {
         var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de la cuenta de administrador?", "Sí", "No");
         if (confirm) App.GoToLogin();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        UsersErrorLabel.IsVisible = false;
+        try
+        {
+            var users = await _api.GetUsersAsync();
+            RenderUsers(users?.OrderBy(u => u.Name).ToList() ?? new List<User>());
+        }
+        catch (Exception ex)
+        {
+            UsersLayout.Children.Clear();
+            UsersErrorLabel.Text = $"No se pudieron cargar los usuarios: {ex.Message}";
+            UsersErrorLabel.IsVisible = true;
+        }
+    }
+
+    private void RenderUsers(List<User> users)
+    {
+        UsersLayout.Children.Clear();
+
+        if (users.Count == 0)
+        {
+            UsersLayout.Children.Add(new Label
+            {
+                Text = "No hay usuarios registrados.",
+                TextColor = Colors.Gray,
+                FontSize = 14
+            });
+            return;
+        }
+
+        foreach (var user in users)
+        {
+            UsersLayout.Children.Add(BuildUserRow(user));
+        }
+    }
+
+    private View BuildUserRow(User user)
+    {
+        var isSelf = _session.UserId == user.Id;
+        var roleIndex = Array.IndexOf(RoleValues, user.Role);
+        if (roleIndex < 0) roleIndex = 0;
+
+        var picker = new Picker
+        {
+            ItemsSource = RoleNames,
+            SelectedIndex = roleIndex,
+            IsEnabled = !isSelf,
+            WidthRequest = 150
+        };
+
+        var save = new Button
+        {
+            Text = "Guardar",
+            IsEnabled = !isSelf,
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalOptions = LayoutOptions.Center
+        };
+        save.Clicked += async (_, _) =>
+        {
+            if (picker.SelectedIndex < 0 || picker.SelectedIndex == roleIndex) return;
+
+            var role = RoleValues[picker.SelectedIndex];
+            save.IsEnabled = false;
+            try
+            {
+                await _api.UpdateUserRoleAsync(user.Id, role);
+                user.Role = role;
+                await DisplayAlertAsync("Listo", $"El rol de {user.Name} ahora es {RoleNames[picker.SelectedIndex]}.", "OK");
+                roleIndex = picker.SelectedIndex;
+            }
+            catch (Exception ex)
+            {
+                picker.SelectedIndex = roleIndex;
+                await DisplayAlertAsync("Error", ex.Message, "OK");
+            }
+            finally
+            {
+                save.IsEnabled = !isSelf;
+            }
+        };
+
+        var info = new VerticalStackLayout { Spacing = 2, VerticalOptions = LayoutOptions.Center };
+        info.Children.Add(new Label
+        {
+            Text = isSelf ? $"{user.Name} (tú)" : user.Name,
+            FontSize = 15,
+            FontAttributes = FontAttributes.Bold
+        });
+        info.Children.Add(new Label
+        {
+            Text = user.Email,
+            FontSize = 12,
+            TextColor = Colors.Gray
+        });
+
+        var actions = new HorizontalStackLayout
+        {
+            Spacing = 0,
+            VerticalOptions = LayoutOptions.Center,
+            Children = { picker, save }
+        };
+
+        var grid = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            Padding = new Thickness(12)
+        };
+        grid.Add(info, 0);
+        grid.Add(actions, 1);
+
+        return new Border
+        {
+            StrokeThickness = 0,
+            BackgroundColor = new Color(0.92f, 0.93f, 0.95f),
+            Content = grid
+        };
     }
 }
