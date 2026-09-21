@@ -10,6 +10,9 @@ public class Booking
     public int NumberOfSeats { get; set; }
     public decimal TotalAmount { get; set; }
 
+    public bool CheckedIn { get; set; }
+    public DateTime? CheckedInAt { get; set; }
+
     public User? User { get; set; }
     public Trip? Trip { get; set; }
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();

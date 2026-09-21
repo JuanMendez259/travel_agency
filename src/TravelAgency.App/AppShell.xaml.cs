@@ -12,5 +12,6 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("tripbookings", typeof(TravelAgency.App.Modules.Admin.Views.AdminTripBookingsPage));
         Routing.RegisterRoute("tripmap", typeof(TravelAgency.App.Modules.Admin.Views.AdminTripMapPage));
         Routing.RegisterRoute("auditlog", typeof(TravelAgency.App.Modules.Admin.Views.AdminAuditPage));
+        Routing.RegisterRoute("checkin", typeof(TravelAgency.App.Modules.Admin.Views.AdminCheckinPage));
     }
 }

@@ -114,6 +114,7 @@ using (var scope = app.Services.CreateScope())
     }
     await EnsureTransportTypeColumnAsync(db, provider);
     await EnsureTripMapColumnsAsync(db, provider);
+    await EnsureCheckinColumnsAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
     await EnsureSeedUsersAsync(db);
 }
@@ -673,6 +674,53 @@ app.MapDelete("/api/trips/{id}/pois/{poiId}", async (int id, int poiId, AppDbCon
     return Results.Ok();
 }).RequireAuthorization("AdminOnly");
 
+app.MapPut("/api/bookings/{id}/checkin", async (int id, UpdateBookingCheckinRequest request, AppDbContext db) =>
+{
+    var booking = await db.Bookings.Include(b => b.Trip).FirstOrDefaultAsync(b => b.Id == id);
+    if (booking is null) return Results.NotFound("Reserva no encontrada.");
+
+    if (booking.Status == BookingStatus.Cancelled)
+        return Results.BadRequest("No se puede marcar el check-in de una reserva cancelada.");
+
+    if (request.CheckedIn)
+    {
+        booking.CheckedIn = true;
+        booking.CheckedInAt ??= DateTime.UtcNow;
+    }
+    else
+    {
+        booking.CheckedIn = false;
+        booking.CheckedInAt = null;
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(booking);
+}).RequireAuthorization("AdminOnly");
+
+app.MapPut("/api/trips/{id}/departure", async (int id, UpdateDepartureRequest request, AppDbContext db) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    if (request.DepartureCompleted is true)
+    {
+        trip.DepartureCompleted = true;
+        trip.CheckInOpen = false;
+    }
+    else if (request.DepartureCompleted is false)
+    {
+        trip.DepartureCompleted = false;
+    }
+
+    if (request.CheckInOpen is true && !trip.DepartureCompleted)
+        trip.CheckInOpen = true;
+    else if (request.CheckInOpen is false)
+        trip.CheckInOpen = false;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(trip);
+}).RequireAuthorization("AdminOnly");
+
 app.MapGet("/api/admin/auditlog", async (AppDbContext db, string? entity, int? id, int? limit) =>
 {
     var query = db.AuditLogs.AsNoTracking().AsQueryable();
@@ -954,6 +1002,34 @@ static async Task EnsureTripMapColumnsAsync(AppDbContext db, string provider)
         : "CREATE INDEX IF NOT EXISTS \"IX_TripPointsOfInterest_TripId\" ON \"TripPointsOfInterest\" (\"TripId\");");
 }
 
+static async Task EnsureCheckinColumnsAsync(AppDbContext db, string provider)
+{
+    var tripColumns = new[] { "CheckInOpen", "DepartureCompleted" };
+    foreach (var column in tripColumns)
+    {
+        if (!await ColumnExistsAsync(db, "Trips", column, provider))
+        {
+            await TryExecAsync(db, provider == "sqlite"
+                ? $"ALTER TABLE \"Trips\" ADD COLUMN \"{column}\" INTEGER NOT NULL DEFAULT 0;"
+                : $"ALTER TABLE \"Trips\" ADD COLUMN \"{column}\" boolean NOT NULL DEFAULT false;");
+        }
+    }
+
+    if (!await ColumnExistsAsync(db, "Bookings", "CheckedIn", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"CheckedIn\" INTEGER NOT NULL DEFAULT 0;"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"CheckedIn\" boolean NOT NULL DEFAULT false;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Bookings", "CheckedInAt", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"CheckedInAt\" TEXT NULL;"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"CheckedInAt\" timestamp without time zone NULL;");
+    }
+}
+
 static async Task EnsureAuditLogTableAsync(AppDbContext db, string provider)
 {
     await TryExecAsync(db, provider == "sqlite"
@@ -1059,6 +1135,8 @@ static async Task EnsureSeedUsersAsync(AppDbContext db)
 }
 
 record UpdateBookingStatusRequest(BookingStatus Status);
+record UpdateBookingCheckinRequest(bool CheckedIn);
+record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record DeleteTripRequest(string? Message);
 record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);
 record UpsertPoiRequest(string? Name, string? Description, double Latitude, double Longitude);

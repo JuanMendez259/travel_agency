@@ -23,6 +23,7 @@ public partial class AdminTripDetailPage : ContentPage
         {
             PaymentsButton.IsVisible = false;
             MapButton.IsVisible = false;
+            CheckinButton.IsVisible = false;
             AuditButton.IsVisible = false;
             EditActions.IsVisible = false;
         }
@@ -191,6 +192,12 @@ public partial class AdminTripDetailPage : ContentPage
     {
         if (_trip is null) return;
         await Shell.Current.GoToAsync($"auditlog?entity=Trip&id={_trip.Id}");
+    }
+
+    private async void OnCheckinClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+        await Shell.Current.GoToAsync($"checkin?id={_trip.Id}");
     }
 
     private async void OnEditClicked(object? sender, EventArgs e)

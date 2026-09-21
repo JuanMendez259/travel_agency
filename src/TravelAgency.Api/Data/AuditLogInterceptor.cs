@@ -17,12 +17,13 @@ public class AuditLogInterceptor : SaveChangesInterceptor
     {
         "Title", "Destination", "Description", "StartDate", "EndDate", "Price", "Capacity",
         "AvailableSeats", "TransportType", "IsActive",
-        "OriginLatitude", "OriginLongitude", "DestinationLatitude", "DestinationLongitude"
+        "OriginLatitude", "OriginLongitude", "DestinationLatitude", "DestinationLongitude",
+        "CheckInOpen", "DepartureCompleted"
     };
 
     private static readonly HashSet<string> BookingTracked = new()
     {
-        "NumberOfSeats", "Status", "TotalAmount"
+        "NumberOfSeats", "Status", "TotalAmount", "CheckedIn", "CheckedInAt"
     };
 
     private static readonly HashSet<string> PaymentTracked = new()

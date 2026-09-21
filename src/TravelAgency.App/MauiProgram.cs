@@ -37,6 +37,7 @@ builder.Services.AddTransient<AdminTripsPage>();
         builder.Services.AddTransient<AdminTripMapPage>();
         builder.Services.AddTransient<AdminStatsPage>();
         builder.Services.AddTransient<AdminAuditPage>();
+        builder.Services.AddTransient<AdminCheckinPage>();
 		builder.Services.AddTransient<AdminBookingsPage>();
 		builder.Services.AddTransient<AdminBookingDetailPage>();
 

@@ -207,7 +207,25 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
 
+    public async Task<Booking?> UpdateBookingCheckinAsync(int bookingId, bool checkedIn)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/bookings/{bookingId}/checkin",
+            new UpdateBookingCheckinRequest(checkedIn), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
+    }
+
+    public async Task<Trip?> UpdateDepartureAsync(int tripId, bool? checkInOpen = null, bool? departureCompleted = null)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/departure",
+            new UpdateDepartureRequest(checkInOpen, departureCompleted), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
     private record UpdateBookingStatusRequest(BookingStatus Status);
+    private record UpdateBookingCheckinRequest(bool CheckedIn);
+    private record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 
     public async Task<byte[]> GetBytesAsync(string url)
     {
