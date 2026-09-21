@@ -71,8 +71,12 @@ public partial class AdminTripDetailPage : ContentPage
         AvailableLabel.Text = Math.Max(0, _trip.AvailableSeats).ToString();
         CapacityLabel.Text = _trip.Capacity.ToString();
 
+        FinalizeButton.Text = _trip.Finalized ? "Reabrir viaje (ya finalizado)" : "Finalizar viaje";
+        FinalizeButton.BackgroundColor = _trip.Finalized ? Colors.Gray : Color.FromArgb("#2B6CB0");
+
         RenderCapacityRequests();
         RenderPassengers();
+        await RenderRatingsAsync();
 
         TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
         TripImage.IsVisible = TripImage.Source is not null;
@@ -173,6 +177,85 @@ public partial class AdminTripDetailPage : ContentPage
                 FontSize = 14,
                 TextColor = request.IsResolved ? Colors.Gray : null
             });
+        }
+    }
+
+    private async Task RenderRatingsAsync()
+    {
+        if (_trip is null) return;
+
+        var ratings = await _api.GetTripRatingsAsync(_trip.Id) ?? new List<TripRating>();
+
+        RatingsHeader.IsVisible = ratings.Count > 0;
+        RatingsAverageLabel.IsVisible = ratings.Count > 0;
+        RatingsEmptyLabel.IsVisible = ratings.Count == 0;
+        RatingsLayout.Children.Clear();
+
+        if (ratings.Count > 0)
+        {
+            var average = ratings.Average(r => r.Rating);
+            RatingsAverageLabel.Text = $"{ratings.Count} opinión(es) · Promedio: {average:0.0} ★";
+
+            foreach (var rating in ratings)
+            {
+                var name = rating.UserName ?? $"Usuario #{rating.UserId}";
+                RatingsLayout.Children.Add(new Label
+                {
+                    Text = $"{new string('★', rating.Rating)}{new string('☆', 5 - rating.Rating)} {rating.Rating}/5",
+                    FontSize = 15,
+                    FontAttributes = FontAttributes.Bold
+                });
+                RatingsLayout.Children.Add(new Label
+                {
+                    Text = $"{name} · {rating.CreatedAt:dd/MM/yyyy HH:mm}",
+                    FontSize = 12,
+                    TextColor = Colors.Gray
+                });
+                if (!string.IsNullOrWhiteSpace(rating.Comment))
+                {
+                    RatingsLayout.Children.Add(new Label
+                    {
+                        Text = $"\"{rating.Comment}\"",
+                        FontSize = 14,
+                        TextColor = Colors.Gray,
+                        Margin = new Thickness(0, 0, 0, 6)
+                    });
+                }
+            }
+        }
+    }
+
+    private async void OnFinalizeClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+
+        var finalizing = !_trip.Finalized;
+        var confirm = await DisplayAlertAsync(
+            "Finalizar viaje",
+            finalizing
+                ? $"¿Finalizar \"{_trip.Title}\"? Se notificará a los clientes con reserva para que califiquen su experiencia."
+                : $"¿Reabrir \"{_trip.Title}\"? Se volverá a ocultar el botón de calificación para los clientes.",
+            "Sí", "No");
+
+        if (!confirm) return;
+
+        try
+        {
+            var updated = await _api.UpdateTripFinalizedAsync(_trip.Id, finalizing);
+            if (updated is null) return;
+
+            _trip.Finalized = updated.Finalized;
+            await LoadTripAsync();
+
+            if (finalizing)
+            {
+                var count = _trip.Bookings.Count(b => b.Status != BookingStatus.Cancelled);
+                await DisplayAlertAsync("Listo", $"Viaje finalizado. Se notificó a los clientes ({count} reserva(s) activas).", "OK");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
         }
     }
 

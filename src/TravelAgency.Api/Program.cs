@@ -118,6 +118,8 @@ using (var scope = app.Services.CreateScope())
     await EnsureBookingQrColumnAsync(db, provider);
     await EnsureUserQrColumnAsync(db, provider);
     await EnsurePassengersTableAsync(db, provider);
+    await EnsureTripFinalizedColumnAsync(db, provider);
+    await EnsureRatingsTableAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
     await EnsureSeedUsersAsync(db);
 }
@@ -804,6 +806,95 @@ app.MapPut("/api/trips/{id}/departure", async (int id, UpdateDepartureRequest re
     return Results.Ok(trip);
 }).RequireAuthorization("AdminOnly");
 
+app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest request, AppDbContext db) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    trip.Finalized = request.Finalized;
+    await db.SaveChangesAsync();
+
+    if (request.Finalized)
+    {
+        var userIds = await db.Bookings
+            .Where(b => b.TripId == id && b.Status != BookingStatus.Cancelled)
+            .Select(b => b.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        if (userIds.Count > 0)
+        {
+            foreach (var userId in userIds)
+            {
+                db.Notifications.Add(new UserNotification
+                {
+                    UserId = userId,
+                    Message = $"El viaje \"{trip.Title}\" ha finalizado. ¡Califica tu experiencia en Mis Viajes!",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+    }
+
+    return Results.Ok(trip);
+}).RequireAuthorization("StaffOnly");
+
+app.MapGet("/api/trips/{id}/ratings", async (int id, AppDbContext db) =>
+    await db.TripRatings
+        .Where(r => r.TripId == id)
+        .OrderByDescending(r => r.CreatedAt)
+        .ToListAsync()).RequireAuthorization("StaffOnly");
+
+app.MapGet("/api/trips/{id}/rating/me", async (int id, ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var userId = GetUserId(principal);
+    var rating = await db.TripRatings
+        .FirstOrDefaultAsync(r => r.TripId == id && r.UserId == userId);
+    return rating is null ? Results.Ok(null) : Results.Ok(rating);
+}).RequireAuthorization();
+
+app.MapPut("/api/trips/{id}/rating", async (int id, UpdateTripRatingRequest request, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    if (!trip.Finalized)
+        return Results.BadRequest("El viaje aún no ha finalizado; la calificación se habilitará cuando se cierre.");
+
+    if (request.Rating is < 1 or > 5)
+        return Results.BadRequest("Indica una calificación del 1 al 5.");
+
+    var userId = GetUserId(principal);
+    var user = await db.Users.FindAsync(userId);
+    if (user is null) return Results.Forbid();
+
+    var rating = await db.TripRatings
+        .FirstOrDefaultAsync(r => r.TripId == id && r.UserId == userId);
+
+    if (rating is null)
+    {
+        rating = new TripRating
+        {
+            TripId = id,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.TripRatings.Add(rating);
+    }
+
+    rating.Rating = request.Rating;
+    rating.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment!.Trim();
+    rating.UserName = user.Name ?? user.Email;
+    rating.Destination = trip.Destination;
+    rating.TripDate = trip.StartDate;
+    rating.TransportType = trip.TransportType;
+    rating.Price = trip.Price;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(rating);
+}).RequireAuthorization();
+
 app.MapGet("/api/admin/auditlog", async (AppDbContext db, string? entity, int? id, int? limit) =>
 {
     var query = db.AuditLogs.AsNoTracking().AsQueryable();
@@ -1215,6 +1306,63 @@ static async Task EnsurePassengersTableAsync(AppDbContext db, string provider)
         : "CREATE INDEX IF NOT EXISTS \"IX_TripPassengers_BookingId\" ON \"TripPassengers\" (\"BookingId\");");
 }
 
+static async Task EnsureTripFinalizedColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "Finalized", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"Finalized\" INTEGER NOT NULL DEFAULT 0;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"Finalized\" boolean NOT NULL DEFAULT false;");
+    }
+}
+
+static async Task EnsureRatingsTableAsync(AppDbContext db, string provider)
+{
+    await TryExecAsync(db, provider == "sqlite"
+        ? """
+          CREATE TABLE IF NOT EXISTS "TripRatings" (
+              "Id" INTEGER NOT NULL CONSTRAINT "PK_TripRatings" PRIMARY KEY AUTOINCREMENT,
+              "TripId" INTEGER NOT NULL,
+              "UserId" INTEGER NOT NULL,
+              "Rating" INTEGER NOT NULL,
+              "Comment" TEXT NULL,
+              "UserName" TEXT NULL,
+              "Destination" TEXT NULL,
+              "TripDate" TEXT NOT NULL,
+              "TransportType" INTEGER NOT NULL,
+              "Price" TEXT NOT NULL,
+              "CreatedAt" TEXT NOT NULL,
+              CONSTRAINT "FK_TripRatings_Trips_TripId" FOREIGN KEY ("TripId") REFERENCES "Trips" ("Id") ON DELETE CASCADE,
+              CONSTRAINT "FK_TripRatings_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE RESTRICT
+          );
+          """
+        : """
+          CREATE TABLE IF NOT EXISTS "TripRatings" (
+              "Id" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              "TripId" integer NOT NULL,
+              "UserId" integer NOT NULL,
+              "Rating" integer NOT NULL,
+              "Comment" text NULL,
+              "UserName" character varying(120) NULL,
+              "Destination" character varying(150) NULL,
+              "TripDate" timestamp without time zone NOT NULL,
+              "TransportType" integer NOT NULL,
+              "Price" numeric(18,2) NOT NULL,
+              "CreatedAt" timestamp without time zone NOT NULL,
+              CONSTRAINT "FK_TripRatings_Trips_TripId" FOREIGN KEY ("TripId") REFERENCES "Trips" ("Id") ON DELETE CASCADE,
+              CONSTRAINT "FK_TripRatings_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE RESTRICT
+          );
+          """);
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? "CREATE INDEX IF NOT EXISTS \"IX_TripRatings_TripId\" ON \"TripRatings\" (\"TripId\");"
+        : "CREATE INDEX IF NOT EXISTS \"IX_TripRatings_TripId\" ON \"TripRatings\" (\"TripId\");");
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_TripRatings_UserId_TripId\" ON \"TripRatings\" (\"UserId\", \"TripId\");"
+        : "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_TripRatings_UserId_TripId\" ON \"TripRatings\" (\"UserId\", \"TripId\");");
+}
+
 static async Task EnsureAuditLogTableAsync(AppDbContext db, string provider)
 {
     await TryExecAsync(db, provider == "sqlite"
@@ -1324,6 +1472,8 @@ record UpdateBookingCheckinRequest(bool CheckedIn);
 record UpdatePassengerCheckinRequest(bool CheckedIn);
 record CreatePassengersRequest(string[]? Names);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
+record UpdateFinalizeRequest(bool Finalized);
+record UpdateTripRatingRequest(int Rating, string? Comment);
 record DeleteTripRequest(string? Message);
 record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);
 record UpsertPoiRequest(string? Name, string? Description, double Latitude, double Longitude);

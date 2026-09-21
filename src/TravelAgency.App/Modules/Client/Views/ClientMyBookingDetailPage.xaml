@@ -84,6 +84,13 @@
             </CollectionView>
 
             <Label x:Name="PaymentsTotalLabel" FontSize="13" TextColor="Gray" IsVisible="False" />
+
+            <Label x:Name="RateHintLabel" FontSize="14" TextColor="Gray" Margin="0,10,0,0" IsVisible="False" />
+            <Button x:Name="RateButton" Text="Calificar viaje"
+                    Clicked="OnRateClicked"
+                    IsVisible="False"
+                    Margin="0,6,0,0"
+                    BackgroundColor="#2F855A" TextColor="White" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

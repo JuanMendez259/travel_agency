@@ -242,6 +242,38 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<TripPassenger>(JsonOptions);
     }
 
+    public async Task<Trip?> UpdateTripFinalizedAsync(int tripId, bool finalized)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/finalize",
+            new UpdateFinalizeRequest(finalized), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
+    public async Task<TripRating?> GetMyTripRatingAsync(int tripId)
+    {
+        var response = await _http.GetAsync($"/api/trips/{tripId}/rating/me");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripRating>(JsonOptions);
+    }
+
+    public async Task<List<TripRating>?> GetTripRatingsAsync(int tripId)
+    {
+        var response = await _http.GetAsync($"/api/trips/{tripId}/ratings");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<List<TripRating>>(JsonOptions);
+    }
+
+    public async Task<TripRating?> SubmitTripRatingAsync(int tripId, int rating, string? comment)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/rating",
+            new UpdateTripRatingRequest(rating, comment), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripRating>(JsonOptions);
+    }
+
+    private record UpdateFinalizeRequest(bool Finalized);
+    private record UpdateTripRatingRequest(int Rating, string? Comment);
     private record UpdateBookingStatusRequest(BookingStatus Status);
     private record UpdateBookingCheckinRequest(bool CheckedIn);
     private record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);

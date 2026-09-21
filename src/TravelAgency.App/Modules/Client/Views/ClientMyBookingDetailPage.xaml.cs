@@ -17,6 +17,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
     };
 
     private readonly ApiService _api;
+    private int? _tripId;
 
     public string BookingId { get; set; } = string.Empty;
 
@@ -110,8 +111,43 @@ public partial class ClientMyBookingDetailPage : ContentPage
             : "";
         PaymentsTotalLabel.IsVisible = booking.Payments is { Count: > 0 };
 
+        await RenderRatingUiAsync(booking, trip);
+
         if (!string.IsNullOrEmpty(trip?.ImageUrl))
             TripImage.Source = await _api.GetTripImageAsync(trip.ImageUrl);
+    }
+
+    private async Task RenderRatingUiAsync(Booking booking, Trip? trip)
+    {
+        var canRate = trip is not null && booking.Status != BookingStatus.Cancelled && trip.Finalized;
+        RateButton.IsVisible = canRate;
+        RateHintLabel.IsVisible = canRate;
+
+        if (!canRate)
+        {
+            _tripId = null;
+            return;
+        }
+
+        _tripId = trip!.Id;
+
+        var my = await _api.GetMyTripRatingAsync(trip.Id);
+        if (my is not null)
+        {
+            RateButton.Text = "Actualizar mi calificación";
+            RateHintLabel.Text = $"Tu calificación: {new string('★', my.Rating)}{new string('☆', 5 - my.Rating)} ({my.Rating}/5)";
+        }
+        else
+        {
+            RateButton.Text = "Calificar viaje";
+            RateHintLabel.Text = string.Empty;
+        }
+    }
+
+    private async void OnRateClicked(object? sender, EventArgs e)
+    {
+        if (_tripId is null) return;
+        await Shell.Current.GoToAsync($"ratetrip?tripId={_tripId}");
     }
 
     private async void OnPassengersQrClicked(object? sender, EventArgs e)

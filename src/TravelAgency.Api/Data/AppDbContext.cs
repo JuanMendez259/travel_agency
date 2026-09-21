@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<CapacityRequest> CapacityRequests => Set<CapacityRequest>();
     public DbSet<TripPointOfInterest> TripPointsOfInterest => Set<TripPointOfInterest>();
     public DbSet<TripPassenger> TripPassengers => Set<TripPassenger>();
+    public DbSet<TripRating> TripRatings => Set<TripRating>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -65,6 +66,24 @@ public class AppDbContext : DbContext
                   .WithMany(b => b.Passengers)
                   .HasForeignKey(p => p.BookingId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TripRating>(entity =>
+        {
+            entity.Property(r => r.UserName).HasMaxLength(120);
+            entity.Property(r => r.Destination).HasMaxLength(150);
+            entity.Property(r => r.Comment).HasMaxLength(1000);
+            entity.Property(r => r.Price).HasPrecision(18, 2);
+            entity.HasIndex(r => r.TripId);
+            entity.HasIndex(r => new { r.UserId, r.TripId }).IsUnique();
+            entity.HasOne(r => r.Trip)
+                  .WithMany()
+                  .HasForeignKey(r => r.TripId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(r => r.User)
+                  .WithMany()
+                  .HasForeignKey(r => r.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<UserNotification>(entity =>

@@ -23,6 +23,7 @@ public class Trip
 
     public bool CheckInOpen { get; set; }
     public bool DepartureCompleted { get; set; }
+    public bool Finalized { get; set; }
 
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     public ICollection<CapacityRequest> CapacityRequests { get; set; } = new List<CapacityRequest>();
