@@ -66,6 +66,9 @@ public class ApiService
     public Task<List<User>?> GetUsersAsync() =>
         _http.GetFromJsonAsync<List<User>>("/api/users", JsonOptions);
 
+    public Task<User?> GetMyProfileAsync() =>
+        _http.GetFromJsonAsync<User>("/api/users/me", JsonOptions);
+
     public async Task<User?> UpdateUserRoleAsync(int userId, UserRole role)
     {
         var response = await _http.PutAsJsonAsync($"/api/users/{userId}/role",
@@ -223,9 +226,27 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
+    public async Task<List<TripPassenger>?> CreatePassengersAsync(int bookingId, string[] names)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/bookings/{bookingId}/passengers",
+            new CreatePassengersRequest(names), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<List<TripPassenger>>(JsonOptions);
+    }
+
+    public async Task<TripPassenger?> UpdatePassengerCheckinAsync(int passengerId, bool checkedIn)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/passengers/{passengerId}/checkin",
+            new UpdatePassengerCheckinRequest(checkedIn), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripPassenger>(JsonOptions);
+    }
+
     private record UpdateBookingStatusRequest(BookingStatus Status);
     private record UpdateBookingCheckinRequest(bool CheckedIn);
     private record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
+    private record CreatePassengersRequest(string[] Names);
+    private record UpdatePassengerCheckinRequest(bool CheckedIn);
 
     public async Task<byte[]> GetBytesAsync(string url)
     {

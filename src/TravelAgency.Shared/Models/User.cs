@@ -10,6 +10,7 @@ public class User
     [JsonIgnore]
     public string? PasswordHash { get; set; }
     public string? Phone { get; set; }
+    public string? QrToken { get; set; }
     public UserRole Role { get; set; }
     public DateTime CreatedAt { get; set; }
 

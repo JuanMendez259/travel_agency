@@ -30,6 +30,11 @@
                    Placeholder="Nombre"
                    IsVisible="False" />
 
+            <Entry x:Name="PhoneEntry"
+                   Placeholder="Celular (opcional)"
+                   Keyboard="Telephone"
+                   IsVisible="False" />
+
             <Entry x:Name="EmailEntry"
                    Placeholder="Correo electrónico"
                    Keyboard="Email" />
@@ -44,6 +49,14 @@
                     BackgroundColor="Transparent"
                     TextColor="{AppThemeBinding Light=#1976D2, Dark=#82B1FF}"
                     Clicked="OnToggleClicked" />
+
+            <Label Text="Acceso rápido (solo pruebas)"
+                   FontSize="12"
+                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
+                   Margin="0,20,0,0" />
+            <Picker x:Name="QuickLoginPicker"
+                    Title="Seleccionar perfil de prueba"
+                    SelectedIndexChanged="OnQuickLoginSelected" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

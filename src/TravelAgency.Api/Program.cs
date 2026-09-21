@@ -115,6 +115,9 @@ using (var scope = app.Services.CreateScope())
     await EnsureTransportTypeColumnAsync(db, provider);
     await EnsureTripMapColumnsAsync(db, provider);
     await EnsureCheckinColumnsAsync(db, provider);
+    await EnsureBookingQrColumnAsync(db, provider);
+    await EnsureUserQrColumnAsync(db, provider);
+    await EnsurePassengersTableAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
     await EnsureSeedUsersAsync(db);
 }
@@ -173,8 +176,10 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, AppDbContext d
         Name = request.Name.Trim(),
         Email = email,
         PasswordHash = HashPassword(request.Password),
+        Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
         Role = UserRole.Client,
-        CreatedAt = DateTime.UtcNow
+        CreatedAt = DateTime.UtcNow,
+        QrToken = GenerateQrToken()
     };
 
     db.Users.Add(user);
@@ -197,6 +202,8 @@ app.MapGet("/api/trips/manage", async (AppDbContext db) =>
     await db.Trips
         .Include(t => t.Bookings)
             .ThenInclude(b => b.User)
+        .Include(t => t.Bookings)
+            .ThenInclude(b => b.Passengers)
         .Include(t => t.CapacityRequests)
         .Include(t => t.PointsOfInterest)
         .OrderByDescending(t => t.StartDate)
@@ -353,6 +360,12 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
 app.MapGet("/api/users", async (AppDbContext db) =>
     await db.Users.ToListAsync()).RequireAuthorization("AdminOnly");
 
+app.MapGet("/api/users/me", async (ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var user = await db.Users.FindAsync(GetUserId(principal));
+    return user is null ? Results.NotFound("Usuario no encontrado.") : Results.Ok(user);
+}).RequireAuthorization();
+
 app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
     var user = await db.Users.FindAsync(id);
@@ -427,6 +440,7 @@ app.MapPost("/api/bookings", async (Booking booking, AppDbContext db, ClaimsPrin
     booking.BookingDate = DateTime.UtcNow;
     booking.Status = BookingStatus.Pending;
     booking.TotalAmount = trip.Price * booking.NumberOfSeats;
+    booking.QrToken = GenerateQrToken();
 
     db.Bookings.Add(booking);
     await db.SaveChangesAsync();
@@ -443,12 +457,56 @@ app.MapPost("/api/bookings", async (Booking booking, AppDbContext db, ClaimsPrin
     return Results.Created($"/api/bookings/{booking.Id}", booking);
 }).RequireAuthorization();
 
+app.MapPost("/api/bookings/{id}/passengers", async (int id, CreatePassengersRequest request, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var booking = await db.Bookings.FirstOrDefaultAsync(b => b.Id == id);
+    if (booking is null) return Results.NotFound("Reserva no encontrada.");
+
+    if (booking.Status == BookingStatus.Cancelled)
+        return Results.BadRequest("No se pueden agregar pasajeros a una reserva cancelada.");
+
+    var userId = GetUserId(principal);
+    if (userId != booking.UserId && !principal.IsInRole("Admin") && !principal.IsInRole("Coordinador"))
+        return Results.Forbid();
+
+    var requestedCount = request.Names?.Length ?? 0;
+    var names = request.Names?
+        .Select(n => n?.Trim())
+        .Where(n => !string.IsNullOrWhiteSpace(n))
+        .Select(n => n!)
+        .ToList() ?? new List<string>();
+
+    if (requestedCount == 0 || names.Count != requestedCount)
+        return Results.BadRequest("Todos los pasajeros deben tener nombre.");
+
+    var existing = await db.TripPassengers.CountAsync(p => p.BookingId == id);
+    var availableSlots = booking.NumberOfSeats - 1 - existing;
+    if (names.Count == 0)
+        return Results.BadRequest("Indica al menos un pasajero.");
+
+    if (names.Count > availableSlots)
+        return Results.BadRequest($"Esta reserva admite máximo {availableSlots} pasajero(s) adicional(es).");
+
+    var passengers = names.Select(n => new TripPassenger
+    {
+        BookingId = id,
+        Name = n.Length <= 120 ? n : n[..120],
+        QrToken = GenerateQrToken()
+    }).ToList();
+
+    db.TripPassengers.AddRange(passengers);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/api/bookings/{id}/passengers", passengers);
+}).RequireAuthorization();
+
 app.MapGet("/api/bookings/{id}", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
 {
     var booking = await db.Bookings
         .Include(b => b.Trip)
         .Include(b => b.User)
         .Include(b => b.Payments)
+        .Include(b => b.Passengers)
         .FirstOrDefaultAsync(b => b.Id == id);
 
     if (booking is null) return Results.NotFound();
@@ -697,6 +755,31 @@ app.MapPut("/api/bookings/{id}/checkin", async (int id, UpdateBookingCheckinRequ
     return Results.Ok(booking);
 }).RequireAuthorization("AdminOnly");
 
+app.MapPut("/api/passengers/{id}/checkin", async (int id, UpdatePassengerCheckinRequest request, AppDbContext db) =>
+{
+    var passenger = await db.TripPassengers
+        .Include(p => p.Booking)
+        .FirstOrDefaultAsync(p => p.Id == id);
+    if (passenger is null) return Results.NotFound("Pasajero no encontrado.");
+
+    if (passenger.Booking is not null && passenger.Booking.Status == BookingStatus.Cancelled)
+        return Results.BadRequest("No se puede marcar el check-in de una reserva cancelada.");
+
+    if (request.CheckedIn)
+    {
+        passenger.CheckedIn = true;
+        passenger.CheckedInAt ??= DateTime.UtcNow;
+    }
+    else
+    {
+        passenger.CheckedIn = false;
+        passenger.CheckedInAt = null;
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(passenger);
+}).RequireAuthorization("AdminOnly");
+
 app.MapPut("/api/trips/{id}/departure", async (int id, UpdateDepartureRequest request, AppDbContext db) =>
 {
     var trip = await db.Trips.FindAsync(id);
@@ -879,6 +962,15 @@ static int GetUserId(ClaimsPrincipal principal)
     return int.TryParse(value, out var id) ? id : 0;
 }
 
+static string GenerateQrToken()
+{
+    var bytes = RandomNumberGenerator.GetBytes(24);
+    return Convert.ToBase64String(bytes)
+        .Replace('+', '-')
+        .Replace('/', '_')
+        .TrimEnd('=');
+}
+
 static string GenerateToken(User user, SymmetricSecurityKey key, string issuer, string audience)
 {
     var claims = new[]
@@ -1030,6 +1122,99 @@ static async Task EnsureCheckinColumnsAsync(AppDbContext db, string provider)
     }
 }
 
+static async Task EnsureBookingQrColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Bookings", "QrToken", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"QrToken\" TEXT NULL;"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"QrToken\" character varying(64) NULL;");
+    }
+
+    var missing = await db.Bookings
+        .Where(b => b.QrToken == null || b.QrToken == "")
+        .ToListAsync();
+    if (missing.Count == 0) return;
+
+    var used = new HashSet<string>(await db.Bookings
+        .Where(b => b.QrToken != null)
+        .Select(b => b.QrToken!)
+        .ToListAsync(), StringComparer.Ordinal);
+
+    foreach (var booking in missing)
+    {
+        string token;
+        do { token = GenerateQrToken(); } while (!used.Add(token));
+        booking.QrToken = token;
+    }
+
+    await db.SaveChangesAsync();
+}
+
+static async Task EnsureUserQrColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Users", "QrToken", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Users\" ADD COLUMN \"QrToken\" TEXT NULL;"
+            : "ALTER TABLE \"Users\" ADD COLUMN \"QrToken\" character varying(64) NULL;");
+    }
+
+    var missing = await db.Users
+        .Where(u => u.QrToken == null || u.QrToken == "")
+        .ToListAsync();
+
+    var used = new HashSet<string>(await db.Users
+        .Where(u => u.QrToken != null)
+        .Select(u => u.QrToken!)
+        .ToListAsync(), StringComparer.Ordinal);
+
+    foreach (var user in missing)
+    {
+        string token;
+        do { token = GenerateQrToken(); } while (!used.Add(token));
+        user.QrToken = token;
+    }
+
+    if (missing.Count > 0)
+        await db.SaveChangesAsync();
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_QrToken\" ON \"Users\" (\"QrToken\");"
+        : "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_QrToken\" ON \"Users\" (\"QrToken\");");
+}
+
+static async Task EnsurePassengersTableAsync(AppDbContext db, string provider)
+{
+    await TryExecAsync(db, provider == "sqlite"
+        ? """
+          CREATE TABLE IF NOT EXISTS "TripPassengers" (
+              "Id" INTEGER NOT NULL CONSTRAINT "PK_TripPassengers" PRIMARY KEY AUTOINCREMENT,
+              "BookingId" INTEGER NOT NULL,
+              "Name" TEXT NULL,
+              "QrToken" TEXT NULL,
+              "CheckedIn" INTEGER NOT NULL DEFAULT 0,
+              "CheckedInAt" TEXT NULL,
+              CONSTRAINT "FK_TripPassengers_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("Id") ON DELETE CASCADE
+          );
+          """
+        : """
+          CREATE TABLE IF NOT EXISTS "TripPassengers" (
+              "Id" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+              "BookingId" integer NOT NULL,
+              "Name" character varying(120) NULL,
+              "QrToken" character varying(64) NULL,
+              "CheckedIn" boolean NOT NULL DEFAULT false,
+              "CheckedInAt" timestamp without time zone NULL,
+              CONSTRAINT "FK_TripPassengers_Bookings_BookingId" FOREIGN KEY ("BookingId") REFERENCES "Bookings" ("Id") ON DELETE CASCADE
+          );
+          """);
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? "CREATE INDEX IF NOT EXISTS \"IX_TripPassengers_BookingId\" ON \"TripPassengers\" (\"BookingId\");"
+        : "CREATE INDEX IF NOT EXISTS \"IX_TripPassengers_BookingId\" ON \"TripPassengers\" (\"BookingId\");");
+}
+
 static async Task EnsureAuditLogTableAsync(AppDbContext db, string provider)
 {
     await TryExecAsync(db, provider == "sqlite"
@@ -1136,6 +1321,8 @@ static async Task EnsureSeedUsersAsync(AppDbContext db)
 
 record UpdateBookingStatusRequest(BookingStatus Status);
 record UpdateBookingCheckinRequest(bool CheckedIn);
+record UpdatePassengerCheckinRequest(bool CheckedIn);
+record CreatePassengersRequest(string[]? Names);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record DeleteTripRequest(string? Message);
 record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);

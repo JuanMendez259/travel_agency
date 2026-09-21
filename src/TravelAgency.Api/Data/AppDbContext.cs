@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<UserNotification> Notifications => Set<UserNotification>();
     public DbSet<CapacityRequest> CapacityRequests => Set<CapacityRequest>();
     public DbSet<TripPointOfInterest> TripPointsOfInterest => Set<TripPointOfInterest>();
+    public DbSet<TripPassenger> TripPassengers => Set<TripPassenger>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -36,6 +37,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Booking>(entity =>
         {
             entity.Property(b => b.TotalAmount).HasPrecision(18, 2);
+            entity.HasIndex(b => b.QrToken).IsUnique();
             entity.HasOne(b => b.User)
                   .WithMany(u => u.Bookings)
                   .HasForeignKey(b => b.UserId)
@@ -53,6 +55,16 @@ public class AppDbContext : DbContext
                   .WithMany(b => b.Payments)
                   .HasForeignKey(p => p.BookingId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<TripPassenger>(entity =>
+        {
+            entity.Property(p => p.Name).HasMaxLength(120);
+            entity.HasIndex(p => p.BookingId);
+            entity.HasOne(p => p.Booking)
+                  .WithMany(b => b.Passengers)
+                  .HasForeignKey(p => p.BookingId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<UserNotification>(entity =>

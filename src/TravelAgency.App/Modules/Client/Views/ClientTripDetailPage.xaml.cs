@@ -120,10 +120,30 @@ public partial class ClientTripDetailPage : ContentPage
             };
 
             var created = await _api.CreateBookingAsync(booking);
+
+            if (created is not null && created.Id > 0 && seats > 1)
+            {
+                var addPage = new AddPassengersPage(seats - 1);
+                await Navigation.PushModalAsync(addPage);
+                var names = addPage.Names;
+                if (names is { Count: > 0 })
+                {
+                    try
+                    {
+                        await _api.CreatePassengersAsync(created.Id, names.ToArray());
+                    }
+                    catch (Exception ex)
+                    {
+                        await DisplayAlertAsync("Aviso",
+                            $"La reserva se creó, pero no se pudieron guardar los pasajeros: {ex.Message}", "OK");
+                    }
+                }
+            }
+
             await DisplayAlertAsync("Reserva creada",
                 $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. Pronto la confirmaremos.",
                 "OK");
-            await Shell.Current.GoToAsync("..");
+            await Shell.Current.GoToAsync($"mybooking?id={created?.Id}");
         }
         catch (Exception ex)
         {

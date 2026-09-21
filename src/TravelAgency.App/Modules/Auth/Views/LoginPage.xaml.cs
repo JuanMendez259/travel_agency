@@ -14,6 +14,29 @@ public partial class LoginPage : ContentPage
         InitializeComponent();
         _api = api;
         _session = session;
+        QuickLoginPicker.ItemsSource = new[] { "Admin", "Cliente" };
+    }
+
+    private async void OnQuickLoginSelected(object? sender, EventArgs e)
+    {
+        var index = QuickLoginPicker.SelectedIndex;
+        if (index < 0) return;
+
+        if (_isRegistering)
+            OnToggleClicked(sender, e);
+
+        if (index == 0)
+        {
+            EmailEntry.Text = "admin@travelagency.com";
+            PasswordEntry.Text = "Admin123!";
+        }
+        else
+        {
+            EmailEntry.Text = "cliente@travelagency.com";
+            PasswordEntry.Text = "Cliente123!";
+        }
+
+        OnSubmitClicked(sender, e);
     }
 
     private void OnToggleClicked(object? sender, EventArgs e)
@@ -23,6 +46,7 @@ public partial class LoginPage : ContentPage
         FormTitleLabel.Text = _isRegistering ? "Crear cuenta" : "Iniciar sesión";
         SubmitButton.Text = _isRegistering ? "Registrarse" : "Entrar";
         NameEntry.IsVisible = _isRegistering;
+        PhoneEntry.IsVisible = _isRegistering;
         ToggleButton.Text = _isRegistering ? "Ya tengo cuenta" : "¿No tienes cuenta? Crea una";
     }
 
@@ -50,7 +74,13 @@ public partial class LoginPage : ContentPage
                     return;
                 }
 
-                auth = await _api.RegisterAsync(new RegisterRequest { Name = name, Email = email, Password = password });
+                auth = await _api.RegisterAsync(new RegisterRequest
+                {
+                    Name = name,
+                    Email = email,
+                    Password = password,
+                    Phone = PhoneEntry.Text?.Trim()
+                });
             }
             else
             {

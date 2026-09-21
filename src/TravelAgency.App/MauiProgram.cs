@@ -28,6 +28,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<ClientHomePage>();
 builder.Services.AddTransient<ClientTripDetailPage>();
         builder.Services.AddTransient<ClientMyTripsPage>();
+        builder.Services.AddTransient<ClientProfilePage>();
+        builder.Services.AddTransient<ClientPassengersQrPage>();
+        builder.Services.AddTransient<AddPassengersPage>();
         builder.Services.AddTransient<ClientNotificationsPage>();
 		builder.Services.AddTransient<ClientMyBookingDetailPage>();
 		builder.Services.AddTransient<AdminDashboardPage>();
@@ -38,6 +41,7 @@ builder.Services.AddTransient<AdminTripsPage>();
         builder.Services.AddTransient<AdminStatsPage>();
         builder.Services.AddTransient<AdminAuditPage>();
         builder.Services.AddTransient<AdminCheckinPage>();
+        builder.Services.AddTransient<AdminBookingQrPage>();
 		builder.Services.AddTransient<AdminBookingsPage>();
 		builder.Services.AddTransient<AdminBookingDetailPage>();
 

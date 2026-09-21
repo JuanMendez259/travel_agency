@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Client.Views.AddPassengersPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Pasajeros adicionales">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="12">
+
+            <Label Text="Tu reserva incluye más de un asiento. Indica quiénes viajarán contigo para generar su código QR."
+                   FontSize="15" />
+
+            <VerticalStackLayout x:Name="EntriesLayout" Spacing="10" Margin="0,10,0,20" />
+
+            <Button x:Name="ConfirmButton"
+                    Text="Guardar pasajeros"
+                    Clicked="OnConfirmClicked"
+                    BackgroundColor="#2F855A" TextColor="White" />
+            <Button Text="Cancelar (sin pasajeros)"
+                    Clicked="OnCancelClicked"
+                    Margin="0,8,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

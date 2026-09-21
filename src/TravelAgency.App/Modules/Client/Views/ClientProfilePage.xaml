@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Client.Views.ClientProfilePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Mi Perfil">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="12">
+
+            <Border StrokeThickness="0"
+                    BackgroundColor="#1976D2"
+                    StrokeShape="RoundRectangle 50"
+                    WidthRequest="96" HeightRequest="96"
+                    HorizontalOptions="Center"
+                    Margin="0,10,0,0">
+                <Label x:Name="AvatarLabel"
+                       Text="NA"
+                       FontSize="34"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+            </Border>
+
+            <Label x:Name="NameLabel"
+                   FontSize="22" FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+            <Label x:Name="EmailLabel"
+                   FontSize="15" TextColor="Gray"
+                   HorizontalOptions="Center" />
+
+            <Border StrokeThickness="0"
+                    BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}"
+                    Padding="16"
+                    Margin="0,15,0,0">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="CELULAR" FontSize="12" TextColor="Gray" FontAttributes="Bold" />
+                    <Label x:Name="PhoneLabel" FontSize="16" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border StrokeThickness="0"
+                    BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#2C2C2C}"
+                    Padding="16"
+                    Margin="0,10,0,0">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Mi código QR de cliente" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center" />
+                    <Image x:Name="QrImage" HeightRequest="240" WidthRequest="240" HorizontalOptions="Center" />
+                    <Label Text="Este código te identifica en los controles de salida." FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

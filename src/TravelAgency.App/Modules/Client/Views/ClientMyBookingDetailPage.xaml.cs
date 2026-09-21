@@ -96,6 +96,15 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         PaymentsList.ItemsSource = booking.Payments;
 
+        var qrImage = QrCodeService.FromToken(booking.QrToken);
+        QrImage.Source = qrImage;
+        QrSection.IsVisible = qrImage is not null && booking.Status != BookingStatus.Cancelled;
+
+        var hasPassengers = booking.Passengers is { Count: > 0 };
+        PassengersQrButton.IsVisible = hasPassengers && booking.Status != BookingStatus.Cancelled;
+        if (hasPassengers)
+            PassengersQrButton.Text = $"Ver QR de acompañantes ({booking.Passengers!.Count})";
+
         PaymentsTotalLabel.Text = booking.Payments is { Count: > 0 }
             ? $"Total abonado: {paid:C}"
             : "";
@@ -103,6 +112,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         if (!string.IsNullOrEmpty(trip?.ImageUrl))
             TripImage.Source = await _api.GetTripImageAsync(trip.ImageUrl);
+    }
+
+    private async void OnPassengersQrClicked(object? sender, EventArgs e)
+    {
+        await Shell.Current.GoToAsync($"passengersqr?id={BookingId}");
     }
 
     private async Task LoadTripMapAsync(Trip? trip)

@@ -12,10 +12,12 @@ public class Booking
 
     public bool CheckedIn { get; set; }
     public DateTime? CheckedInAt { get; set; }
+    public string? QrToken { get; set; }
 
     public User? User { get; set; }
     public Trip? Trip { get; set; }
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public ICollection<TripPassenger> Passengers { get; set; } = new List<TripPassenger>();
 }
 
 public enum BookingStatus

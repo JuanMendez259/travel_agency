@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminBookingQrPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Código QR">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="12">
+
+            <Image x:Name="QrImage" HeightRequest="260" WidthRequest="260" HorizontalOptions="Center" />
+            <Label x:Name="PassengerLabel" FontSize="18" FontAttributes="Bold" HorizontalOptions="Center" />
+            <Label x:Name="TripLabel" FontSize="14" TextColor="Gray" HorizontalOptions="Center" />
+
+            <Border StrokeThickness="0"
+                    BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}"
+                    Padding="16"
+                    Margin="0,10,0,0">
+                <VerticalStackLayout Spacing="6">
+                    <Label x:Name="SeatsLabel" FontSize="14" />
+                    <Label x:Name="StateLabel" FontSize="14" FontAttributes="Bold" />
+                    <Label x:Name="CheckedInAtLabel" FontSize="13" TextColor="Gray" IsVisible="False" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button x:Name="BoardButton"
+                    Text="Marcar como abordado"
+                    Clicked="OnBoardClicked"
+                    BackgroundColor="#2F855A" TextColor="White" />
+
+            <Button Text="Volver" Clicked="OnBackClicked" Margin="0,8,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

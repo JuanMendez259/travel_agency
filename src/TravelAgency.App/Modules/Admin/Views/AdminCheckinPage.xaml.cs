@@ -64,10 +64,11 @@ public partial class AdminCheckinPage : ContentPage
         var bookings = trip.Bookings
             .Where(b => b.Status != BookingStatus.Cancelled)
             .ToList();
-        var boarded = bookings.Count(b => b.CheckedIn);
-        var boardedSeats = bookings.Where(b => b.CheckedIn).Sum(b => b.NumberOfSeats);
-        var totalSeats = bookings.Sum(b => b.NumberOfSeats);
-        ProgressLabel.Text = $"{boarded} de {bookings.Count} pasajeros abordaron · {boardedSeats} de {totalSeats} asientos";
+        var passengers = bookings.SelectMany(b => b.Passengers ?? new List<TripPassenger>()).ToList();
+        var boarded = bookings.Count(b => b.CheckedIn) + passengers.Count(p => p.CheckedIn);
+        var boardedSeats = bookings.Where(b => b.CheckedIn).Sum(b => b.NumberOfSeats) + passengers.Count(p => p.CheckedIn);
+        var totalSeats = bookings.Sum(b => b.NumberOfSeats) + passengers.Count;
+        ProgressLabel.Text = $"{boarded} de {bookings.Count + passengers.Count} pasajeros abordaron · {boardedSeats} de {totalSeats} asientos";
 
         if (trip.DepartureCompleted)
         {
@@ -114,7 +115,136 @@ public partial class AdminCheckinPage : ContentPage
         foreach (var booking in bookings)
         {
             PassengersLayout.Children.Add(BuildPassengerRow(booking));
+            foreach (var passenger in booking.Passengers ?? new List<TripPassenger>())
+            {
+                PassengersLayout.Children.Add(BuildTripPassengerRow(passenger, booking));
+            }
         }
+    }
+
+    private View BuildTripPassengerRow(TripPassenger passenger, Booking booking)
+    {
+        var isCancelled = booking.Status == BookingStatus.Cancelled;
+        var canToggle = !_trip!.DepartureCompleted && booking.Status != BookingStatus.Cancelled && _trip.CheckInOpen;
+
+        var infoText = "Acompañante · 1 asiento";
+        if (passenger.CheckedIn && passenger.CheckedInAt.HasValue)
+            infoText += $" · Abordó {passenger.CheckedInAt.Value.ToLocalTime():HH:mm}";
+
+        var info = new VerticalStackLayout { Spacing = 2, VerticalOptions = LayoutOptions.Center };
+        info.Children.Add(new Label
+        {
+            Text = $"{passenger.Name} (de {booking.User?.Name ?? $"#{booking.UserId}"})",
+            FontSize = 15,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = isCancelled ? Colors.Gray : null
+        });
+        info.Children.Add(new Label
+        {
+            Text = infoText,
+            FontSize = 13,
+            TextColor = Colors.Gray
+        });
+
+        var boardedLabel = new Label
+        {
+            Text = passenger.CheckedIn ? "Abordó" : "No abordó",
+            FontSize = 13,
+            FontAttributes = FontAttributes.Bold,
+            VerticalOptions = LayoutOptions.Center,
+            Margin = new Thickness(10, 0, 0, 0),
+            TextColor = passenger.CheckedIn ? Color.FromArgb("#2F855A") : Colors.Gray
+        };
+
+        var switchControl = new Switch
+        {
+            IsToggled = passenger.CheckedIn,
+            IsEnabled = canToggle,
+            BindingContext = passenger,
+            VerticalOptions = LayoutOptions.Center,
+            Margin = new Thickness(6, 0, 0, 0)
+        };
+        switchControl.Toggled += OnPassengerBoardToggledAsync;
+
+        var qrButton = new Button
+        {
+            Text = "QR",
+            FontSize = 13,
+            Padding = new Thickness(10, 4),
+            BackgroundColor = Color.FromArgb("#1976D2"),
+            TextColor = Colors.White,
+            BindingContext = (booking.Id, passenger.Id),
+            VerticalOptions = LayoutOptions.Center,
+            Margin = new Thickness(6, 0, 0, 0)
+        };
+        qrButton.Clicked += OnViewPassengerQrClickedAsync;
+
+        var right = new HorizontalStackLayout
+        {
+            VerticalOptions = LayoutOptions.Center,
+            Children = { boardedLabel, switchControl, qrButton }
+        };
+
+        var grid = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            Padding = new Thickness(12)
+        };
+        grid.Add(info, 0);
+        grid.Add(right, 1);
+
+        var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
+        var baseColor = isDark ? Color.FromArgb("#2C2C2C") : Color.FromArgb("#EEEEEE");
+        var boardedColor = Color.FromArgb("#E6F4EA");
+
+        return new Border
+        {
+            StrokeThickness = 0,
+            BackgroundColor = passenger.CheckedIn ? boardedColor : baseColor,
+            Content = grid,
+            Margin = new Thickness(0, 0, 0, 2)
+        };
+    }
+
+    private async void OnPassengerBoardToggledAsync(object? sender, ToggledEventArgs e)
+    {
+        if (sender is not Switch sw || sw.BindingContext is not TripPassenger passenger || _busy)
+            return;
+
+        if (sw.IsToggled == passenger.CheckedIn)
+            return;
+
+        _busy = true;
+        try
+        {
+            var updated = await _api.UpdatePassengerCheckinAsync(passenger.Id, sw.IsToggled);
+            if (updated is not null)
+            {
+                passenger.CheckedIn = updated.CheckedIn;
+                passenger.CheckedInAt = updated.CheckedInAt;
+            }
+            RenderAll();
+        }
+        catch (Exception ex)
+        {
+            sw.IsToggled = passenger.CheckedIn;
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async void OnViewPassengerQrClickedAsync(object? sender, EventArgs e)
+    {
+        if (sender is not Button btn || btn.BindingContext is not (int bookingId, int passengerId))
+            return;
+        await Shell.Current.GoToAsync($"bookingqr?bid={bookingId}&pid={passengerId}");
     }
 
     private View BuildPassengerRow(Booking booking)
@@ -162,10 +292,23 @@ public partial class AdminCheckinPage : ContentPage
         };
         switchControl.Toggled += OnBoardToggledAsync;
 
+        var qrButton = new Button
+        {
+            Text = "QR",
+            FontSize = 13,
+            Padding = new Thickness(10, 4),
+            BackgroundColor = Color.FromArgb("#1976D2"),
+            TextColor = Colors.White,
+            BindingContext = booking,
+            VerticalOptions = LayoutOptions.Center,
+            Margin = new Thickness(6, 0, 0, 0)
+        };
+        qrButton.Clicked += OnViewQrClickedAsync;
+
         var right = new HorizontalStackLayout
         {
             VerticalOptions = LayoutOptions.Center,
-            Children = { boardedLabel, switchControl }
+            Children = { boardedLabel, switchControl, qrButton }
         };
 
         var grid = new Grid
@@ -260,6 +403,13 @@ public partial class AdminCheckinPage : ContentPage
             "¿Reabrir la salida? Podrás volver a marcar pasajeros.", "Sí", "No");
         if (confirm)
             await UpdateDepartureAsync(null, false);
+    }
+
+    private async void OnViewQrClickedAsync(object? sender, EventArgs e)
+    {
+        if (sender is not Button btn || btn.BindingContext is not Booking booking)
+            return;
+        await Shell.Current.GoToAsync($"bookingqr?id={booking.Id}");
     }
 
     private async void OnBackClicked(object? sender, EventArgs e)
