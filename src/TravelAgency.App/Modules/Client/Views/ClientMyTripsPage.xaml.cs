@@ -8,11 +8,15 @@ public partial class ClientMyTripsPage : ContentPage
     private readonly ApiService _api;
     private readonly SessionService _session;
 
+    private List<Booking> _current = new();
+
     public ClientMyTripsPage(ApiService api, SessionService session)
     {
         InitializeComponent();
         _api = api;
         _session = session;
+        StatusPicker.ItemsSource = new[] { "Todas", "Pendientes", "Confirmadas", "Canceladas" };
+        StatusPicker.SelectedIndex = 0;
     }
 
     protected override async void OnAppearing()
@@ -20,6 +24,18 @@ public partial class ClientMyTripsPage : ContentPage
         base.OnAppearing();
         Title = $"Mis Viajes - {_session.UserName}";
         await LoadMyTripsAsync();
+    }
+
+    private BookingStatus? SelectedStatus()
+    {
+        if (StatusPicker.SelectedIndex < 0) return null;
+        return StatusPicker.SelectedIndex switch
+        {
+            1 => BookingStatus.Pending,
+            2 => BookingStatus.Confirmed,
+            3 => BookingStatus.Cancelled,
+            _ => null
+        };
     }
 
     private async Task LoadMyTripsAsync(bool showLoading = true)
@@ -33,7 +49,8 @@ public partial class ClientMyTripsPage : ContentPage
         }
         try
         {
-            MyTripsList.ItemsSource = await _api.GetUserBookingsAsync(_session.UserId);
+            _current = await _api.GetUserBookingsAsync(_session.UserId, SelectedStatus()) ?? new List<Booking>();
+            ApplySearch();
         }
         catch (Exception ex)
         {
@@ -47,6 +64,41 @@ public partial class ClientMyTripsPage : ContentPage
                 Loading.IsVisible = false;
             }
         }
+    }
+
+    private void ApplySearch()
+    {
+        var text = SearchBar.Text?.Trim();
+        IEnumerable<Booking> result = _current;
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            result = result.Where(b =>
+                (b.Trip?.Title?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (b.Trip?.Destination?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+
+        MyTripsList.ItemsSource = result.ToList();
+    }
+
+    private bool _handlingPicker;
+    private async void OnStatusChanged(object? sender, EventArgs e)
+    {
+        if (_session.UserId == 0 || _handlingPicker) return;
+        _handlingPicker = true;
+        try
+        {
+            await LoadMyTripsAsync();
+        }
+        finally
+        {
+            _handlingPicker = false;
+        }
+    }
+
+    private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        ApplySearch();
     }
 
     private async void OnRefreshing(object? sender, EventArgs e)

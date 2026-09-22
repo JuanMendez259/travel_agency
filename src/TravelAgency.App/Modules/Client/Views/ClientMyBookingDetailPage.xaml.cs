@@ -18,6 +18,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
     private readonly ApiService _api;
     private int? _tripId;
+    private int _remainingSlots;
 
     public string BookingId { get; set; } = string.Empty;
 
@@ -106,6 +107,26 @@ public partial class ClientMyBookingDetailPage : ContentPage
         if (hasPassengers)
             PassengersQrButton.Text = $"Ver QR de acompañantes ({booking.Passengers!.Count})";
 
+        var passengerCount = hasPassengers ? booking.Passengers!.Count : 0;
+        _remainingSlots = Math.Max(0, booking.NumberOfSeats - 1 - passengerCount);
+
+        if (booking.Status != BookingStatus.Cancelled && booking.NumberOfSeats > 1)
+        {
+            PassengersListLabel.IsVisible = true;
+            PassengersListLabel.Text = hasPassengers
+                ? $"Acompañantes: {string.Join(" · ", booking.Passengers!.Select(p => p.Name))}"
+                : $"Aún no registras acompañantes ({booking.NumberOfSeats - 1} asiento(s) adicionales).";
+            AddPassengersButton.IsVisible = _remainingSlots > 0;
+            AddPassengersButton.Text = _remainingSlots == 1
+                ? "Agregar acompañante"
+                : $"Agregar acompañantes (faltan {_remainingSlots})";
+        }
+        else
+        {
+            PassengersListLabel.IsVisible = false;
+            AddPassengersButton.IsVisible = false;
+        }
+
         PaymentsTotalLabel.Text = booking.Payments is { Count: > 0 }
             ? $"Total abonado: {paid:C}"
             : "";
@@ -153,6 +174,12 @@ public partial class ClientMyBookingDetailPage : ContentPage
     private async void OnPassengersQrClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync($"passengersqr?id={BookingId}");
+    }
+
+    private async void OnAddPassengersClicked(object? sender, EventArgs e)
+    {
+        if (int.TryParse(BookingId, out var id) && id > 0 && _remainingSlots > 0)
+            await Shell.Current.GoToAsync($"addpassengers?bookingId={id}&count={_remainingSlots}");
     }
 
     private async Task LoadTripMapAsync(Trip? trip)

@@ -392,18 +392,22 @@ app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request,
     return Results.Ok(user);
 }).RequireAuthorization("AdminOnly");
 
-app.MapGet("/api/users/{id}/bookings", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
+app.MapGet("/api/users/{id}/bookings", async (int id, AppDbContext db, ClaimsPrincipal principal, string? status) =>
 {
     var tokenUserId = GetUserId(principal);
     if (tokenUserId != id && !principal.IsInRole("Admin"))
         return Results.Forbid();
 
-    return Results.Ok(await db.Bookings
+    var query = db.Bookings
         .Include(b => b.Trip)
         .Include(b => b.Payments)
-        .Where(b => b.UserId == id)
-        .OrderByDescending(b => b.BookingDate)
-        .ToListAsync());
+        .Include(b => b.Passengers)
+        .Where(b => b.UserId == id);
+
+    if (TryParseBookingStatus(status, out var parsed))
+        query = query.Where(b => b.Status == parsed);
+
+    return Results.Ok(await query.OrderByDescending(b => b.BookingDate).ToListAsync());
 }).RequireAuthorization();
 
 app.MapGet("/api/users/{id}/notifications", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
@@ -418,14 +422,19 @@ app.MapGet("/api/users/{id}/notifications", async (int id, AppDbContext db, Clai
         .ToListAsync());
 }).RequireAuthorization();
 
-app.MapGet("/api/bookings", async (AppDbContext db) =>
-    await db.Bookings
-        .Where(b => b.Status == BookingStatus.Pending)
+app.MapGet("/api/bookings", async (AppDbContext db, string? status) =>
+{
+    var query = db.Bookings
         .Include(b => b.Trip)
         .Include(b => b.User)
-        .OrderByDescending(b => b.BookingDate)
-        .ToListAsync())
-    .RequireAuthorization("AdminOnly");
+        .Include(b => b.Passengers)
+        .AsQueryable();
+
+    if (TryParseBookingStatus(status, out var parsed))
+        query = query.Where(b => b.Status == parsed);
+
+    return Results.Ok(await query.OrderByDescending(b => b.BookingDate).ToListAsync());
+}).RequireAuthorization("AdminOnly");
 
 app.MapPost("/api/bookings", async (Booking booking, AppDbContext db, ClaimsPrincipal principal) =>
 {
@@ -642,17 +651,21 @@ app.MapGet("/api/trips/{id}/capacity-requests", async (int id, AppDbContext db) 
         .OrderByDescending(c => c.CreatedAt)
         .ToListAsync()).RequireAuthorization("AdminOnly");
 
-app.MapGet("/api/trips/{id}/bookings", async (int id, AppDbContext db) =>
+app.MapGet("/api/trips/{id}/bookings", async (int id, AppDbContext db, string? status) =>
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
-    return Results.Ok(await db.Bookings
+    var query = db.Bookings
         .Include(b => b.User)
         .Include(b => b.Payments)
-        .Where(b => b.TripId == id)
-        .OrderByDescending(b => b.BookingDate)
-        .ToListAsync());
+        .Include(b => b.Passengers)
+        .Where(b => b.TripId == id);
+
+    if (TryParseBookingStatus(status, out var parsed))
+        query = query.Where(b => b.Status == parsed);
+
+    return Results.Ok(await query.OrderByDescending(b => b.BookingDate).ToListAsync());
 }).RequireAuthorization("AdminOnly");
 
 app.MapPut("/api/trips/{id}/route", async (int id, UpdateTripRouteRequest request, AppDbContext db) =>
@@ -1051,6 +1064,16 @@ static int GetUserId(ClaimsPrincipal principal)
     var value = principal.FindFirstValue(ClaimTypes.NameIdentifier)
         ?? principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
     return int.TryParse(value, out var id) ? id : 0;
+}
+
+static bool TryParseBookingStatus(string? status, out BookingStatus parsed)
+{
+    parsed = default;
+    if (string.IsNullOrWhiteSpace(status))
+        return false;
+    if (status.Equals("All", StringComparison.OrdinalIgnoreCase))
+        return false;
+    return Enum.TryParse(status, ignoreCase: true, out parsed) && Enum.IsDefined(parsed);
 }
 
 static string GenerateQrToken()

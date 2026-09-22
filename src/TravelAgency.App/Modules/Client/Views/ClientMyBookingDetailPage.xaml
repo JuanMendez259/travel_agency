@@ -29,6 +29,12 @@
                     <Label Text="Mi código QR" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center" />
                     <Image x:Name="QrImage" HeightRequest="240" WidthRequest="240" HorizontalOptions="Center" />
                     <Label Text="Preséntalo en el check-in de tu salida." FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+                    <Label x:Name="PassengersListLabel" FontSize="13" TextColor="Gray" HorizontalOptions="Center" IsVisible="False" />
+                    <Button x:Name="AddPassengersButton"
+                            Text="Agregar acompañantes"
+                            Clicked="OnAddPassengersClicked"
+                            IsVisible="False"
+                            BackgroundColor="#2F855A" TextColor="White" />
                     <Button x:Name="PassengersQrButton"
                             Text="Ver QR de acompañantes"
                             Clicked="OnPassengersQrClicked"

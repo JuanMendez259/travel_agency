@@ -19,12 +19,7 @@ public class ApiService
         _http = new HttpClient { BaseAddress = new Uri(BaseUrl) };
     }
 
-    public static string BaseUrl { get; set; } =
-#if DEBUG
-        "https://localhost:7264";
-#else
-        "https://tu-servidor-produccion.com";
-#endif
+    public static string BaseUrl { get; set; } = "https://travelagency-production-f6cf.up.railway.app";
 
     public static string? ResolveUrl(string? url)
     {
@@ -83,17 +78,20 @@ public class ApiService
     public Task<Trip?> GetTripAsync(int id) =>
         _http.GetFromJsonAsync<Trip>($"/api/trips/{id}", JsonOptions);
 
-    public Task<List<Booking>?> GetBookingsAsync() =>
-        _http.GetFromJsonAsync<List<Booking>>("/api/bookings", JsonOptions);
+    public Task<List<Booking>?> GetBookingsAsync(BookingStatus? status = null) =>
+        _http.GetFromJsonAsync<List<Booking>>($"/api/bookings{BookingStatusQuery(status)}", JsonOptions);
 
-    public Task<List<Booking>?> GetUserBookingsAsync(int userId) =>
-        _http.GetFromJsonAsync<List<Booking>>($"/api/users/{userId}/bookings", JsonOptions);
+    public Task<List<Booking>?> GetUserBookingsAsync(int userId, BookingStatus? status = null) =>
+        _http.GetFromJsonAsync<List<Booking>>($"/api/users/{userId}/bookings{BookingStatusQuery(status)}", JsonOptions);
 
     public Task<Booking?> GetBookingAsync(int id) =>
         _http.GetFromJsonAsync<Booking>($"/api/bookings/{id}", JsonOptions);
 
-    public Task<List<Booking>?> GetTripBookingsAsync(int tripId) =>
-        _http.GetFromJsonAsync<List<Booking>>($"/api/trips/{tripId}/bookings", JsonOptions);
+    public Task<List<Booking>?> GetTripBookingsAsync(int tripId, BookingStatus? status = null) =>
+        _http.GetFromJsonAsync<List<Booking>>($"/api/trips/{tripId}/bookings{BookingStatusQuery(status)}", JsonOptions);
+
+    private static string BookingStatusQuery(BookingStatus? status) =>
+        status is null ? "" : $"?status={Uri.EscapeDataString(status.Value.ToString())}";
 
     public Task<AdminStats?> GetAdminStatsAsync() =>
         _http.GetFromJsonAsync<AdminStats>("/api/admin/stats", JsonOptions);

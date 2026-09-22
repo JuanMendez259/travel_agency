@@ -8,7 +8,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="12">
 
-            <Label Text="Tu reserva incluye más de un asiento. Indica quiénes viajarán contigo para generar su código QR."
+            <Label Text="Registra a las personas que viajarán contigo para generar su código QR individual."
                    FontSize="15" />
 
             <VerticalStackLayout x:Name="EntriesLayout" Spacing="10" Margin="0,10,0,20" />
@@ -17,8 +17,8 @@
                     Text="Guardar pasajeros"
                     Clicked="OnConfirmClicked"
                     BackgroundColor="#2F855A" TextColor="White" />
-            <Button Text="Cancelar (sin pasajeros)"
-                    Clicked="OnCancelClicked"
+            <Button Text="Volver a mi reserva"
+                    Clicked="OnBackClicked"
                     Margin="0,8,0,0" />
         </VerticalStackLayout>
     </ScrollView>

@@ -6,6 +6,8 @@ namespace TravelAgency.App.Modules.Admin.Views;
 public partial class AdminBookingsPage : ContentPage
 {
     private readonly ApiService _api;
+    private BookingStatus? _statusFilter = BookingStatus.Pending;
+    private List<Booking> _current = new();
 
     public AdminBookingsPage(ApiService api)
     {
@@ -16,6 +18,7 @@ public partial class AdminBookingsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        RenderStatusChips();
         await LoadBookingsAsync();
     }
 
@@ -28,7 +31,8 @@ public partial class AdminBookingsPage : ContentPage
         }
         try
         {
-            BookingsList.ItemsSource = await _api.GetBookingsAsync();
+            _current = await _api.GetBookingsAsync(_statusFilter) ?? new List<Booking>();
+            ApplySearch();
         }
         catch (Exception ex)
         {
@@ -42,6 +46,73 @@ public partial class AdminBookingsPage : ContentPage
                 Loading.IsVisible = false;
             }
         }
+    }
+
+    private void ApplySearch()
+    {
+        var text = SearchBar.Text?.Trim();
+        IEnumerable<Booking> result = _current;
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            result = result.Where(b =>
+                (b.Trip?.Title?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (b.User?.Name?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (b.User?.Email?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (b.Passengers?.Any(p => p.Name.Contains(text, StringComparison.OrdinalIgnoreCase)) ?? false));
+        }
+
+        BookingsList.ItemsSource = result.ToList();
+    }
+
+    private bool _handlingChip;
+    private async void OnStatusChipClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button chip || _handlingChip) return;
+
+        _statusFilter = chip.CommandParameter?.ToString() switch
+        {
+            "Pending" => BookingStatus.Pending,
+            "Confirmed" => BookingStatus.Confirmed,
+            "Cancelled" => BookingStatus.Cancelled,
+            _ => null
+        };
+
+        RenderStatusChips();
+        _handlingChip = true;
+        try
+        {
+            await LoadBookingsAsync();
+        }
+        finally
+        {
+            _handlingChip = false;
+        }
+    }
+
+    private void RenderStatusChips()
+    {
+        var defaultColor = Color.FromArgb("#E2E8F0");
+        var defaultText = Color.FromArgb("#1A202C");
+        var selectedColor = Color.FromArgb("#2B6CB0");
+        var selectedText = Colors.White;
+
+        void Style(Button? chip, bool selected)
+        {
+            if (chip is null) return;
+            chip.BackgroundColor = selected ? selectedColor : defaultColor;
+            chip.TextColor = selected ? selectedText : defaultText;
+        }
+
+        Style(ChipPending, _statusFilter == BookingStatus.Pending);
+        Style(ChipConfirmed, _statusFilter == BookingStatus.Confirmed);
+        Style(ChipCancelled, _statusFilter == BookingStatus.Cancelled);
+        Style(ChipAll, _statusFilter is null);
+    }
+
+    private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        ApplySearch();
     }
 
     private async void OnRefreshing(object? sender, EventArgs e)

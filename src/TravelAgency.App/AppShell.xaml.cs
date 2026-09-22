@@ -8,6 +8,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("trip", typeof(TravelAgency.App.Modules.Client.Views.ClientTripDetailPage));
         Routing.RegisterRoute("mybooking", typeof(TravelAgency.App.Modules.Client.Views.ClientMyBookingDetailPage));
         Routing.RegisterRoute("passengersqr", typeof(TravelAgency.App.Modules.Client.Views.ClientPassengersQrPage));
+        Routing.RegisterRoute("addpassengers", typeof(TravelAgency.App.Modules.Client.Views.AddPassengersPage));
         Routing.RegisterRoute("ratetrip", typeof(TravelAgency.App.Modules.Client.Views.ClientRateTripPage));
         Routing.RegisterRoute("booking", typeof(TravelAgency.App.Modules.Admin.Views.AdminBookingDetailPage));
         Routing.RegisterRoute("admintrip", typeof(TravelAgency.App.Modules.Admin.Views.AdminTripDetailPage));
