@@ -9,11 +9,15 @@
   #map { height: 100%; width: 100%; }
   #hint { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.72); color: #fff; padding: 8px 14px; border-radius: 20px; font-size: 13px; z-index: 10; pointer-events: none; max-width: 92%; text-align: center; }
   #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #f5f5f5; color: #444; font-family: "Segoe UI", Arial, sans-serif; font-size: 14px; z-index: 5; }
+  #place { position: absolute; top: 12px; left: 12px; z-index: 20; width: min(330px, calc(100% - 96px)); padding: 10px 14px; font-size: 14px; border: none; border-radius: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.28); outline: none; box-sizing: border-box; background: #fff; color: #222; }
+  .pac-container { z-index: 2000; font-family: "Segoe UI", Arial, sans-serif; }
+  @media (prefers-color-scheme: dark) { #place { background: #2c2c2c; color: #eee; } }
 </style>
 </head>
 <body>
 <div id="hint">Cargando mapa…</div>
 <div id="loading">Cargando mapa…</div>
+<input id="place" type="text" placeholder="Escribe una ciudad o lugar…" autocomplete="off" />
 <div id="map"></div>
 <script>
   {{CFG}}
@@ -33,12 +37,13 @@
   window.app_call = function(u){ send(u); };
 
   function updateHint(){
+    HINT.style.top = readOnly ? '10px' : '62px';
     if (readOnly) { HINT.textContent = 'Recorrido del viaje · Origen (O), destino (D) y puntos de interés.'; return; }
     var t;
-    if (mode === 'origin') t = 'Haz clic en el mapa (o arrastra el marcador verde O) para fijar el ORIGEN.';
-    else if (mode === 'dest') t = 'Haz clic en el mapa (o arrastra el marcador rojo D) para fijar el DESTINO.';
-    else if (mode === 'poi') t = 'Haz clic en el mapa para agregar un PUNTO DE INTERÉS.';
-    else t = 'Modo: navegar. Usa los botones inferiores para marcar origen, destino o agregar puntos.';
+    if (mode === 'origin') t = 'Escribe la ciudad arriba para autocompletar, o haz clic/arrastra el marcador O para fijar el ORIGEN.';
+    else if (mode === 'dest') t = 'Escribe la ciudad arriba para autocompletar, o haz clic/arrastra el marcador D para fijar el DESTINO.';
+    else if (mode === 'poi') t = 'Escribe un lugar arriba o haz clic en el mapa para agregar el PUNTO DE INTERÉS.';
+    else t = 'Usa el buscador para geolocalizar o los botones inferiores para marcar origen, destino o puntos.';
     HINT.textContent = t;
   }
 
@@ -155,6 +160,7 @@
       return;
     }
     readOnly = !!CFG.readOnly;
+    document.getElementById('place').style.display = readOnly ? 'none' : 'block';
     var hasOrigin = CFG.originLat != null;
     var hasDest = CFG.destLat != null;
     var center = hasDest ? {lat:CFG.destLat, lng:CFG.destLng} : (hasOrigin ? {lat:CFG.originLat, lng:CFG.originLng} : {lat:19.4326, lng:-99.1332});
@@ -185,8 +191,41 @@
     (CFG.pois || []).forEach(function(p){ addPoi(p); });
     drawRoute();
     updateHint();
+
+    var placeInput = document.getElementById('place');
+    if (!readOnly && typeof google.maps.places !== 'undefined') {
+      try {
+        var autocomplete = new google.maps.places.Autocomplete(placeInput, {
+          types: ['geocode'],
+          fields: ['geometry', 'name', 'formatted_address']
+        });
+        autocomplete.addListener('place_changed', function(){
+          var p = autocomplete.getPlace();
+          if (!p || !p.geometry || !p.geometry.location) {
+            HINT.textContent = 'No se encontró la ubicación para ese texto.';
+            return;
+          }
+          var lat = p.geometry.location.lat();
+          var lng = p.geometry.location.lng();
+          if (mode === 'origin') {
+            placeOrigin(lat, lng);
+            send('route?kind=origin&lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+            mode = 'pan';
+          } else if (mode === 'dest') {
+            placeDest(lat, lng);
+            send('route?kind=dest&lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+            mode = 'pan';
+          } else if (mode === 'poi') {
+            send('pick?lat=' + lat.toFixed(6) + '&lng=' + lng.toFixed(6));
+          } else {
+            map.panTo({lat:lat, lng:lng});
+          }
+          updateHint();
+        });
+      } catch (err) { /* autocompletar no disponible */ }
+    }
   }
 </script>
-<script src="https://maps.googleapis.com/maps/api/js?key={{KEY}}&callback=initMap"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{KEY}}&libraries=places&callback=initMap"></script>
 </body>
 </html>
