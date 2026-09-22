@@ -69,7 +69,7 @@ public partial class ClientPassengersQrPage : ContentPage
             var layout = new VerticalStackLayout { Spacing = 8 };
             layout.Children.Add(new Label
             {
-                Text = passenger.Name,
+                Text = passenger.Name + (passenger.IsChild ? " (Niño)" : " (Adulto)"),
                 FontSize = 17,
                 FontAttributes = FontAttributes.Bold,
                 TextColor = isCancelled ? Colors.Gray : null,

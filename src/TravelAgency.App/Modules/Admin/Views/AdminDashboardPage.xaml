@@ -35,6 +35,8 @@
                 <VerticalStackLayout>
                     <Label Text="Precio (por asiento)" />
                     <Entry x:Name="PriceEntry" Keyboard="Numeric" />
+                    <Label Text="Precio niño (opcional)" FontSize="12" TextColor="Gray" />
+                    <Entry x:Name="ChildPriceEntry" Keyboard="Numeric" />
                 </VerticalStackLayout>
                 <VerticalStackLayout Grid.Column="1">
                     <Label Text="Capacidad total (asientos)" />

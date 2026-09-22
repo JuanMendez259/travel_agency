@@ -186,9 +186,13 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
-    public async Task<Booking?> CreateBookingAsync(Booking booking)
+    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers)
     {
-        var response = await _http.PostAsJsonAsync("/api/bookings", booking, JsonOptions);
+        var list = passengers?
+            .Select(p => new PassengerInput(p.Name, p.Age))
+            .ToList();
+        var response = await _http.PostAsJsonAsync("/api/bookings",
+            new CreateBookingRequest(tripId, seats, list), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -224,10 +228,13 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
-    public async Task<List<TripPassenger>?> CreatePassengersAsync(int bookingId, string[] names)
+    public async Task<List<TripPassenger>?> CreatePassengersAsync(int bookingId, IEnumerable<(string Name, int Age)> passengers)
     {
+        var list = passengers
+            .Select(p => new PassengerInput(p.Name, p.Age))
+            .ToList();
         var response = await _http.PostAsJsonAsync($"/api/bookings/{bookingId}/passengers",
-            new CreatePassengersRequest(names), JsonOptions);
+            new CreatePassengersRequest(list), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<List<TripPassenger>>(JsonOptions);
     }
@@ -275,8 +282,10 @@ public class ApiService
     private record UpdateBookingStatusRequest(BookingStatus Status);
     private record UpdateBookingCheckinRequest(bool CheckedIn);
     private record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
-    private record CreatePassengersRequest(string[] Names);
+    private record CreatePassengersRequest(List<PassengerInput>? Passengers);
     private record UpdatePassengerCheckinRequest(bool CheckedIn);
+    private record PassengerInput(string? Name, int? Age);
+    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers);
 
     public async Task<byte[]> GetBytesAsync(string url)
     {

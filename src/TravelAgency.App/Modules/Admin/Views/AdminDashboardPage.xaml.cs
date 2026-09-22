@@ -68,6 +68,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 StartDate = StartDatePicker.Date.GetValueOrDefault(),
                 EndDate = EndDatePicker.Date.GetValueOrDefault(),
                 Price = decimal.TryParse(PriceEntry.Text, out var price) ? price : 0,
+                ChildPrice = decimal.TryParse(ChildPriceEntry.Text, out var childPrice) ? childPrice : (decimal?)null,
                 Capacity = int.TryParse(CapacityEntry.Text, out var capacity) ? capacity : 0,
                 TransportType = (TransportType)Math.Max(0, TransportTypePicker.SelectedIndex),
                 IsActive = true,
@@ -161,6 +162,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         StartDatePicker.Date = trip.StartDate;
         EndDatePicker.Date = trip.EndDate;
         PriceEntry.Text = trip.Price.ToString();
+        ChildPriceEntry.Text = trip.ChildPrice?.ToString();
         CapacityEntry.Text = trip.Capacity.ToString();
         TransportTypePicker.SelectedIndex = (int)trip.TransportType;
 
@@ -187,6 +189,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         TitleEntry.Text = string.Empty;
         DestinationEntry.Text = string.Empty;
         PriceEntry.Text = string.Empty;
+        ChildPriceEntry.Text = string.Empty;
         CapacityEntry.Text = string.Empty;
         DescriptionEditor.Text = string.Empty;
         TransportTypePicker.SelectedIndex = 0;

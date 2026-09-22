@@ -51,6 +51,11 @@ public partial class ClientTripDetailPage : ContentPage
         DestinationLabel.Text = _trip.Destination;
         DatesLabel.Text = $"{_trip.StartDate:dd/MM/yyyy} al {_trip.EndDate:dd/MM/yyyy}";
         PriceLabel.Text = _trip.Price.ToString("C");
+        if (_trip.ChildPrice.HasValue)
+        {
+            ChildPriceLabel.Text = $"Niños de 0 a 11 años: {_trip.ChildPrice.Value:C}";
+            ChildPriceLabel.IsVisible = true;
+        }
         DescriptionLabel.Text = _trip.Description;
         TransportLabel.Text = $"Transporte: {TransportTypeConverter.ToDisplay(_trip.TransportType)}";
 
@@ -112,19 +117,15 @@ public partial class ClientTripDetailPage : ContentPage
         BookButton.IsEnabled = false;
         try
         {
-            var booking = new Booking
+            if (seats > 1)
             {
-                UserId = _session.UserId,
-                TripId = _trip.Id,
-                NumberOfSeats = seats,
-            };
+                await Shell.Current.GoToAsync($"addpassengers?tripId={_trip.Id}&seats={seats}");
+                return;
+            }
 
-            var created = await _api.CreateBookingAsync(booking);
+            var created = await _api.CreateBookingAsync(_trip.Id, 1, null);
 
-            var message = seats > 1
-                ? $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. Registra a tus acompañantes en el detalle de tu reserva para generar sus códigos QR."
-                : $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. Pronto la confirmaremos.";
-
+            var message = $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. Pronto la confirmaremos.";
             await DisplayAlertAsync("Reserva creada", message, "OK");
 
             if (created is not null && created.Id > 0)

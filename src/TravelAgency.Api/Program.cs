@@ -120,6 +120,8 @@ using (var scope = app.Services.CreateScope())
     await EnsurePassengersTableAsync(db, provider);
     await EnsureTripFinalizedColumnAsync(db, provider);
     await EnsureRatingsTableAsync(db, provider);
+    await EnsureChildPriceColumnAsync(db, provider);
+    await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
     await EnsureSeedUsersAsync(db);
 }
@@ -258,6 +260,7 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     trip.StartDate = input.StartDate;
     trip.EndDate = input.EndDate;
     trip.Price = input.Price;
+    trip.ChildPrice = input.ChildPrice;
     trip.Capacity = input.Capacity;
     trip.TransportType = input.TransportType;
     trip.IsActive = input.IsActive;
@@ -436,25 +439,63 @@ app.MapGet("/api/bookings", async (AppDbContext db, string? status) =>
     return Results.Ok(await query.OrderByDescending(b => b.BookingDate).ToListAsync());
 }).RequireAuthorization("AdminOnly");
 
-app.MapPost("/api/bookings", async (Booking booking, AppDbContext db, ClaimsPrincipal principal) =>
+app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
-    var trip = await db.Trips.FindAsync(booking.TripId);
+    var trip = await db.Trips.FindAsync(request.TripId);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
-    if (booking.NumberOfSeats < 1)
+    if (request.NumberOfSeats < 1)
         return Results.BadRequest("Indica al menos un asiento.");
 
-    if (booking.NumberOfSeats > trip.AvailableSeats)
+    if (request.NumberOfSeats > trip.AvailableSeats)
         return Results.BadRequest("No hay suficientes asientos disponibles.");
 
-    booking.UserId = GetUserId(principal);
-    booking.BookingDate = DateTime.UtcNow;
-    booking.Status = BookingStatus.Pending;
-    booking.TotalAmount = trip.Price * booking.NumberOfSeats;
-    booking.QrToken = GenerateQrToken();
+    var passengers = new List<TripPassenger>();
+    if (request.Passengers is { Count: > 0 })
+    {
+        if (request.Passengers.Count > request.NumberOfSeats - 1)
+            return Results.BadRequest($"Esta reserva admite máximo {request.NumberOfSeats - 1} pasajero(s) adicional(es).");
+
+        foreach (var input in request.Passengers)
+        {
+            var name = input.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                return Results.BadRequest("Todos los pasajeros deben tener nombre.");
+
+            passengers.Add(new TripPassenger
+            {
+                Name = name.Length <= 120 ? name : name[..120],
+                Age = input.Age,
+                IsChild = IsChildAge(input.Age),
+                QrToken = GenerateQrToken()
+            });
+        }
+    }
+    else if (request.NumberOfSeats > 1)
+    {
+        // reserva multiasiento sin pasajeros: se permite crear y agregarlos después
+    }
+
+    var booking = new Booking
+    {
+        UserId = GetUserId(principal),
+        TripId = request.TripId,
+        NumberOfSeats = request.NumberOfSeats,
+        BookingDate = DateTime.UtcNow,
+        Status = BookingStatus.Pending,
+        QrToken = GenerateQrToken()
+    };
+    booking.TotalAmount = ComputeBookingTotal(trip, passengers);
 
     db.Bookings.Add(booking);
     await db.SaveChangesAsync();
+
+    if (passengers.Count > 0)
+    {
+        foreach (var p in passengers) p.BookingId = booking.Id;
+        db.TripPassengers.AddRange(passengers);
+        await db.SaveChangesAsync();
+    }
 
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
@@ -480,33 +521,43 @@ app.MapPost("/api/bookings/{id}/passengers", async (int id, CreatePassengersRequ
     if (userId != booking.UserId && !principal.IsInRole("Admin") && !principal.IsInRole("Coordinador"))
         return Results.Forbid();
 
-    var requestedCount = request.Names?.Length ?? 0;
-    var names = request.Names?
-        .Select(n => n?.Trim())
-        .Where(n => !string.IsNullOrWhiteSpace(n))
-        .Select(n => n!)
-        .ToList() ?? new List<string>();
-
-    if (requestedCount == 0 || names.Count != requestedCount)
-        return Results.BadRequest("Todos los pasajeros deben tener nombre.");
+    if (request.Passengers is null || request.Passengers.Count == 0)
+        return Results.BadRequest("Indica al menos un pasajero.");
 
     var existing = await db.TripPassengers.CountAsync(p => p.BookingId == id);
     var availableSlots = booking.NumberOfSeats - 1 - existing;
-    if (names.Count == 0)
-        return Results.BadRequest("Indica al menos un pasajero.");
 
-    if (names.Count > availableSlots)
+    if (request.Passengers.Count > availableSlots)
         return Results.BadRequest($"Esta reserva admite máximo {availableSlots} pasajero(s) adicional(es).");
 
-    var passengers = names.Select(n => new TripPassenger
+    var trip = await db.Trips.FindAsync(booking.TripId);
+
+    var passengers = new List<TripPassenger>();
+    foreach (var input in request.Passengers)
     {
-        BookingId = id,
-        Name = n.Length <= 120 ? n : n[..120],
-        QrToken = GenerateQrToken()
-    }).ToList();
+        var name = input.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            return Results.BadRequest("Todos los pasajeros deben tener nombre.");
+
+        passengers.Add(new TripPassenger
+        {
+            BookingId = id,
+            Name = name.Length <= 120 ? name : name[..120],
+            Age = input.Age,
+            IsChild = IsChildAge(input.Age),
+            QrToken = GenerateQrToken()
+        });
+    }
 
     db.TripPassengers.AddRange(passengers);
     await db.SaveChangesAsync();
+
+    if (trip is not null)
+    {
+        var all = await db.TripPassengers.Where(p => p.BookingId == id).ToListAsync();
+        booking.TotalAmount = ComputeBookingTotal(trip, all);
+        await db.SaveChangesAsync();
+    }
 
     return Results.Created($"/api/bookings/{id}/passengers", passengers);
 }).RequireAuthorization();
@@ -1066,6 +1117,18 @@ static int GetUserId(ClaimsPrincipal principal)
     return int.TryParse(value, out var id) ? id : 0;
 }
 
+static bool IsChildAge(int? age) => age is >= 0 and <= 11;
+
+static decimal ComputeBookingTotal(Trip trip, IEnumerable<TripPassenger> passengers)
+{
+    var total = trip.Price;
+    foreach (var p in passengers)
+    {
+        total += p.IsChild && trip.ChildPrice.HasValue ? trip.ChildPrice.Value : trip.Price;
+    }
+    return total;
+}
+
 static bool TryParseBookingStatus(string? status, out BookingStatus parsed)
 {
     parsed = default;
@@ -1386,6 +1449,32 @@ static async Task EnsureRatingsTableAsync(AppDbContext db, string provider)
         : "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_TripRatings_UserId_TripId\" ON \"TripRatings\" (\"UserId\", \"TripId\");");
 }
 
+static async Task EnsureChildPriceColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "ChildPrice", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"ChildPrice\" TEXT NULL;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"ChildPrice\" numeric(18,2) NULL;");
+    }
+}
+
+static async Task EnsurePassengerAgeColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "TripPassengers", "Age", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"TripPassengers\" ADD COLUMN \"Age\" INTEGER NULL;"
+            : "ALTER TABLE \"TripPassengers\" ADD COLUMN \"Age\" integer NULL;");
+    }
+    if (!await ColumnExistsAsync(db, "TripPassengers", "IsChild", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"TripPassengers\" ADD COLUMN \"IsChild\" INTEGER NOT NULL DEFAULT 0;"
+            : "ALTER TABLE \"TripPassengers\" ADD COLUMN \"IsChild\" boolean NOT NULL DEFAULT false;");
+    }
+}
+
 static async Task EnsureAuditLogTableAsync(AppDbContext db, string provider)
 {
     await TryExecAsync(db, provider == "sqlite"
@@ -1493,7 +1582,9 @@ static async Task EnsureSeedUsersAsync(AppDbContext db)
 record UpdateBookingStatusRequest(BookingStatus Status);
 record UpdateBookingCheckinRequest(bool CheckedIn);
 record UpdatePassengerCheckinRequest(bool CheckedIn);
-record CreatePassengersRequest(string[]? Names);
+record PassengerInput(string? Name, int? Age);
+record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers);
+record CreatePassengersRequest(List<PassengerInput>? Passengers);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);
 record UpdateTripRatingRequest(int Rating, string? Comment);

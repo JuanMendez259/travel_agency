@@ -59,6 +59,8 @@ public partial class AdminTripDetailPage : ContentPage
         DestinationLabel.Text = _trip.Destination;
         DatesLabel.Text = $"{_trip.StartDate:dd/MM/yyyy} al {_trip.EndDate:dd/MM/yyyy}";
         PriceLabel.Text = $"{_trip.Price:C} por asiento";
+        if (_trip.ChildPrice.HasValue)
+            PriceLabel.Text += $" · Niño: {_trip.ChildPrice.Value:C}";
         TransportLabel.Text = $"Transporte: {TransportTypeConverter.ToDisplay(_trip.TransportType)}";
         StatusLabel.Text = _trip.IsActive ? "Estado: Publicado" : "Estado: Inactivo";
         DescriptionLabel.Text = _trip.Description;

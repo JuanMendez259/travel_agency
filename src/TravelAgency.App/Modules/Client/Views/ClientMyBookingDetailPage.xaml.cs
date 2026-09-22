@@ -114,7 +114,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
         {
             PassengersListLabel.IsVisible = true;
             PassengersListLabel.Text = hasPassengers
-                ? $"Acompañantes: {string.Join(" · ", booking.Passengers!.Select(p => p.Name))}"
+                ? $"Acompañantes: {string.Join(" · ", booking.Passengers!.Select(p => p.Name + (p.IsChild ? " (Niño)" : " (Adulto)")))}"
                 : $"Aún no registras acompañantes ({booking.NumberOfSeats - 1} asiento(s) adicionales).";
             AddPassengersButton.IsVisible = _remainingSlots > 0;
             AddPassengersButton.Text = _remainingSlots == 1

@@ -9,6 +9,7 @@ public class Trip
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal Price { get; set; }
+    public decimal? ChildPrice { get; set; }
     public int Capacity { get; set; }
     public int AvailableSeats { get; set; }
     public TransportType TransportType { get; set; }

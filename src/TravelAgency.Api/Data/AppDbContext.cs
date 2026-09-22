@@ -33,6 +33,7 @@ public class AppDbContext : DbContext
             entity.Property(t => t.Title).HasMaxLength(200).IsRequired();
             entity.Property(t => t.Destination).HasMaxLength(150).IsRequired();
             entity.Property(t => t.Price).HasPrecision(18, 2);
+            entity.Property(t => t.ChildPrice).HasPrecision(18, 2);
         });
 
         modelBuilder.Entity<Booking>(entity =>
