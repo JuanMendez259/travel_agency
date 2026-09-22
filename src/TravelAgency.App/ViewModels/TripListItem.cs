@@ -24,6 +24,8 @@ public class TripListItem
 
     public bool HasAvailability => AvailableSeats > 0;
 
+    public bool IsPaused => !Trip.IsActive;
+
     public string AvailabilityText => HasAvailability
         ? $"{AvailableSeats} asientos disponibles"
         : "Sin cupo";

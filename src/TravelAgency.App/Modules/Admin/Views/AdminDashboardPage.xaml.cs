@@ -71,7 +71,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 ChildPrice = decimal.TryParse(ChildPriceEntry.Text, out var childPrice) ? childPrice : (decimal?)null,
                 Capacity = int.TryParse(CapacityEntry.Text, out var capacity) ? capacity : 0,
                 TransportType = (TransportType)Math.Max(0, TransportTypePicker.SelectedIndex),
-                IsActive = true,
+                IsActive = ActiveSwitch.IsToggled,
             };
 
             if (string.IsNullOrEmpty(trip.Title) || string.IsNullOrEmpty(trip.Destination))
@@ -165,6 +165,8 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ChildPriceEntry.Text = trip.ChildPrice?.ToString();
         CapacityEntry.Text = trip.Capacity.ToString();
         TransportTypePicker.SelectedIndex = (int)trip.TransportType;
+        ActiveSwitch.IsToggled = trip.IsActive;
+        ApplyActiveState();
 
         ImagePreview.Source = null;
         ImagePreview.IsVisible = false;
@@ -193,11 +195,30 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         CapacityEntry.Text = string.Empty;
         DescriptionEditor.Text = string.Empty;
         TransportTypePicker.SelectedIndex = 0;
+        ActiveSwitch.IsToggled = true;
+        ApplyActiveState();
         _selectedImage = null;
         ImagePreview.Source = null;
         ImagePreview.IsVisible = false;
         ImageNameLabel.Text = string.Empty;
         ImageNameLabel.IsVisible = false;
+    }
+
+    private void OnActiveToggled(object? sender, ToggledEventArgs e)
+    {
+        ApplyActiveState();
+    }
+
+    private void ApplyActiveState()
+    {
+        var active = ActiveSwitch.IsToggled;
+        ActiveStateLabel.Text = active ? "Activo" : "Pausado";
+        ActiveStateLabel.TextColor = active
+            ? (Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black)
+            : Color.FromArgb("#C53030");
+        ActiveHintLabel.Text = active
+            ? "Los clientes podrán verlo y reservar."
+            : "No aparecerá para nuevas reservas; las existentes se mantienen.";
     }
 
     private async void OnPickImageClicked(object? sender, EventArgs e)

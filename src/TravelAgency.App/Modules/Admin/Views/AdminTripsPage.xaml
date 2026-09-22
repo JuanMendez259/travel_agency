@@ -38,6 +38,13 @@
                                        HeightRequest="80" Aspect="AspectFill" />
                                 <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
                                     <Label Text="{Binding Trip.Title}" FontSize="17" FontAttributes="Bold" />
+                                    <Label Text="PAUSADO" FontSize="12" FontAttributes="Bold" TextColor="#C53030">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsPaused}" Value="False">
+                                                <Setter Property="IsVisible" Value="False" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
                                     <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
                                     <Label Text="{Binding TransportText}" FontSize="13" TextColor="Gray" />
                                     <Label Text="{Binding Trip.Price, StringFormat='{0:C} por asiento'}" FontSize="13" TextColor="Gray" />

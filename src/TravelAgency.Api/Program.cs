@@ -444,6 +444,9 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     var trip = await db.Trips.FindAsync(request.TripId);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
+    if (!trip.IsActive)
+        return Results.BadRequest("El viaje está pausado y no acepta nuevas reservas.");
+
     if (request.NumberOfSeats < 1)
         return Results.BadRequest("Indica al menos un asiento.");
 
