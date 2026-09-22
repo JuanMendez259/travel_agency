@@ -202,7 +202,7 @@ public partial class AddPassengersPage : ContentPage
                     $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. Ya puedes ver tus códigos QR.",
                     "OK");
                 if (created is not null && created.Id > 0)
-                    await Shell.Current.GoToAsync($"mybooking?id={created.Id}");
+                    await Shell.Current.GoToAsync($"//mytrips/mybooking?id={created.Id}");
             }
             else
             {

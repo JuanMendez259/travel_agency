@@ -129,7 +129,7 @@ public partial class ClientTripDetailPage : ContentPage
             await DisplayAlertAsync("Reserva creada", message, "OK");
 
             if (created is not null && created.Id > 0)
-                await Shell.Current.GoToAsync($"mybooking?id={created.Id}");
+                await Shell.Current.GoToAsync($"//mytrips/mybooking?id={created.Id}");
         }
         catch (Exception ex)
         {
