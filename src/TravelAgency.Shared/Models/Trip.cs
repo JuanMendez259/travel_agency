@@ -26,6 +26,8 @@ public class Trip
     public bool DepartureCompleted { get; set; }
     public bool Finalized { get; set; }
 
+    public int? CancellationDaysLimit { get; set; }
+
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     public ICollection<CapacityRequest> CapacityRequests { get; set; } = new List<CapacityRequest>();
     public ICollection<TripPointOfInterest> PointsOfInterest { get; set; } = new List<TripPointOfInterest>();

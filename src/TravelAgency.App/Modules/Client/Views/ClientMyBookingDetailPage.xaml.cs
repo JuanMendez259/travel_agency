@@ -19,6 +19,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
     private readonly ApiService _api;
     private int? _tripId;
     private int _remainingSlots;
+    private decimal _cancelRefund;
 
     public string BookingId { get; set; } = string.Empty;
 
@@ -86,15 +87,20 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         StatusLabel.Text = $"Estado: {booking.Status}";
 
-        var paid = booking.Payments?.Sum(p => p.Amount) ?? 0;
+        var paid = booking.Payments?.Where(p => p.Status == PaymentStatus.Completed).Sum(p => p.Amount) ?? 0;
+        var refunded = booking.Payments?.Where(p => p.Status == PaymentStatus.Refunded).Sum(p => p.Amount) ?? 0;
         var total = booking.TotalAmount;
         var remaining = total - paid;
 
         BalanceLabel.Text = booking.Status == BookingStatus.Cancelled
-            ? $"Pagado {paid:C} · Reserva cancelada"
+            ? refunded > 0
+                ? $"Reserva cancelada · Reembolsado {refunded:C}"
+                : "Reserva cancelada"
             : paid >= total
                 ? "Liquidado · ¡Reserva confirmada!"
                 : $"Pagado {paid:C} de {total:C} · Saldo pendiente {remaining:C}";
+
+        RenderCancellationSection(booking, trip, paid);
 
         PaymentsList.ItemsSource = booking.Payments;
 
@@ -136,6 +142,64 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         if (!string.IsNullOrEmpty(trip?.ImageUrl))
             TripImage.Source = await _api.GetTripImageAsync(trip.ImageUrl);
+    }
+
+    private void RenderCancellationSection(Booking booking, Trip? trip, decimal paid)
+    {
+        var canCancel = trip is not null
+            && booking.Status != BookingStatus.Cancelled
+            && !trip.DepartureCompleted
+            && !trip.Finalized
+            && trip.StartDate.Date > DateTime.Today
+            && trip.CancellationDaysLimit.HasValue;
+
+        CancelSection.IsVisible = canCancel;
+        if (!canCancel) return;
+
+        var limit = trip!.CancellationDaysLimit!.Value;
+        var remainingDays = (trip.StartDate.Date - DateTime.Today).Days;
+        var withinPolicy = remainingDays >= limit;
+
+        CancelPolicyLabel.Text = withinPolicy
+            ? $"Puedes cancelar con al menos {limit} día(s) antes de la salida. Quedan {remainingDays} día(s)."
+            : $"Política del viaje: cancelar con al menos {limit} día(s) de anticipación. Quedan {remainingDays} día(s); ya no se puede cancelar desde la app.";
+
+        _cancelRefund = paid;
+        CancelRefundLabel.Text = _cancelRefund > 0
+            ? $"Reembolso estimado: {_cancelRefund:C} (total abonado)"
+            : "No hay pagos abonados: la cancelación no genera reembolso.";
+        CancelButton.IsVisible = withinPolicy;
+    }
+
+    private async void OnCancelClicked(object? sender, EventArgs e)
+    {
+        if (!int.TryParse(BookingId, out var id) || id <= 0) return;
+
+        var confirmed = await DisplayAlertAsync("Cancelar reserva",
+            _cancelRefund > 0
+                ? $"Se cancelará tu reserva y se reembolsará {_cancelRefund:C} por tu forma de pago. Esta acción no puede deshacerse."
+                : "Se cancelará tu reserva. Esta acción no puede deshacerse.",
+            "Cancelar reserva", "Seguir en la reserva");
+        if (!confirmed) return;
+
+        CancelButton.IsEnabled = false;
+        try
+        {
+            var result = await _api.CancelBookingAsync(id);
+            var message = result is not null && result.RefundAmount > 0
+                ? $"Reserva cancelada. Se reembolsará {result.RefundAmount:C} por tu forma de pago."
+                : "Reserva cancelada. No había pagos que reembolsar.";
+            await DisplayAlertAsync("Reserva cancelada", message, "OK");
+            await LoadBookingAsync(id);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No fue posible cancelar", ex.Message, "OK");
+        }
+        finally
+        {
+            CancelButton.IsEnabled = true;
+        }
     }
 
     private async Task RenderRatingUiAsync(Booking booking, Trip? trip)

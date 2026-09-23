@@ -63,6 +63,11 @@ public partial class AdminTripDetailPage : ContentPage
             PriceLabel.Text += $" · Niño: {_trip.ChildPrice.Value:C}";
         TransportLabel.Text = $"Transporte: {TransportTypeConverter.ToDisplay(_trip.TransportType)}";
         StatusLabel.Text = _trip.IsActive ? "Estado: Publicado" : "Estado: Inactivo";
+        if (_trip.CancellationDaysLimit.HasValue)
+        {
+            CancellationLabel.Text = $"Cancelación del cliente: hasta {_trip.CancellationDaysLimit.Value} día(s) antes de la salida.";
+            CancellationLabel.IsVisible = true;
+        }
         DescriptionLabel.Text = _trip.Description;
 
         var sold = _trip.Bookings

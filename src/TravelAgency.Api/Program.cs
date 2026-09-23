@@ -122,6 +122,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureRatingsTableAsync(db, provider);
     await EnsureChildPriceColumnAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
+    await EnsureCancellationPolicyColumnAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
     await EnsureSeedUsersAsync(db);
 }
@@ -264,6 +265,7 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     trip.Capacity = input.Capacity;
     trip.TransportType = input.TransportType;
     trip.IsActive = input.IsActive;
+    trip.CancellationDaysLimit = input.CancellationDaysLimit is >= 0 ? input.CancellationDaysLimit : null;
     trip.OriginLatitude = input.OriginLatitude;
     trip.OriginLongitude = input.OriginLongitude;
     trip.DestinationLatitude = input.DestinationLatitude;
@@ -667,6 +669,61 @@ app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusReques
 
     return Results.Ok(booking);
 }).RequireAuthorization("AdminOnly");
+
+app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var booking = await db.Bookings
+        .Include(b => b.Trip)
+        .Include(b => b.User)
+        .Include(b => b.Payments)
+        .FirstOrDefaultAsync(b => b.Id == id);
+    if (booking is null) return Results.NotFound("Reserva no encontrada.");
+
+    var userId = GetUserId(principal);
+    if (userId == 0 || booking.UserId != userId) return Results.Forbid();
+
+    if (booking.Status == BookingStatus.Cancelled)
+        return Results.BadRequest("La reserva ya está cancelada.");
+
+    var trip = booking.Trip;
+    if (trip is null) return Results.NotFound("El viaje de esta reserva ya no existe.");
+
+    if (trip.DepartureCompleted)
+        return Results.BadRequest("La salida ya se realizó, no es posible cancelar.");
+    if (trip.Finalized)
+        return Results.BadRequest("El viaje ya finalizó, no es posible cancelar.");
+
+    var today = DateTime.UtcNow.Date;
+    if (trip.StartDate.Date <= today)
+        return Results.BadRequest("El viaje ya comenzó, no es posible cancelar.");
+
+    var limit = trip.CancellationDaysLimit;
+    if (limit is null)
+        return Results.BadRequest("Este viaje no admite cancelación desde la app. Contacta a la agencia.");
+
+    var remainingDays = (trip.StartDate.Date - today).Days;
+    if (remainingDays < limit.Value)
+        return Results.BadRequest(
+            $"Solo puedes cancelar con al menos {limit.Value} día(s) de anticipación. Faltan {remainingDays} día(s).");
+
+    var paid = await db.Payments
+        .Where(p => p.BookingId == id && p.Status == PaymentStatus.Completed)
+        .SumAsync(p => p.Amount);
+
+    booking.Status = BookingStatus.Cancelled;
+    foreach (var payment in booking.Payments.Where(p => p.Status == PaymentStatus.Completed))
+        payment.Status = PaymentStatus.Refunded;
+
+    await db.SaveChangesAsync();
+    await RecomputeAvailabilityAsync(db, trip);
+    await db.SaveChangesAsync();
+
+    if (booking.User is not null)
+        await SendToStaffAsync(db,
+            $"El cliente {booking.User.Name} canceló su reserva para \"{trip.Title}\". Reembolso {paid:C}.");
+
+    return Results.Ok(new CancelBookingResult(booking, paid));
+}).RequireAuthorization();
 
 app.MapPost("/api/trips/{id}/capacity-requests", async (int id, CapacityRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
@@ -1541,6 +1598,16 @@ static async Task EnsurePassengerAgeColumnsAsync(AppDbContext db, string provide
         await TryExecAsync(db, provider == "sqlite"
             ? "ALTER TABLE \"TripPassengers\" ADD COLUMN \"IsChild\" INTEGER NOT NULL DEFAULT 0;"
             : "ALTER TABLE \"TripPassengers\" ADD COLUMN \"IsChild\" boolean NOT NULL DEFAULT false;");
+    }
+}
+
+static async Task EnsureCancellationPolicyColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "CancellationDaysLimit", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"CancellationDaysLimit\" INTEGER NULL;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"CancellationDaysLimit\" integer NULL;");
     }
 }
 

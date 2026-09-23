@@ -44,6 +44,10 @@
                 </VerticalStackLayout>
             </Grid>
 
+            <Label Text="Cancelación (política del cliente)" />
+            <Entry x:Name="CancellationDaysLimitEntry" Keyboard="Numeric" />
+            <Label Text="Mínimo de días de anticipación para que el cliente cancele por la app. Vacío = no permitido." FontSize="12" TextColor="Gray" />
+
             <Label Text="Descripción" />
             <Editor x:Name="DescriptionEditor" HeightRequest="100" />
 

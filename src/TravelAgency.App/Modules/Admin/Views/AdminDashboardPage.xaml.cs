@@ -72,6 +72,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 Capacity = int.TryParse(CapacityEntry.Text, out var capacity) ? capacity : 0,
                 TransportType = (TransportType)Math.Max(0, TransportTypePicker.SelectedIndex),
                 IsActive = ActiveSwitch.IsToggled,
+                CancellationDaysLimit = int.TryParse(CancellationDaysLimitEntry.Text, out var cancelDays) && cancelDays >= 0
+                    ? cancelDays
+                    : null,
             };
 
             if (string.IsNullOrEmpty(trip.Title) || string.IsNullOrEmpty(trip.Destination))
@@ -164,6 +167,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         PriceEntry.Text = trip.Price.ToString();
         ChildPriceEntry.Text = trip.ChildPrice?.ToString();
         CapacityEntry.Text = trip.Capacity.ToString();
+        CancellationDaysLimitEntry.Text = trip.CancellationDaysLimit?.ToString();
         TransportTypePicker.SelectedIndex = (int)trip.TransportType;
         ActiveSwitch.IsToggled = trip.IsActive;
         ApplyActiveState();
@@ -193,6 +197,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         PriceEntry.Text = string.Empty;
         ChildPriceEntry.Text = string.Empty;
         CapacityEntry.Text = string.Empty;
+        CancellationDaysLimitEntry.Text = string.Empty;
         DescriptionEditor.Text = string.Empty;
         TransportTypePicker.SelectedIndex = 0;
         ActiveSwitch.IsToggled = true;

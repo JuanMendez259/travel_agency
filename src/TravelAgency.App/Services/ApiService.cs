@@ -212,6 +212,23 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
 
+    public async Task<CancelBookingResult?> CancelBookingAsync(int bookingId)
+    {
+        var response = await _http.PostAsync($"/api/bookings/{bookingId}/cancel", null);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<CancelBookingResult>(JsonOptions);
+    }
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode) return;
+        var body = await response.Content.ReadAsStringAsync();
+        var message = string.IsNullOrWhiteSpace(body)
+            ? $"Error {(int)response.StatusCode}"
+            : body.Trim();
+        throw new InvalidOperationException(message);
+    }
+
     public async Task<Booking?> UpdateBookingCheckinAsync(int bookingId, bool checkedIn)
     {
         var response = await _http.PutAsJsonAsync($"/api/bookings/{bookingId}/checkin",

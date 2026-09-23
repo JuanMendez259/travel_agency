@@ -26,3 +26,5 @@ public enum BookingStatus
     Confirmed = 1,
     Cancelled = 2
 }
+
+public record CancelBookingResult(Booking Booking, decimal RefundAmount);
