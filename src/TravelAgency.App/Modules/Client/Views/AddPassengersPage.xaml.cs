@@ -192,6 +192,12 @@ public partial class AddPassengersPage : ContentPage
             passengers.Add((name, age));
         }
 
+        if (_tripId > 0 && _seats > 1)
+        {
+            var policiesAccepted = await PoliciesDisclaimerPage.PresentAsync(Shell.Current.Navigation);
+            if (!policiesAccepted) return;
+        }
+
         ConfirmButton.IsEnabled = false;
         try
         {

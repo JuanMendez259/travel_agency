@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Client.Views.PoliciesDisclaimerPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <Grid RowDefinitions="Auto,*,Auto"
+          BackgroundColor="{AppThemeBinding Light=White, Dark=#1C1C1E}">
+
+        <Grid Grid.Row="0" Padding="20,16" ColumnDefinitions="*,Auto">
+            <VerticalStackLayout Grid.Column="0" Spacing="2" VerticalOptions="Center">
+                <Label Text="Políticas de la reserva" FontSize="18" FontAttributes="Bold" />
+                <Label Text="Aceptación en dos pasos" FontSize="13" TextColor="Gray" />
+            </VerticalStackLayout>
+            <Button Grid.Column="1"
+                    Text="Cerrar"
+                    Clicked="OnCloseClicked"
+                    BackgroundColor="Transparent" TextColor="{AppThemeBinding Light=#6B7280, Dark=#A0AEC0}" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20,4,20,24" Spacing="14">
+                <Label Text="Antes de confirmar tu reserva te pedimos leer y aceptar las siguientes políticas."
+                       FontSize="14" TextColor="Gray" />
+
+                <Border StrokeThickness="0"
+                        BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
+                    <VerticalStackLayout Padding="14" Spacing="8">
+                        <Label Text="Políticas de reservación" FontSize="15" FontAttributes="Bold" TextColor="#2F855A" />
+                        <Label Text="• Tu reserva queda en estado pendiente hasta que la agencia la confirme; la confirmación la realiza el administrador." FontSize="13" />
+                        <Label Text="• El precio mostrado es el vigente al momento de reservar. Los niños de 0 a 11 años pagan la tarifa de niño cuando está disponible; en caso contrario pagan la tarifa completa." FontSize="13" />
+                        <Label Text="• Cada pasajero recibirá un código QR individual que deberá presentar el día del viaje para el check-in." FontSize="13" />
+                        <Label Text="• La reserva está sujeta a la disponibilidad de asientos del viaje." FontSize="13" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border StrokeThickness="0"
+                        BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
+                    <VerticalStackLayout Padding="14" Spacing="8">
+                        <Label Text="Políticas de cancelación" FontSize="15" FontAttributes="Bold" TextColor="#C53030" />
+                        <Label Text="• Las cancelaciones son gestionadas por la agencia o el administrador; puedes solicitarla contactando a la agencia y se procesará en la medida en que lo permita el viaje." FontSize="13" />
+                        <Label Text="• La cancelación libera los asientos reservados para que otros clientes puedan reservarlos." FontSize="13" />
+                        <Label Text="• Una vez realizada la salida o concluido el check-in, la reserva no podrá cancelarse." FontSize="13" />
+                    </VerticalStackLayout>
+                </Border>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Border Grid.Row="2" Margin="16,0,16,16"
+                StrokeThickness="0"
+                BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}"
+                Padding="14">
+            <VerticalStackLayout Spacing="10">
+
+                <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                    <CheckBox x:Name="PoliciesCheck"
+                              VerticalOptions="Center"
+                              CheckedChanged="OnPoliciesCheckedChanged" />
+                    <Label Text="Confirmo que he leído y acepto las políticas de reservación y cancelación."
+                           FontSize="13" VerticalOptions="Center" />
+                </HorizontalStackLayout>
+
+                <VerticalStackLayout x:Name="StepTwoPanel" Spacing="8" IsVisible="False">
+                    <Label Text="Última confirmación: escribe la frase corta de confirmación."
+                           FontSize="14" FontAttributes="Bold" />
+                    <Border StrokeThickness="1" Stroke="#3B82F6"
+                            BackgroundColor="{AppThemeBinding Light=#EFF6FF, Dark=#1E3A8A}">
+                        <Label Text="ACEPTO" FontSize="18" FontAttributes="Bold"
+                               HorizontalOptions="Center" Margin="8" TextColor="#3B82F6" />
+                    </Border>
+                    <Label Text="Escribe la frase de arriba para finalizar la confirmación."
+                           FontSize="12" TextColor="Gray" />
+                    <Entry x:Name="PhraseEntry"
+                           Placeholder="Escribe: ACEPTO"
+                           HorizontalTextAlignment="Center"
+                           ReturnType="Done"
+                           TextChanged="OnPhraseTextChanged" />
+                    <Button x:Name="FinalConfirmButton"
+                            Text="Confirmar y reservar"
+                            BackgroundColor="#2F855A"
+                            TextColor="White"
+                            IsEnabled="False"
+                            Clicked="OnFinalConfirmClicked" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>
