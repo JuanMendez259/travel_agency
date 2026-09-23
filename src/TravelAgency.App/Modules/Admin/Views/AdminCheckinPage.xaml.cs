@@ -74,6 +74,7 @@ public partial class AdminCheckinPage : ContentPage
         {
             StatusBanner.BackgroundColor = Color.FromArgb("#2F855A");
             StatusLabel.Text = "Salida completada";
+            ScanButton.IsVisible = false;
             OpenCheckinButton.IsVisible = false;
             CloseCheckinButton.IsVisible = false;
             CompleteButton.IsVisible = false;
@@ -83,6 +84,7 @@ public partial class AdminCheckinPage : ContentPage
         {
             StatusBanner.BackgroundColor = Color.FromArgb("#2B6CB0");
             StatusLabel.Text = "Check-in abierto";
+            ScanButton.IsVisible = true;
             OpenCheckinButton.IsVisible = false;
             CloseCheckinButton.IsVisible = true;
             CompleteButton.IsVisible = true;
@@ -92,6 +94,7 @@ public partial class AdminCheckinPage : ContentPage
         {
             StatusBanner.BackgroundColor = Color.FromArgb("#6B7280");
             StatusLabel.Text = "Check-in cerrado";
+            ScanButton.IsVisible = true;
             OpenCheckinButton.IsVisible = true;
             CloseCheckinButton.IsVisible = false;
             CompleteButton.IsVisible = true;
@@ -410,6 +413,12 @@ public partial class AdminCheckinPage : ContentPage
         if (sender is not Button btn || btn.BindingContext is not Booking booking)
             return;
         await Shell.Current.GoToAsync($"bookingqr?id={booking.Id}");
+    }
+
+    private async void OnScanClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+        await Shell.Current.GoToAsync($"scancheckin?id={_trip.Id}");
     }
 
     private async void OnBackClicked(object? sender, EventArgs e)

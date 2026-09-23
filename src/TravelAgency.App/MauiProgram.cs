@@ -3,6 +3,7 @@ using TravelAgency.App.Modules.Admin.Views;
 using TravelAgency.App.Modules.Auth.Views;
 using TravelAgency.App.Modules.Client.Views;
 using TravelAgency.App.Services;
+using ZXing.Net.Maui;
 
 namespace TravelAgency.App;
 
@@ -15,6 +16,7 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
+			.UseBarcodeReader()
 			.ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -42,6 +44,7 @@ builder.Services.AddTransient<AdminTripsPage>();
         builder.Services.AddTransient<AdminStatsPage>();
         builder.Services.AddTransient<AdminAuditPage>();
         builder.Services.AddTransient<AdminCheckinPage>();
+        builder.Services.AddTransient<AdminScanQrPage>();
         builder.Services.AddTransient<AdminBookingQrPage>();
 		builder.Services.AddTransient<AdminBookingsPage>();
 		builder.Services.AddTransient<AdminBookingDetailPage>();

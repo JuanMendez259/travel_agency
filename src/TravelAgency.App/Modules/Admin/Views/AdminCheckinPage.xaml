@@ -25,6 +25,13 @@
                 </VerticalStackLayout>
             </Border>
 
+            <Button x:Name="ScanButton"
+                    Text="Escanear QR con cámara"
+                    Clicked="OnScanClicked"
+                    BackgroundColor="#1976D2"
+                    TextColor="White"
+                    Margin="0,6,0,0" />
+
             <Button x:Name="OpenCheckinButton"
                     Text="Abrir check-in"
                     Clicked="OnOpenCheckinClicked"

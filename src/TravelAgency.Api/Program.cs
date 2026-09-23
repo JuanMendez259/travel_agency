@@ -849,6 +849,72 @@ app.MapPut("/api/passengers/{id}/checkin", async (int id, UpdatePassengerCheckin
     return Results.Ok(passenger);
 }).RequireAuthorization("AdminOnly");
 
+app.MapPut("/api/checkin/token", async (CheckinByTokenRequest request, AppDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(request.QrToken))
+        return Results.BadRequest("El código QR es inválido.");
+
+    var token = request.QrToken.Trim();
+
+    var trip = await db.Trips.FindAsync(request.TripId);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.DepartureCompleted)
+        return Results.BadRequest("La salida ya fue completada, el check-in está cerrado.");
+    if (!trip.CheckInOpen)
+        return Results.BadRequest("El check-in está cerrado.");
+
+    var passenger = await db.TripPassengers
+        .Include(p => p.Booking)
+            .ThenInclude(b => b.Trip)
+        .Include(p => p.Booking)
+            .ThenInclude(b => b.User)
+        .FirstOrDefaultAsync(p => p.QrToken == token);
+
+    if (passenger is not null)
+    {
+        var booking = passenger.Booking;
+        if (booking is null || booking.TripId != request.TripId)
+            return Results.BadRequest("Este código pertenece a otro viaje.");
+        if (booking.Status == BookingStatus.Cancelled)
+            return Results.BadRequest("La reserva de este pasajero está cancelada.");
+
+        if (passenger.CheckedIn)
+        {
+            return Results.Ok(new CheckinTokenResult("passenger", passenger.Name, passenger.CheckedInAt, true, null));
+        }
+
+        passenger.CheckedIn = true;
+        passenger.CheckedInAt ??= DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Results.Ok(new CheckinTokenResult("passenger", passenger.Name, passenger.CheckedInAt, false, null));
+    }
+
+    var foundBooking = await db.Bookings
+        .Include(b => b.Trip)
+        .Include(b => b.User)
+        .FirstOrDefaultAsync(b => b.QrToken == token);
+
+    if (foundBooking is not null)
+    {
+        if (foundBooking.TripId != request.TripId)
+            return Results.BadRequest("Este código pertenece a otro viaje.");
+        if (foundBooking.Status == BookingStatus.Cancelled)
+            return Results.BadRequest("La reserva está cancelada.");
+
+        if (foundBooking.CheckedIn)
+        {
+            return Results.Ok(new CheckinTokenResult("booking", foundBooking.User?.Name ?? $"Usuario #{foundBooking.UserId}", foundBooking.CheckedInAt, true, foundBooking.NumberOfSeats));
+        }
+
+        foundBooking.CheckedIn = true;
+        foundBooking.CheckedInAt ??= DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Results.Ok(new CheckinTokenResult("booking", foundBooking.User?.Name ?? $"Usuario #{foundBooking.UserId}", foundBooking.CheckedInAt, false, foundBooking.NumberOfSeats));
+    }
+
+    return Results.NotFound("Código QR no reconocido.");
+}).RequireAuthorization("AdminOnly");
+
 app.MapPut("/api/trips/{id}/departure", async (int id, UpdateDepartureRequest request, AppDbContext db) =>
 {
     var trip = await db.Trips.FindAsync(id);
@@ -1582,6 +1648,8 @@ static async Task EnsureSeedUsersAsync(AppDbContext db)
     await db.SaveChangesAsync();
 }
 
+record CheckinByTokenRequest(string? QrToken, int TripId);
+record CheckinTokenResult(string Kind, string? Name, DateTime? CheckedInAt, bool AlreadyCheckedIn, int? Seats);
 record UpdateBookingStatusRequest(BookingStatus Status);
 record UpdateBookingCheckinRequest(bool CheckedIn);
 record UpdatePassengerCheckinRequest(bool CheckedIn);

@@ -282,10 +282,19 @@ public class ApiService
     private record UpdateBookingStatusRequest(BookingStatus Status);
     private record UpdateBookingCheckinRequest(bool CheckedIn);
     private record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
+    private record CheckinByTokenRequest(string? QrToken, int TripId);
     private record CreatePassengersRequest(List<PassengerInput>? Passengers);
     private record UpdatePassengerCheckinRequest(bool CheckedIn);
     private record PassengerInput(string? Name, int? Age);
     private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers);
+
+    public async Task<TokenCheckinResult?> CheckinByTokenAsync(string token, int tripId)
+    {
+        var response = await _http.PutAsJsonAsync("/api/checkin/token",
+            new CheckinByTokenRequest(token, tripId), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TokenCheckinResult>(JsonOptions);
+    }
 
     public async Task<byte[]> GetBytesAsync(string url)
     {
@@ -311,3 +320,5 @@ public class ApiService
         }
     }
 }
+
+public record TokenCheckinResult(string Kind, string? Name, DateTime? CheckedInAt, bool AlreadyCheckedIn, int? Seats);

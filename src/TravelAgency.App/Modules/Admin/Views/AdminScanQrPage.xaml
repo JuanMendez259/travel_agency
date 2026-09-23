@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminScanQrPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
+    Title="Escanear QR">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+
+        <VerticalStackLayout Grid.Row="0" Padding="14,10" Spacing="2">
+            <Label x:Name="TripLabel" FontSize="14" FontAttributes="Bold" />
+            <Label x:Name="HintLabel"
+                   Text="Enfoca el código QR del cliente para registrar el check-in."
+                   FontSize="13"
+                   TextColor="Gray" />
+        </VerticalStackLayout>
+
+        <Grid Grid.Row="1">
+            <zxing:CameraBarcodeReaderView x:Name="ScannerView"
+                                           BarcodesDetected="OnBarcodesDetected"
+                                           CameraLocation="Rear" />
+            <Border StrokeThickness="3"
+                    Stroke="White"
+                    Margin="60,40"
+                    InputTransparent="True" />
+        </Grid>
+
+        <VerticalStackLayout Grid.Row="2" Padding="14" Spacing="10">
+            <Label x:Name="ResultLabel"
+                   Text="Apunta la cámara al código QR…"
+                   FontSize="17"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+            <Label x:Name="DetailLabel"
+                   FontSize="13"
+                   TextColor="Gray"
+                   HorizontalOptions="Center"
+                   IsVisible="False" />
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Entry x:Name="ManualTokenEntry"
+                       Placeholder="Código del QR (sin cámara)"
+                       Keyboard="Text" />
+                <Button Grid.Column="1"
+                        Text="Verificar"
+                        Clicked="OnManualVerifyClicked" />
+            </Grid>
+
+            <Button x:Name="ResumeButton"
+                    Text="Escaneó otro pasajero"
+                    Clicked="OnResumeClicked"
+                    IsVisible="False" />
+        </VerticalStackLayout>
+
+    </Grid>
+</ContentPage>

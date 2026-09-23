@@ -11,6 +11,8 @@
     <!-- Please consult https://developer.apple.com/documentation/bundleresources/information_property_list/lsapplicationcategorytype -->
     <!-- <key>LSApplicationCategoryType</key> -->
     <!-- <string>public.app-category.YOUR-CATEGORY-HERE</string> -->
+	<key>NSCameraUsageDescription</key>
+	<string>Se usa la cámara para leer los códigos QR de check-in de los pasajeros.</string>
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>2</integer>
