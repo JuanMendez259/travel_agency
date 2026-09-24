@@ -91,9 +91,28 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
 
             if (trip.Capacity < 1)
             {
-                await DisplayAlertAsync("Error", "La capacidad debe ser al menos 1 asiento.", "OK");
+                await DisplayAlertAsync("Error", "La capacidad debe ser de al menos 1 asiento.", "OK");
                 return;
             }
+
+            if (trip.StartDate.Date < DateTime.Today)
+            {
+                await DisplayAlertAsync("Error", "La fecha de salida no puede estar en el pasado.", "OK");
+                return;
+            }
+
+            if (trip.Price < 0)
+            {
+                await DisplayAlertAsync("Error", "El precio no puede ser negativo.", "OK");
+                return;
+            }
+
+            if (trip.ChildPrice < 0)
+            {
+                await DisplayAlertAsync("Error", "El precio de niño no puede ser negativo.", "OK");
+                return;
+            }
+
 
             if (_editingTrip is not null)
             {

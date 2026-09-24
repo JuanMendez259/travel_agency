@@ -222,6 +222,17 @@ app.MapGet("/api/trips/{id}", async (int id, AppDbContext db) =>
 
 app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
 {
+    if (trip.StartDate <= DateTime.UtcNow)
+        return Results.BadRequest("La fecha de salida no puede estar en el pasado.");
+    if (trip.EndDate < trip.StartDate)
+        return Results.BadRequest("La fecha de fin no puede ser anterior a la de salida.");
+    if (trip.Capacity < 1)
+        return Results.BadRequest("La capacidad debe ser de al menos 1 asiento.");
+    if (trip.Price < 0)
+        return Results.BadRequest("El precio no puede ser negativo.");
+    if (trip.ChildPrice < 0)
+        return Results.BadRequest("El precio de niño no puede ser negativo.");
+
     trip.CreatedAt = DateTime.UtcNow;
     trip.AvailableSeats = trip.Capacity;
     db.Trips.Add(trip);
@@ -241,6 +252,10 @@ app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbCo
     var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
     if (!allowed.Contains(extension)) return Results.BadRequest("Formato no permitido. Usa JPG, PNG o WebP.");
 
+    const long maxBytes = 5L * 1024 * 1024;
+    if (file.Length > maxBytes)
+        return Results.BadRequest("La imagen no puede superar los 5 MB.");
+
     await using var stream = file.OpenReadStream();
     var imageUrl = await storage.UploadAsync(stream, extension, file.ContentType ?? "application/octet-stream");
 
@@ -253,6 +268,17 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    if (input.StartDate.Date < DateTime.UtcNow.Date)
+        return Results.BadRequest("La fecha de salida no puede estar en el pasado.");
+    if (input.EndDate < input.StartDate)
+        return Results.BadRequest("La fecha de fin no puede ser anterior a la de salida.");
+    if (input.Capacity < 1)
+        return Results.BadRequest("La capacidad debe ser de al menos 1 asiento.");
+    if (input.Price < 0)
+        return Results.BadRequest("El precio no puede ser negativo.");
+    if (input.ChildPrice < 0)
+        return Results.BadRequest("El precio de niño no puede ser negativo.");
 
     var capacityIncreased = input.Capacity > trip.Capacity;
 
