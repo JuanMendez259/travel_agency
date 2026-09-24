@@ -28,6 +28,7 @@ public static class MauiProgram
 		builder.Services.AddTransient<AppShell>();
 		builder.Services.AddTransient<LoginPage>();
 		builder.Services.AddTransient<ClientHomePage>();
+        builder.Services.AddTransient<ClientFavoritesPage>();
 builder.Services.AddTransient<ClientTripDetailPage>();
         builder.Services.AddTransient<ClientMyTripsPage>();
         builder.Services.AddTransient<ClientProfilePage>();

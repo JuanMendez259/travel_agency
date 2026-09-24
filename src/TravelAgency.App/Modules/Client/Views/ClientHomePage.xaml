@@ -14,6 +14,7 @@
     </ContentPage.Resources>
 
     <ContentPage.ToolbarItems>
+        <ToolbarItem Text="★ Favoritos" Clicked="OnFavoritesClicked" />
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
@@ -38,7 +39,18 @@
                             <Image Source="{Binding Thumb}" IsVisible="{Binding Thumb, Converter={StaticResource HasValue}}"
                                    HeightRequest="140" Aspect="AspectFill" />
                             <VerticalStackLayout Padding="12" Spacing="4">
-                                <Label Text="{Binding Trip.Title}" FontSize="18" FontAttributes="Bold" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Label Text="{Binding Trip.Title}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                                    <Button Grid.Column="1"
+                                            Text="{Binding HeartText}"
+                                            TextColor="{Binding HeartColor}"
+                                            FontSize="24"
+                                            Padding="8"
+                                            BackgroundColor="Transparent"
+                                            Clicked="OnFavoriteClicked"
+                                            CommandParameter="{Binding}"
+                                            VerticalOptions="Center" />
+                                </Grid>
                                 <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
                                 <HorizontalStackLayout Spacing="4">
                                     <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />

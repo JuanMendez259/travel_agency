@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Client.Views.ClientFavoritesPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:conv="clr-namespace:TravelAgency.App.Converters"
+    xmlns:viewmodels="clr-namespace:TravelAgency.App.ViewModels"
+    Title="Mis Favoritos">
+
+    <ContentPage.Resources>
+        <conv:HasValueConverter x:Key="HasValue" />
+        <conv:TransportTypeConverter x:Key="TransportType" />
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,*">
+        <ActivityIndicator x:Name="Loading"
+                           IsRunning="False"
+                           IsVisible="False"
+                           Margin="0,10"
+                           HorizontalOptions="Center" />
+
+        <RefreshView x:Name="FavoritesRefresh"
+                     Grid.Row="1"
+                     Refreshing="OnRefreshing">
+            <CollectionView x:Name="FavoritesList"
+                            SelectionMode="None"
+                            Footer=" "
+                            EmptyView="Aún no tienes viajes favoritos. Usa el corazón ♡ para guardarlos.">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:TripListItem">
+                        <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
+                            <VerticalStackLayout Spacing="4">
+                                <Image Source="{Binding Thumb}" IsVisible="{Binding Thumb, Converter={StaticResource HasValue}}"
+                                       HeightRequest="140" Aspect="AspectFill" />
+                                <VerticalStackLayout Padding="12" Spacing="4">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <Label Text="{Binding Trip.Title}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                                        <Button Grid.Column="1"
+                                                Text="{Binding HeartText}"
+                                                TextColor="{Binding HeartColor}"
+                                                FontSize="24"
+                                                Padding="8"
+                                                BackgroundColor="Transparent"
+                                                Clicked="OnFavoriteClicked"
+                                                CommandParameter="{Binding}"
+                                                VerticalOptions="Center" />
+                                    </Grid>
+                                    <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
+                                    <HorizontalStackLayout Spacing="4">
+                                        <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                        <Label Text="al" />
+                                        <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                    </HorizontalStackLayout>
+                                    <HorizontalStackLayout Spacing="4">
+                                        <Label Text="{Binding Trip.Price, StringFormat='{0:C}'}" FontAttributes="Bold" />
+                                        <Label Text="·" />
+                                        <Label Text="{Binding AvailabilityText}" TextColor="Gray" />
+                                    </HorizontalStackLayout>
+                                    <Button Text="Ver viaje"
+                                            Clicked="OnTripClicked"
+                                            CommandParameter="{Binding Trip}"
+                                            Margin="0,8,0,0"
+                                            BackgroundColor="#1976D2" TextColor="White" />
+                                </VerticalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

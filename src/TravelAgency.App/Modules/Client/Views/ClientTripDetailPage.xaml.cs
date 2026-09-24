@@ -10,6 +10,7 @@ public partial class ClientTripDetailPage : ContentPage
     private readonly ApiService _api;
     private readonly SessionService _session;
     private Trip? _trip;
+    private bool _isFavorite;
 
     public string TripId { get; set; } = string.Empty;
 
@@ -47,6 +48,16 @@ public partial class ClientTripDetailPage : ContentPage
             return;
         }
 
+        try
+        {
+            var favorites = await _api.GetFavoritesAsync();
+            SetFavorite(favorites?.Any(t => t.Id == tripId) == true);
+        }
+        catch
+        {
+            SetFavorite(false);
+        }
+
         TitleLabel.Text = _trip.Title;
         DestinationLabel.Text = _trip.Destination;
         DatesLabel.Text = $"{_trip.StartDate:dd/MM/yyyy} al {_trip.EndDate:dd/MM/yyyy}";
@@ -68,6 +79,29 @@ public partial class ClientTripDetailPage : ContentPage
 
         if (!string.IsNullOrEmpty(_trip.ImageUrl))
             TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
+    }
+
+    private void SetFavorite(bool isFavorite)
+    {
+        _isFavorite = isFavorite;
+        FavoriteButton.Text = isFavorite ? "♥" : "♡";
+        FavoriteButton.TextColor = isFavorite ? Color.FromArgb("#E53E3E") : Colors.Gray;
+    }
+
+    private async void OnFavoriteClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+        try
+        {
+            var nowFavorite = _isFavorite
+                ? await _api.RemoveFavoriteAsync(_trip.Id)
+                : await _api.AddFavoriteAsync(_trip.Id);
+            SetFavorite(nowFavorite);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
     }
 
     private async void OnRequestCapacityClicked(object? sender, EventArgs e)

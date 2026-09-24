@@ -55,6 +55,23 @@ public class ApiService
     public Task<List<Trip>?> GetTripsAsync() =>
         _http.GetFromJsonAsync<List<Trip>>("/api/trips", JsonOptions);
 
+    public Task<List<Trip>?> GetFavoritesAsync() =>
+        _http.GetFromJsonAsync<List<Trip>>("/api/favorites", JsonOptions);
+
+    public async Task<bool> AddFavoriteAsync(int tripId)
+    {
+        var response = await _http.PostAsync($"/api/favorites/{tripId}", null);
+        await EnsureSuccessAsync(response);
+        return true;
+    }
+
+    public async Task<bool> RemoveFavoriteAsync(int tripId)
+    {
+        var response = await _http.DeleteAsync($"/api/favorites/{tripId}");
+        await EnsureSuccessAsync(response);
+        return false;
+    }
+
     public Task<List<Trip>?> GetAdminTripsAsync() =>
         _http.GetFromJsonAsync<List<Trip>>("/api/trips/manage", JsonOptions);
 

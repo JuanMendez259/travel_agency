@@ -12,7 +12,18 @@
             <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" />
             <Label x:Name="DestinationLabel" FontSize="16" TextColor="Gray" />
             <Label x:Name="DatesLabel" FontSize="15" />
-            <Label x:Name="PriceLabel" FontSize="18" FontAttributes="Bold" />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Label x:Name="PriceLabel" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                <Button x:Name="FavoriteButton"
+                        Grid.Column="1"
+                        Text="♡"
+                        TextColor="Gray"
+                        FontSize="28"
+                        Padding="8"
+                        BackgroundColor="Transparent"
+                        Clicked="OnFavoriteClicked"
+                        VerticalOptions="Center" />
+            </Grid>
             <Label x:Name="ChildPriceLabel" FontSize="14" TextColor="Gray" IsVisible="False" />
             <Label x:Name="DescriptionLabel" FontSize="14" />
             <Label x:Name="TransportLabel" FontSize="14" />

@@ -4,11 +4,11 @@ using TravelAgency.Shared.Models;
 
 namespace TravelAgency.App.Modules.Client.Views;
 
-public partial class ClientHomePage : ContentPage
+public partial class ClientFavoritesPage : ContentPage
 {
     private readonly ApiService _api;
 
-    public ClientHomePage(ApiService api)
+    public ClientFavoritesPage(ApiService api)
     {
         InitializeComponent();
         _api = api;
@@ -17,10 +17,10 @@ public partial class ClientHomePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadTripsAsync();
+        await LoadFavoritesAsync();
     }
 
-    private async Task LoadTripsAsync(bool showLoading = true)
+    private async Task LoadFavoritesAsync(bool showLoading = true)
     {
         if (showLoading)
         {
@@ -29,33 +29,21 @@ public partial class ClientHomePage : ContentPage
         }
         try
         {
-            var trips = await _api.GetTripsAsync();
-
-            var favIds = new HashSet<int>();
-            try
-            {
-                var favorites = await _api.GetFavoritesAsync();
-                favIds = favorites?.Select(t => t.Id).ToHashSet() ?? new HashSet<int>();
-            }
-            catch
-            {
-                // los favoritos no deben impedir ver la lista de viajes
-            }
-
+            var trips = await _api.GetFavoritesAsync();
             var items = new List<TripListItem>();
             if (trips is not null)
             {
                 foreach (var trip in trips)
                 {
                     var thumb = await _api.GetTripImageAsync(trip.ImageUrl);
-                    items.Add(new TripListItem(trip, thumb, favIds.Contains(trip.Id)));
+                    items.Add(new TripListItem(trip, thumb, isFavorite: true));
                 }
             }
-            TripsList.ItemsSource = items;
+            FavoritesList.ItemsSource = items;
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("Error", $"No se pudo cargar los viajes: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"No se pudo cargar tus favoritos: {ex.Message}", "OK");
         }
         finally
         {
@@ -71,15 +59,15 @@ public partial class ClientHomePage : ContentPage
     {
         try
         {
-            await LoadTripsAsync(false);
+            await LoadFavoritesAsync(false);
         }
         finally
         {
-            TripsRefresh.IsRefreshing = false;
+            FavoritesRefresh.IsRefreshing = false;
         }
     }
 
-    private async void OnBookClicked(object? sender, EventArgs e)
+    private async void OnTripClicked(object? sender, EventArgs e)
     {
         if ((sender as Button)?.CommandParameter is not Trip trip) return;
         await Shell.Current.GoToAsync($"trip?id={trip.Id}");
@@ -90,24 +78,12 @@ public partial class ClientHomePage : ContentPage
         if ((sender as Button)?.CommandParameter is not TripListItem item) return;
         try
         {
-            item.IsFavorite = item.IsFavorite
-                ? await _api.RemoveFavoriteAsync(item.Trip.Id)
-                : await _api.AddFavoriteAsync(item.Trip.Id);
+            item.IsFavorite = await _api.RemoveFavoriteAsync(item.Trip.Id);
+            await LoadFavoritesAsync(false);
         }
         catch (Exception ex)
         {
             await DisplayAlertAsync("Error", ex.Message, "OK");
         }
-    }
-
-    private async void OnFavoritesClicked(object? sender, EventArgs e)
-    {
-        await Shell.Current.GoToAsync("favorites");
-    }
-
-    private async void OnLogoutClicked(object? sender, EventArgs e)
-    {
-        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de tu cuenta?", "Sí", "No");
-        if (confirm) App.GoToLogin();
     }
 }

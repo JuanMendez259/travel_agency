@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<TripPassenger> TripPassengers => Set<TripPassenger>();
     public DbSet<TripRating> TripRatings => Set<TripRating>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<FavoriteTrip> FavoriteTrips => Set<FavoriteTrip>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -133,6 +134,20 @@ public class AppDbContext : DbContext
             entity.Property(a => a.Summary).HasMaxLength(1000);
             entity.HasIndex(a => new { a.EntityType, a.EntityId });
             entity.HasIndex(a => a.CreatedAt);
+        });
+
+        modelBuilder.Entity<FavoriteTrip>(entity =>
+        {
+            entity.ToTable("FavoriteTrips");
+            entity.HasIndex(f => new { f.UserId, f.TripId }).IsUnique();
+            entity.HasOne(f => f.Trip)
+                  .WithMany()
+                  .HasForeignKey(f => f.TripId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(f => f.User)
+                  .WithMany()
+                  .HasForeignKey(f => f.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<User>().HasData(
