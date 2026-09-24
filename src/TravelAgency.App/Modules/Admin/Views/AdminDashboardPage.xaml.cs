@@ -117,9 +117,10 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             }
 
             var wasEditing = _editingTrip is not null;
+            await DisplayAlertAsync("Listo", wasEditing ? "Cambios guardados." : "Viaje publicado.", "OK");
             ResetFormToCreateMode();
             ClearForm();
-            await DisplayAlertAsync("Listo", wasEditing ? "Cambios guardados." : "Viaje publicado.", "OK");
+            await Shell.Current.GoToAsync("//admintrips");
         }
         catch (Exception ex)
         {
