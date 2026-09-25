@@ -10,7 +10,7 @@
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,Auto,*">
+    <Grid RowDefinitions="Auto,Auto,Auto,*">
         <SearchBar x:Name="SearchBar"
                    Grid.Row="0"
                    Placeholder="Buscar por viaje, cliente o pasajero"
@@ -29,8 +29,21 @@
             </HorizontalStackLayout>
         </ScrollView>
 
+        <HorizontalStackLayout Grid.Row="2" Padding="12,2" Spacing="8">
+            <Label Text="Salida desde:" VerticalOptions="Center" FontSize="13" />
+            <DatePicker x:Name="FromDatePicker"
+                        Format="dd/MM/yyyy"
+                        DateSelected="OnFromDateSelected"
+                        VerticalOptions="Center" />
+            <Button x:Name="ClearDateBtn"
+                    Text="Limpiar"
+                    Clicked="OnClearDateClicked"
+                    FontSize="13" Padding="12,4" CornerRadius="12"
+                    VerticalOptions="Center" />
+        </HorizontalStackLayout>
+
         <ActivityIndicator x:Name="Loading"
-                           Grid.Row="2"
+                           Grid.Row="3"
                            IsRunning="False"
                            IsVisible="False"
                            Margin="0,10"
@@ -38,7 +51,7 @@
                            HorizontalOptions="Center" />
 
         <RefreshView x:Name="BookingsRefresh"
-                     Grid.Row="2"
+                     Grid.Row="3"
                      Refreshing="OnRefreshing">
             <CollectionView x:Name="BookingsList"
                             SelectionMode="None"

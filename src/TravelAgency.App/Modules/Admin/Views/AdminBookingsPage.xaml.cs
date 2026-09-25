@@ -8,6 +8,7 @@ public partial class AdminBookingsPage : ContentPage
     private readonly ApiService _api;
     private BookingStatus? _statusFilter = BookingStatus.Pending;
     private List<Booking> _current = new();
+    private DateTime? _fromDate;
 
     public AdminBookingsPage(ApiService api)
     {
@@ -62,7 +63,25 @@ public partial class AdminBookingsPage : ContentPage
                 (b.Passengers?.Any(p => p.Name.Contains(text, StringComparison.OrdinalIgnoreCase)) ?? false));
         }
 
+        if (_fromDate.HasValue)
+        {
+            var from = _fromDate.Value.Date;
+            result = result.Where(b => b.Trip?.StartDate.Date >= from);
+        }
+
         BookingsList.ItemsSource = result.ToList();
+    }
+
+    private void OnFromDateSelected(object? sender, DateChangedEventArgs e)
+    {
+        _fromDate = e.NewDate;
+        ApplySearch();
+    }
+
+    private void OnClearDateClicked(object? sender, EventArgs e)
+    {
+        _fromDate = null;
+        ApplySearch();
     }
 
     private bool _handlingChip;

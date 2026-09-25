@@ -7,6 +7,9 @@ namespace TravelAgency.App.Modules.Admin.Views;
 public partial class AdminTripsPage : ContentPage
 {
     private readonly ApiService _api;
+    private List<TripListItem> _allTrips = new();
+    private string _statusFilter = "All";
+    private string _searchText = "";
 
     public AdminTripsPage(ApiService api)
     {
@@ -46,7 +49,8 @@ public partial class AdminTripsPage : ContentPage
                     items.Add(new TripListItem(trip, thumb));
                 }
             }
-            TripsList.ItemsSource = items;
+            _allTrips = items;
+            ApplyFilters();
         }
         finally
         {
@@ -72,6 +76,54 @@ public partial class AdminTripsPage : ContentPage
         {
             TripsRefresh.IsRefreshing = false;
         }
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<TripListItem> filtered = _allTrips;
+
+        if (_statusFilter == "Active")
+            filtered = filtered.Where(i => !i.IsPaused);
+        else if (_statusFilter == "Paused")
+            filtered = filtered.Where(i => i.IsPaused);
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var term = _searchText.Trim();
+            filtered = filtered.Where(i =>
+                i.Trip.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                i.Trip.Destination.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        TripsList.ItemsSource = filtered.ToList();
+    }
+
+    private void OnTripsSearchTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        _searchText = e.NewTextValue ?? "";
+        ApplyFilters();
+    }
+
+    private void OnTripsStatusChipClicked(object? sender, EventArgs e)
+    {
+        if ((sender as Button)?.CommandParameter is not string status) return;
+        _statusFilter = status;
+        StyleChips();
+        ApplyFilters();
+    }
+
+    private void StyleChips()
+    {
+        var (isAll, isActive, isPaused) = (_statusFilter == "All", _statusFilter == "Active", _statusFilter == "Paused");
+
+        ChipTripsAll.TextColor = isAll ? Colors.White : Colors.Black;
+        ChipTripsAll.BackgroundColor = isAll ? Colors.DodgerBlue : Colors.LightGray;
+
+        ChipTripsActive.TextColor = isActive ? Colors.White : Colors.Black;
+        ChipTripsActive.BackgroundColor = isActive ? Colors.DodgerBlue : Colors.LightGray;
+
+        ChipTripsPaused.TextColor = isPaused ? Colors.White : Colors.Black;
+        ChipTripsPaused.BackgroundColor = isPaused ? Colors.DodgerBlue : Colors.LightGray;
     }
 
     private async void OnDetailClicked(object? sender, EventArgs e)

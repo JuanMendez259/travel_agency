@@ -15,15 +15,33 @@
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
+        <SearchBar x:Name="TripsSearchBar"
+                   Grid.Row="0"
+                   Placeholder="Buscar por destino o título"
+                   TextChanged="OnTripsSearchTextChanged" />
+
+        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+            <HorizontalStackLayout Padding="12,4" Spacing="8">
+                <Button x:Name="ChipTripsAll" Text="Todos" Clicked="OnTripsStatusChipClicked" CommandParameter="All"
+                        FontSize="13" Padding="16,6" CornerRadius="16" />
+                <Button x:Name="ChipTripsActive" Text="Activos" Clicked="OnTripsStatusChipClicked" CommandParameter="Active"
+                        FontSize="13" Padding="16,6" CornerRadius="16" />
+                <Button x:Name="ChipTripsPaused" Text="Pausados" Clicked="OnTripsStatusChipClicked" CommandParameter="Paused"
+                        FontSize="13" Padding="16,6" CornerRadius="16" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
         <ActivityIndicator x:Name="Loading"
+                           Grid.Row="2"
                            IsRunning="False"
                            IsVisible="False"
                            Margin="0,10"
+                           VerticalOptions="Start"
                            HorizontalOptions="Center" />
 
         <RefreshView x:Name="TripsRefresh"
-                     Grid.Row="1"
+                     Grid.Row="2"
                      Refreshing="OnRefreshing">
             <CollectionView x:Name="TripsList"
                             SelectionMode="None"
