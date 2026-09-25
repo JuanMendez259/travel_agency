@@ -8,6 +8,7 @@ public class Booking
     public DateTime BookingDate { get; set; }
     public BookingStatus Status { get; set; }
     public int NumberOfSeats { get; set; }
+    public int? SeatNumber { get; set; }
     public decimal TotalAmount { get; set; }
 
     public bool CheckedIn { get; set; }

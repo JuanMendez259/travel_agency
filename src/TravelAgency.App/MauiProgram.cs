@@ -35,6 +35,7 @@ builder.Services.AddTransient<ClientTripDetailPage>();
         builder.Services.AddTransient<ClientPassengersQrPage>();
         builder.Services.AddTransient<ClientRateTripPage>();
         builder.Services.AddTransient<AddPassengersPage>();
+        builder.Services.AddTransient<ClientBookingSeatsPage>();
         builder.Services.AddTransient<ClientNotificationsPage>();
 		builder.Services.AddTransient<ClientMyBookingDetailPage>();
 		builder.Services.AddTransient<AdminDashboardPage>();

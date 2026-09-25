@@ -148,32 +148,6 @@ public partial class ClientTripDetailPage : ContentPage
             return;
         }
 
-        if (seats > 1)
-        {
-            await Shell.Current.GoToAsync($"addpassengers?tripId={_trip.Id}&seats={seats}");
-            return;
-        }
-
-        if (!await PoliciesDisclaimerPage.PresentAsync(Shell.Current.Navigation)) return;
-
-        BookButton.IsEnabled = false;
-        try
-        {
-            var created = await _api.CreateBookingAsync(_trip.Id, 1, null);
-
-            var message = $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. Pronto la confirmaremos.";
-            await DisplayAlertAsync("Reserva creada", message, "OK");
-
-            if (created is not null && created.Id > 0)
-                await Shell.Current.GoToAsync($"//mytrips/mybooking?id={created.Id}");
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("Error", ex.Message, "OK");
-        }
-        finally
-        {
-            BookButton.IsEnabled = true;
-        }
+        await Shell.Current.GoToAsync($"bookseats?tripId={_trip.Id}&seats={seats}");
     }
 }

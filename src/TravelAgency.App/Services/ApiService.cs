@@ -78,6 +78,9 @@ public class ApiService
     public Task<TripSeatMap?> GetTripSeatMapAsync(int tripId) =>
         _http.GetFromJsonAsync<TripSeatMap>($"/api/trips/{tripId}/seatmap", JsonOptions);
 
+    public Task<TripSeatAvailability?> GetTripSeatsAsync(int tripId) =>
+        _http.GetFromJsonAsync<TripSeatAvailability>($"/api/trips/{tripId}/seats", JsonOptions);
+
     public Task<List<User>?> GetUsersAsync() =>
         _http.GetFromJsonAsync<List<User>>("/api/users", JsonOptions);
 
@@ -209,10 +212,25 @@ public class ApiService
     public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers)
     {
         var list = passengers?
-            .Select(p => new PassengerInput(p.Name, p.Age))
+            .Select(p => new PassengerInput(p.Name, p.Age, null))
             .ToList();
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, null), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
+    }
+
+    public async Task<Booking?> CreateBookingWithSeatsAsync(
+        int tripId,
+        int seats,
+        int holderSeat,
+        IEnumerable<(string Name, int Age, int SeatNumber)> passengers)
+    {
+        var list = passengers
+            .Select(p => new PassengerInput(p.Name, p.Age, p.SeatNumber))
+            .ToList();
+        var response = await _http.PostAsJsonAsync("/api/bookings",
+            new CreateBookingRequest(tripId, seats, list, holderSeat), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -322,8 +340,8 @@ public class ApiService
     private record CheckinByTokenRequest(string? QrToken, int TripId);
     private record CreatePassengersRequest(List<PassengerInput>? Passengers);
     private record UpdatePassengerCheckinRequest(bool CheckedIn);
-    private record PassengerInput(string? Name, int? Age);
-    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers);
+    private record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
+    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null);
 
     public async Task<TokenCheckinResult?> CheckinByTokenAsync(string token, int tripId)
     {

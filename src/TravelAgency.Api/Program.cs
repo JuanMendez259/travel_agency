@@ -112,6 +112,8 @@ using (var scope = app.Services.CreateScope())
             await db.Database.ExecuteSqlRawAsync(db.Database.GenerateCreateScript());
         }
     }
+    await EnsurePassengerSeatColumnAsync(db, provider);
+    await EnsureBookingSeatColumnAsync(db, provider);
     await EnsureTransportTypeColumnAsync(db, provider);
     await EnsureTripMapColumnsAsync(db, provider);
     await EnsureCheckinColumnsAsync(db, provider);
@@ -122,7 +124,6 @@ using (var scope = app.Services.CreateScope())
     await EnsureRatingsTableAsync(db, provider);
     await EnsureChildPriceColumnAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
-    await EnsurePassengerSeatColumnAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
     await EnsureFavoriteTripsTableAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
@@ -254,7 +255,7 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
 
     var bookings = await db.Bookings
         .Where(b => b.TripId == id && b.Status != BookingStatus.Cancelled)
-        .Select(b => new { b.Id, b.NumberOfSeats })
+        .Select(b => new { b.Id, b.NumberOfSeats, b.SeatNumber })
         .ToListAsync();
 
     var assignedPerBooking = passengers
@@ -263,8 +264,21 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
 
     foreach (var booking in bookings)
     {
+        if (booking.SeatNumber is int holderSeat
+            && holderSeat >= 1 && holderSeat <= capacity && !assigned.ContainsKey(holderSeat))
+        {
+            assigned[holderSeat] = new TripSeat
+            {
+                Number = holderSeat,
+                IsOccupied = true,
+                IsAssigned = true,
+                OccupiedBy = "Titular de la reserva",
+                BookingId = booking.Id
+            };
+        }
+
         var assignedCount = assignedPerBooking.TryGetValue(booking.Id, out var count) ? count : 0;
-        var missing = booking.NumberOfSeats - assignedCount;
+        var missing = booking.NumberOfSeats - assignedCount - (booking.SeatNumber.HasValue ? 1 : 0);
         for (var i = 0; i < missing; i++)
         {
             var free = Enumerable.Range(1, capacity).FirstOrDefault(n => !assigned.ContainsKey(n));
@@ -274,7 +288,7 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
                 Number = free,
                 IsOccupied = true,
                 IsAssigned = false,
-                OccupiedBy = "Titular de la reserva",
+                OccupiedBy = "Reserva sin pasajero registrado",
                 BookingId = booking.Id
             };
         }
@@ -292,6 +306,35 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
     map.Rows.AddRange(BuildSeatRows(capacity, assigned));
     return Results.Ok(map);
 }).RequireAuthorization("StaffOnly");
+
+app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
+{
+    var trip = await db.Trips.FirstOrDefaultAsync(t => t.Id == id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var capacity = Math.Max(0, trip.Capacity);
+    var taken = await GetTakenSeatNumbersAsync(db, id);
+    var occupied = taken.Where(n => n >= 1 && n <= capacity).OrderBy(n => n).ToList();
+
+    var map = new TripSeatAvailability
+    {
+        TripId = trip.Id,
+        TripTitle = trip.Title,
+        TransportType = trip.TransportType,
+        Capacity = capacity,
+        OccupiedCount = occupied.Count,
+        OccupiedSeats = occupied
+    };
+
+    var seats = new Dictionary<int, TripSeat>();
+    foreach (var number in occupied)
+    {
+        seats[number] = new TripSeat { Number = number, IsOccupied = true };
+    }
+
+    map.Rows.AddRange(BuildSeatRows(capacity, seats));
+    return Results.Ok(map);
+}).RequireAuthorization();
 
 app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
 {
@@ -555,6 +598,27 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     if (request.NumberOfSeats > trip.AvailableSeats)
         return Results.BadRequest("No hay suficientes asientos disponibles.");
 
+    var requestedSeats = new List<int>();
+    if (request.SeatNumber.HasValue) requestedSeats.Add(request.SeatNumber.Value);
+    if (request.Passengers is { Count: > 0 })
+        requestedSeats.AddRange(request.Passengers.Where(p => p.SeatNumber.HasValue).Select(p => p.SeatNumber!.Value));
+
+    if (requestedSeats.Count > 0)
+    {
+        if (requestedSeats.Count != request.NumberOfSeats)
+            return Results.BadRequest($"Debes elegir exactamente {request.NumberOfSeats} asiento(s).");
+
+        if (requestedSeats.Distinct().Count() != requestedSeats.Count)
+            return Results.BadRequest("No puedes elegir el mismo asiento dos veces.");
+
+        if (requestedSeats.Any(s => s < 1 || s > trip.Capacity))
+            return Results.BadRequest("Uno de los asientos seleccionados no existe en este viaje.");
+
+        var alreadyTaken = await GetTakenSeatNumbersAsync(db, trip.Id);
+        if (requestedSeats.Any(alreadyTaken.Contains))
+            return Results.BadRequest("Alguno de los asientos seleccionados ya fue ocupado. Elige otros en el mapa.");
+    }
+
     var passengers = new List<TripPassenger>();
     if (request.Passengers is { Count: > 0 })
     {
@@ -572,6 +636,7 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
                 Name = name.Length <= 120 ? name : name[..120],
                 Age = input.Age,
                 IsChild = IsChildAge(input.Age),
+                SeatNumber = input.SeatNumber,
                 QrToken = GenerateQrToken()
             });
         }
@@ -586,6 +651,7 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         UserId = GetUserId(principal),
         TripId = request.TripId,
         NumberOfSeats = request.NumberOfSeats,
+        SeatNumber = request.SeatNumber,
         BookingDate = DateTime.UtcNow,
         Status = BookingStatus.Pending,
         QrToken = GenerateQrToken()
@@ -601,6 +667,13 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         foreach (var p in passengers) p.BookingId = booking.Id;
         db.TripPassengers.AddRange(passengers);
         await db.SaveChangesAsync();
+    }
+
+    if (!booking.SeatNumber.HasValue)
+    {
+        var taken = await GetTakenSeatNumbersAsync(db, trip.Id);
+        var free = Enumerable.Range(1, trip.Capacity).FirstOrDefault(n => !taken.Contains(n));
+        if (free > 0) booking.SeatNumber = free;
     }
 
     await RecomputeAvailabilityAsync(db, trip);
@@ -1439,26 +1512,41 @@ static List<TripSeatRow> BuildSeatRows(int capacity, Dictionary<int, TripSeat> a
     return rows;
 }
 
-static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList<TripPassenger> passengers)
+static async Task<HashSet<int>> GetTakenSeatNumbersAsync(AppDbContext db, int tripId)
 {
-    if (passengers.Count == 0 || trip.Capacity <= 0) return;
+    var taken = new HashSet<int>();
 
-    var taken = await db.TripPassengers
+    taken.UnionWith(await db.Bookings
+        .Where(b => b.TripId == tripId && b.Status != BookingStatus.Cancelled && b.SeatNumber != null)
+        .Select(b => b.SeatNumber!.Value)
+        .ToListAsync());
+
+    taken.UnionWith(await db.TripPassengers
         .Where(p => p.Booking != null
-            && p.Booking.TripId == trip.Id
+            && p.Booking.TripId == tripId
             && p.Booking.Status != BookingStatus.Cancelled
             && p.SeatNumber != null)
         .Select(p => p.SeatNumber!.Value)
-        .ToListAsync();
+        .ToListAsync());
+
+    return taken;
+}
+
+static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList<TripPassenger> passengers)
+{
+    var pending = passengers.Where(p => !p.SeatNumber.HasValue).ToList();
+    if (pending.Count == 0 || trip.Capacity <= 0) return;
+
+    var taken = await GetTakenSeatNumbersAsync(db, trip.Id);
 
     var free = Enumerable.Range(1, trip.Capacity)
         .Where(n => !taken.Contains(n))
-        .Take(passengers.Count)
+        .Take(pending.Count)
         .ToList();
 
-    for (var i = 0; i < passengers.Count && i < free.Count; i++)
+    for (var i = 0; i < pending.Count && i < free.Count; i++)
     {
-        passengers[i].SeatNumber = free[i];
+        pending[i].SeatNumber = free[i];
     }
 }
 
@@ -1828,6 +1916,16 @@ static async Task EnsurePassengerSeatColumnAsync(AppDbContext db, string provide
     }
 }
 
+static async Task EnsureBookingSeatColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Bookings", "SeatNumber", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"SeatNumber\" INTEGER NULL;"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"SeatNumber\" integer NULL;");
+    }
+}
+
 static async Task EnsureCancellationPolicyColumnAsync(AppDbContext db, string provider)
 {
     if (!await ColumnExistsAsync(db, "Trips", "CancellationDaysLimit", provider))
@@ -1976,8 +2074,8 @@ record CheckinTokenResult(string Kind, string? Name, DateTime? CheckedInAt, bool
 record UpdateBookingStatusRequest(BookingStatus Status);
 record UpdateBookingCheckinRequest(bool CheckedIn);
 record UpdatePassengerCheckinRequest(bool CheckedIn);
-record PassengerInput(string? Name, int? Age);
-record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers);
+record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
+record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null);
 record CreatePassengersRequest(List<PassengerInput>? Passengers);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);
