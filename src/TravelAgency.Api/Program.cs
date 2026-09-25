@@ -1478,7 +1478,11 @@ static bool IsChildAge(int? age) => age is >= 0 and <= 11;
 
 static List<TripSeatRow> BuildSeatRows(int capacity, Dictionary<int, TripSeat> assigned)
 {
-    const int seatsPerRow = 3;
+    const int leftSeats = 2;
+    const int rightSeats = 2;
+    const int aisleSlot = leftSeats;
+    const int slotsPerRow = leftSeats + 1 + rightSeats;
+    const int seatsPerRow = leftSeats + rightSeats;
     var rows = new List<TripSeatRow>();
     if (capacity <= 0) return rows;
 
@@ -1486,24 +1490,26 @@ static List<TripSeatRow> BuildSeatRows(int capacity, Dictionary<int, TripSeat> a
     for (var rowIndex = 0; rowIndex < totalRows; rowIndex++)
     {
         var row = new TripSeatRow { RowNumber = rowIndex + 1 };
-        for (var slot = 0; slot < seatsPerRow; slot++)
+        var seatIndex = rowIndex * seatsPerRow;
+
+        for (var slot = 0; slot < slotsPerRow; slot++)
         {
-            if (slot == 2)
+            if (slot == aisleSlot)
             {
                 row.Seats.Add(new TripSeat { IsAisle = true });
                 continue;
             }
 
-            var number = rowIndex * seatsPerRow + slot + 1;
-            if (number > capacity) break;
+            seatIndex++;
+            if (seatIndex > capacity) break;
 
-            if (assigned.TryGetValue(number, out var seat))
+            if (assigned.TryGetValue(seatIndex, out var seat))
             {
                 row.Seats.Add(seat);
             }
             else
             {
-                row.Seats.Add(new TripSeat { Number = number });
+                row.Seats.Add(new TripSeat { Number = seatIndex });
             }
         }
         rows.Add(row);
