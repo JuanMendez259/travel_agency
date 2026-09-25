@@ -75,6 +75,9 @@ public class ApiService
     public Task<List<Trip>?> GetAdminTripsAsync() =>
         _http.GetFromJsonAsync<List<Trip>>("/api/trips/manage", JsonOptions);
 
+    public Task<TripSeatMap?> GetTripSeatMapAsync(int tripId) =>
+        _http.GetFromJsonAsync<TripSeatMap>($"/api/trips/{tripId}/seatmap", JsonOptions);
+
     public Task<List<User>?> GetUsersAsync() =>
         _http.GetFromJsonAsync<List<User>>("/api/users", JsonOptions);
 

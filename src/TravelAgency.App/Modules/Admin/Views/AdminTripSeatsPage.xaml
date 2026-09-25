@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripSeatsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Mapa de asientos">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="8">
+        <VerticalStackLayout Grid.Row="0" Spacing="2" Margin="4,0,0,6">
+            <Label x:Name="TripLabel"
+                   FontSize="17"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center" />
+            <Label x:Name="SummaryLabel"
+                   FontSize="13"
+                   TextColor="Gray"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
+
+        <HorizontalStackLayout Grid.Row="1" Spacing="16" HorizontalOptions="Center" Margin="0,0,0,8">
+            <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                <BoxView CornerRadius="6" HeightRequest="20" WidthRequest="20" Color="#D9D9D9" />
+                <Label Text="Libre" FontSize="10" HorizontalOptions="Center" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                <BoxView CornerRadius="6" HeightRequest="20" WidthRequest="20" Color="#DBB92A" />
+                <Label Text="Ocupado" FontSize="10" HorizontalOptions="Center" />
+            </VerticalStackLayout>
+            <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                <BoxView CornerRadius="6" HeightRequest="20" WidthRequest="20" Color="#2F855A" />
+                <Label Text="Check-in" FontSize="10" HorizontalOptions="Center" />
+            </VerticalStackLayout>
+        </HorizontalStackLayout>
+
+        <RefreshView x:Name="SeatsRefresh" Grid.Row="2" Refreshing="OnRefreshing">
+            <ScrollView>
+                <VerticalStackLayout Spacing="12">
+                    <Border Stroke="#CCCCCC" StrokeShape="RoundRectangle 16" Padding="16">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Text="🚌" FontSize="22" HorizontalOptions="End" Margin="0,0,4,0" />
+                            <VerticalStackLayout x:Name="RowsContainer" Spacing="10" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Label Text="Detalle de ocupación" FontSize="15" FontAttributes="Bold" Margin="6,0,0,0" />
+                    <VerticalStackLayout x:Name="OccupiedList" Spacing="6" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+
+        <ActivityIndicator x:Name="Loading"
+                           Grid.Row="2"
+                           IsRunning="False"
+                           IsVisible="False"
+                           VerticalOptions="Start"
+                           HorizontalOptions="Center" />
+    </Grid>
+</ContentPage>

@@ -122,6 +122,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureRatingsTableAsync(db, provider);
     await EnsureChildPriceColumnAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
+    await EnsurePassengerSeatColumnAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
     await EnsureFavoriteTripsTableAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
@@ -219,6 +220,78 @@ app.MapGet("/api/trips/{id}", async (int id, AppDbContext db) =>
     await db.Trips
         .Include(t => t.PointsOfInterest)
         .FirstOrDefaultAsync(t => t.Id == id) is Trip trip ? Results.Ok(trip) : Results.NotFound());
+
+app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
+{
+    var trip = await db.Trips.FirstOrDefaultAsync(t => t.Id == id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var capacity = Math.Max(0, trip.Capacity);
+    var assigned = new Dictionary<int, TripSeat>();
+
+    var passengers = await db.TripPassengers
+        .Include(p => p.Booking)
+        .Where(p => p.Booking != null
+            && p.Booking.TripId == id
+            && p.Booking.Status != BookingStatus.Cancelled
+            && p.SeatNumber != null)
+        .ToListAsync();
+
+    foreach (var p in passengers)
+    {
+        var number = p.SeatNumber!.Value;
+        if (number < 1 || number > capacity || assigned.ContainsKey(number)) continue;
+        assigned[number] = new TripSeat
+        {
+            Number = number,
+            IsOccupied = true,
+            IsAssigned = true,
+            OccupiedBy = p.Name,
+            BookingId = p.BookingId,
+            CheckedIn = p.CheckedIn
+        };
+    }
+
+    var bookings = await db.Bookings
+        .Where(b => b.TripId == id && b.Status != BookingStatus.Cancelled)
+        .Select(b => new { b.Id, b.NumberOfSeats })
+        .ToListAsync();
+
+    var assignedPerBooking = passengers
+        .GroupBy(p => p.BookingId)
+        .ToDictionary(g => g.Key, g => g.Count());
+
+    foreach (var booking in bookings)
+    {
+        var assignedCount = assignedPerBooking.TryGetValue(booking.Id, out var count) ? count : 0;
+        var missing = booking.NumberOfSeats - assignedCount;
+        for (var i = 0; i < missing; i++)
+        {
+            var free = Enumerable.Range(1, capacity).FirstOrDefault(n => !assigned.ContainsKey(n));
+            if (free < 1) break;
+            assigned[free] = new TripSeat
+            {
+                Number = free,
+                IsOccupied = true,
+                IsAssigned = false,
+                OccupiedBy = "Titular de la reserva",
+                BookingId = booking.Id
+            };
+        }
+    }
+
+    var map = new TripSeatMap
+    {
+        TripId = trip.Id,
+        TripTitle = trip.Title,
+        TransportType = trip.TransportType,
+        Capacity = capacity,
+        OccupiedCount = assigned.Count
+    };
+
+    map.Rows.AddRange(BuildSeatRows(capacity, assigned));
+    return Results.Ok(map);
+}).RequireAuthorization("StaffOnly");
 
 app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
 {
@@ -524,6 +597,7 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
 
     if (passengers.Count > 0)
     {
+        await AssignFreeSeatsAsync(db, trip, passengers);
         foreach (var p in passengers) p.BookingId = booking.Id;
         db.TripPassengers.AddRange(passengers);
         await db.SaveChangesAsync();
@@ -579,6 +653,11 @@ app.MapPost("/api/bookings/{id}/passengers", async (int id, CreatePassengersRequ
             IsChild = IsChildAge(input.Age),
             QrToken = GenerateQrToken()
         });
+    }
+
+    if (trip is not null)
+    {
+        await AssignFreeSeatsAsync(db, trip, passengers);
     }
 
     db.TripPassengers.AddRange(passengers);
@@ -1324,6 +1403,65 @@ static int GetUserId(ClaimsPrincipal principal)
 
 static bool IsChildAge(int? age) => age is >= 0 and <= 11;
 
+static List<TripSeatRow> BuildSeatRows(int capacity, Dictionary<int, TripSeat> assigned)
+{
+    const int seatsPerRow = 3;
+    var rows = new List<TripSeatRow>();
+    if (capacity <= 0) return rows;
+
+    var totalRows = (int)Math.Ceiling(capacity / (double)seatsPerRow);
+    for (var rowIndex = 0; rowIndex < totalRows; rowIndex++)
+    {
+        var row = new TripSeatRow { RowNumber = rowIndex + 1 };
+        for (var slot = 0; slot < seatsPerRow; slot++)
+        {
+            if (slot == 2)
+            {
+                row.Seats.Add(new TripSeat { IsAisle = true });
+                continue;
+            }
+
+            var number = rowIndex * seatsPerRow + slot + 1;
+            if (number > capacity) break;
+
+            if (assigned.TryGetValue(number, out var seat))
+            {
+                row.Seats.Add(seat);
+            }
+            else
+            {
+                row.Seats.Add(new TripSeat { Number = number });
+            }
+        }
+        rows.Add(row);
+    }
+
+    return rows;
+}
+
+static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList<TripPassenger> passengers)
+{
+    if (passengers.Count == 0 || trip.Capacity <= 0) return;
+
+    var taken = await db.TripPassengers
+        .Where(p => p.Booking != null
+            && p.Booking.TripId == trip.Id
+            && p.Booking.Status != BookingStatus.Cancelled
+            && p.SeatNumber != null)
+        .Select(p => p.SeatNumber!.Value)
+        .ToListAsync();
+
+    var free = Enumerable.Range(1, trip.Capacity)
+        .Where(n => !taken.Contains(n))
+        .Take(passengers.Count)
+        .ToList();
+
+    for (var i = 0; i < passengers.Count && i < free.Count; i++)
+    {
+        passengers[i].SeatNumber = free[i];
+    }
+}
+
 static decimal ComputeBookingTotal(Trip trip, IEnumerable<TripPassenger> passengers)
 {
     var total = trip.Price;
@@ -1677,6 +1815,16 @@ static async Task EnsurePassengerAgeColumnsAsync(AppDbContext db, string provide
         await TryExecAsync(db, provider == "sqlite"
             ? "ALTER TABLE \"TripPassengers\" ADD COLUMN \"IsChild\" INTEGER NOT NULL DEFAULT 0;"
             : "ALTER TABLE \"TripPassengers\" ADD COLUMN \"IsChild\" boolean NOT NULL DEFAULT false;");
+    }
+}
+
+static async Task EnsurePassengerSeatColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "TripPassengers", "SeatNumber", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"TripPassengers\" ADD COLUMN \"SeatNumber\" INTEGER NULL;"
+            : "ALTER TABLE \"TripPassengers\" ADD COLUMN \"SeatNumber\" integer NULL;");
     }
 }
 

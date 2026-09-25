@@ -126,6 +126,12 @@ public partial class AdminTripsPage : ContentPage
         ChipTripsPaused.BackgroundColor = isPaused ? Colors.DodgerBlue : Colors.LightGray;
     }
 
+    private async void OnSeatsClicked(object? sender, EventArgs e)
+    {
+        if ((sender as Button)?.CommandParameter is not Trip trip) return;
+        await Shell.Current.GoToAsync($"tripseats?id={trip.Id}");
+    }
+
     private async void OnDetailClicked(object? sender, EventArgs e)
     {
         if ((sender as Button)?.CommandParameter is not Trip trip) return;

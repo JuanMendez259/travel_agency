@@ -76,10 +76,20 @@
                                 <Label Text="de" FontSize="13" />
                                 <Label Text="{Binding Capacity}" FontSize="13" />
                             </HorizontalStackLayout>
-                            <Button Text="Ver detalle"
-                                    Clicked="OnDetailClicked"
-                                    CommandParameter="{Binding Trip}"
-                                    Margin="0,4,0,0" />
+                            <HorizontalStackLayout Spacing="6">
+                                <Button Text="Ver detalle"
+                                        Clicked="OnDetailClicked"
+                                        CommandParameter="{Binding Trip}"
+                                        HorizontalOptions="Fill"
+                                        Margin="0,4,0,0" />
+                                <Button Text="Mapa de asientos"
+                                        Clicked="OnSeatsClicked"
+                                        CommandParameter="{Binding Trip}"
+                                        HorizontalOptions="Fill"
+                                        Margin="0,4,0,0"
+                                        BackgroundColor="#2B6CB0"
+                                        TextColor="White" />
+                            </HorizontalStackLayout>
                         </VerticalStackLayout>
                     </Border>
                 </DataTemplate>

@@ -12,6 +12,7 @@ public class TripPassenger
     public string? QrToken { get; set; }
     public bool CheckedIn { get; set; }
     public DateTime? CheckedInAt { get; set; }
+    public int? SeatNumber { get; set; }
 
     [JsonIgnore]
     public Booking? Booking { get; set; }
