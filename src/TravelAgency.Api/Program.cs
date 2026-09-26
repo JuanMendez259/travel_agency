@@ -228,71 +228,7 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
     var capacity = Math.Max(0, trip.Capacity);
-    var assigned = new Dictionary<int, TripSeat>();
-
-    var passengers = await db.TripPassengers
-        .Include(p => p.Booking)
-        .Where(p => p.Booking != null
-            && p.Booking.TripId == id
-            && p.Booking.Status != BookingStatus.Cancelled
-            && p.SeatNumber != null)
-        .ToListAsync();
-
-    foreach (var p in passengers)
-    {
-        var number = p.SeatNumber!.Value;
-        if (number < 1 || number > capacity || assigned.ContainsKey(number)) continue;
-        assigned[number] = new TripSeat
-        {
-            Number = number,
-            IsOccupied = true,
-            IsAssigned = true,
-            OccupiedBy = p.Name,
-            BookingId = p.BookingId,
-            CheckedIn = p.CheckedIn
-        };
-    }
-
-    var bookings = await db.Bookings
-        .Where(b => b.TripId == id && b.Status != BookingStatus.Cancelled)
-        .Select(b => new { b.Id, b.NumberOfSeats, b.SeatNumber })
-        .ToListAsync();
-
-    var assignedPerBooking = passengers
-        .GroupBy(p => p.BookingId)
-        .ToDictionary(g => g.Key, g => g.Count());
-
-    foreach (var booking in bookings)
-    {
-        if (booking.SeatNumber is int holderSeat
-            && holderSeat >= 1 && holderSeat <= capacity && !assigned.ContainsKey(holderSeat))
-        {
-            assigned[holderSeat] = new TripSeat
-            {
-                Number = holderSeat,
-                IsOccupied = true,
-                IsAssigned = true,
-                OccupiedBy = "Titular de la reserva",
-                BookingId = booking.Id
-            };
-        }
-
-        var assignedCount = assignedPerBooking.TryGetValue(booking.Id, out var count) ? count : 0;
-        var missing = booking.NumberOfSeats - assignedCount - (booking.SeatNumber.HasValue ? 1 : 0);
-        for (var i = 0; i < missing; i++)
-        {
-            var free = Enumerable.Range(1, capacity).FirstOrDefault(n => !assigned.ContainsKey(n));
-            if (free < 1) break;
-            assigned[free] = new TripSeat
-            {
-                Number = free,
-                IsOccupied = true,
-                IsAssigned = false,
-                OccupiedBy = "Reserva sin pasajero registrado",
-                BookingId = booking.Id
-            };
-        }
-    }
+    var assigned = await GetOccupiedSeatsAsync(db, id, capacity);
 
     var map = new TripSeatMap
     {
@@ -313,8 +249,8 @@ app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
     var capacity = Math.Max(0, trip.Capacity);
-    var taken = await GetTakenSeatNumbersAsync(db, id);
-    var occupied = taken.Where(n => n >= 1 && n <= capacity).OrderBy(n => n).ToList();
+    var occupiedSeats = await GetOccupiedSeatsAsync(db, id, capacity);
+    var occupied = occupiedSeats.Keys.OrderBy(n => n).ToList();
 
     var map = new TripSeatAvailability
     {
@@ -614,7 +550,7 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         if (requestedSeats.Any(s => s < 1 || s > trip.Capacity))
             return Results.BadRequest("Uno de los asientos seleccionados no existe en este viaje.");
 
-        var alreadyTaken = await GetTakenSeatNumbersAsync(db, trip.Id);
+        var alreadyTaken = await GetTakenSeatNumbersAsync(db, trip);
         if (requestedSeats.Any(alreadyTaken.Contains))
             return Results.BadRequest("Alguno de los asientos seleccionados ya fue ocupado. Elige otros en el mapa.");
     }
@@ -663,7 +599,7 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
 
     if (passengers.Count > 0)
     {
-        await AssignFreeSeatsAsync(db, trip, passengers);
+        await AssignFreeSeatsAsync(db, trip, passengers, booking.Id);
         foreach (var p in passengers) p.BookingId = booking.Id;
         db.TripPassengers.AddRange(passengers);
         await db.SaveChangesAsync();
@@ -671,7 +607,7 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
 
     if (!booking.SeatNumber.HasValue)
     {
-        var taken = await GetTakenSeatNumbersAsync(db, trip.Id);
+        var taken = await GetTakenSeatNumbersAsync(db, trip);
         var free = Enumerable.Range(1, trip.Capacity).FirstOrDefault(n => !taken.Contains(n));
         if (free > 0) booking.SeatNumber = free;
     }
@@ -730,7 +666,7 @@ app.MapPost("/api/bookings/{id}/passengers", async (int id, CreatePassengersRequ
 
     if (trip is not null)
     {
-        await AssignFreeSeatsAsync(db, trip, passengers);
+        await AssignFreeSeatsAsync(db, trip, passengers, id);
     }
 
     db.TripPassengers.AddRange(passengers);
@@ -1518,32 +1454,92 @@ static List<TripSeatRow> BuildSeatRows(int capacity, Dictionary<int, TripSeat> a
     return rows;
 }
 
-static async Task<HashSet<int>> GetTakenSeatNumbersAsync(AppDbContext db, int tripId)
+static async Task<Dictionary<int, TripSeat>> GetOccupiedSeatsAsync(AppDbContext db, int tripId, int capacity, int? ignoreBookingId = null)
 {
-    var taken = new HashSet<int>();
+    var assigned = new Dictionary<int, TripSeat>();
+    if (capacity <= 0) return assigned;
 
-    taken.UnionWith(await db.Bookings
-        .Where(b => b.TripId == tripId && b.Status != BookingStatus.Cancelled && b.SeatNumber != null)
-        .Select(b => b.SeatNumber!.Value)
-        .ToListAsync());
-
-    taken.UnionWith(await db.TripPassengers
+    var passengers = await db.TripPassengers
         .Where(p => p.Booking != null
             && p.Booking.TripId == tripId
             && p.Booking.Status != BookingStatus.Cancelled
             && p.SeatNumber != null)
-        .Select(p => p.SeatNumber!.Value)
-        .ToListAsync());
+        .ToListAsync();
 
-    return taken;
+    foreach (var p in passengers)
+    {
+        var number = p.SeatNumber!.Value;
+        if (number < 1 || number > capacity || assigned.ContainsKey(number)) continue;
+        assigned[number] = new TripSeat
+        {
+            Number = number,
+            IsOccupied = true,
+            IsAssigned = true,
+            OccupiedBy = p.Name,
+            BookingId = p.BookingId,
+            CheckedIn = p.CheckedIn
+        };
+    }
+
+    var bookings = await db.Bookings
+        .Where(b => b.TripId == tripId && b.Status != BookingStatus.Cancelled)
+        .OrderBy(b => b.Id)
+        .Select(b => new { b.Id, b.NumberOfSeats, b.SeatNumber })
+        .ToListAsync();
+
+    var assignedPerBooking = passengers
+        .GroupBy(p => p.BookingId)
+        .ToDictionary(g => g.Key, g => g.Count());
+
+    foreach (var booking in bookings)
+    {
+        if (booking.SeatNumber is int holderSeat
+            && holderSeat >= 1 && holderSeat <= capacity && !assigned.ContainsKey(holderSeat))
+        {
+            assigned[holderSeat] = new TripSeat
+            {
+                Number = holderSeat,
+                IsOccupied = true,
+                IsAssigned = true,
+                OccupiedBy = "Titular de la reserva",
+                BookingId = booking.Id
+            };
+        }
+
+        if (ignoreBookingId == booking.Id) continue;
+
+        var assignedCount = assignedPerBooking.TryGetValue(booking.Id, out var count) ? count : 0;
+        var missing = booking.NumberOfSeats - assignedCount - (booking.SeatNumber.HasValue ? 1 : 0);
+        for (var i = 0; i < missing; i++)
+        {
+            var free = Enumerable.Range(1, capacity).FirstOrDefault(n => !assigned.ContainsKey(n));
+            if (free < 1) break;
+            assigned[free] = new TripSeat
+            {
+                Number = free,
+                IsOccupied = true,
+                IsAssigned = false,
+                OccupiedBy = "Reserva sin pasajero registrado",
+                BookingId = booking.Id
+            };
+        }
+    }
+
+    return assigned;
 }
 
-static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList<TripPassenger> passengers)
+static async Task<HashSet<int>> GetTakenSeatNumbersAsync(AppDbContext db, Trip trip, int? ignoreBookingId = null)
+{
+    var occupied = await GetOccupiedSeatsAsync(db, trip.Id, Math.Max(0, trip.Capacity), ignoreBookingId);
+    return new HashSet<int>(occupied.Keys);
+}
+
+static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList<TripPassenger> passengers, int? bookingId = null)
 {
     var pending = passengers.Where(p => !p.SeatNumber.HasValue).ToList();
     if (pending.Count == 0 || trip.Capacity <= 0) return;
 
-    var taken = await GetTakenSeatNumbersAsync(db, trip.Id);
+    var taken = await GetTakenSeatNumbersAsync(db, trip, bookingId);
 
     var free = Enumerable.Range(1, trip.Capacity)
         .Where(n => !taken.Contains(n))
