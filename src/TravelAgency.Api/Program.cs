@@ -66,8 +66,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
             IssuerSigningKey = signingKey,
-            ClockSkew = TimeSpan.FromMinutes(2),
-            RoleClaimType = "role"
+            ClockSkew = TimeSpan.FromMinutes(2)
+            // sin RoleClaimType — el default (ClaimTypes.Role) ya coincide con el mapeo automático
         };
     });
 
@@ -243,6 +243,17 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
     map.Rows.AddRange(BuildSeatRows(capacity, assigned));
     return Results.Ok(map);
 }).RequireAuthorization("StaffOnly");
+
+app.MapGet("/api/debug/claims", (ClaimsPrincipal principal) =>
+{
+    var claims = principal.Claims.Select(c => new { c.Type, c.Value }).ToList();
+    return Results.Ok(new
+    {
+        IsAuthenticated = principal.Identity?.IsAuthenticated,
+        IsAdmin = principal.IsInRole("Admin"),
+        Claims = claims
+    });
+}).RequireAuthorization();
 
 app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
 {
