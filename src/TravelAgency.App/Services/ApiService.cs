@@ -176,9 +176,23 @@ public class ApiService
 
     public async Task<Trip?> CreateTripAsync(Trip trip)
     {
-        var response = await _http.PostAsJsonAsync("/api/trips", trip, JsonOptions);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    var response = await _http.PostAsJsonAsync("/api/trips", trip, JsonOptions);
+
+    if (!response.IsSuccessStatusCode)
+    {
+        var errorBody = await response.Content.ReadAsStringAsync();
+        
+        if (Application.Current?.MainPage != null)
+        {
+            await Application.Current.MainPage.DisplayAlert(
+                $"Error {(int)response.StatusCode}", 
+                errorBody, 
+                "OK");
+        }
+    }
+
+    response.EnsureSuccessStatusCode();
+    return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
     public async Task<Trip?> UpdateTripAsync(int id, Trip trip)
