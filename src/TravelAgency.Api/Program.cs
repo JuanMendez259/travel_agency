@@ -244,16 +244,19 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
     return Results.Ok(map);
 }).RequireAuthorization("StaffOnly");
 
-app.MapGet("/api/debug/claims", (ClaimsPrincipal principal) =>
+if (app.Environment.IsDevelopment())
 {
-    var claims = principal.Claims.Select(c => new { c.Type, c.Value }).ToList();
-    return Results.Ok(new
+    app.MapGet("/api/debug/claims", (ClaimsPrincipal principal) =>
     {
-        IsAuthenticated = principal.Identity?.IsAuthenticated,
-        IsAdmin = principal.IsInRole("Admin"),
-        Claims = claims
-    });
-}).RequireAuthorization();
+        var claims = principal.Claims.Select(c => new { c.Type, c.Value }).ToList();
+        return Results.Ok(new
+        {
+            IsAuthenticated = principal.Identity?.IsAuthenticated,
+            IsAdmin = principal.IsInRole("Admin"),
+            Claims = claims
+        });
+    }).RequireAuthorization("AdminOnly");
+}
 
 app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
 {
