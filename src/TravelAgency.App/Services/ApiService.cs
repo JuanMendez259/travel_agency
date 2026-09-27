@@ -95,6 +95,20 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<User>(JsonOptions);
     }
 
+    public async Task<CreatedCoordinator> CreateCoordinatorAsync(string name, string email, string? phone, string? password)
+    {
+        var response = await _http.PostAsJsonAsync("/api/users/coordinators",
+            new CreateCoordinatorRequest
+            {
+                Name = name,
+                Email = email,
+                Phone = phone,
+                Password = password
+            }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<CreatedCoordinator>(JsonOptions))!;
+    }
+
     public Task<List<UserNotification>?> GetNotificationsAsync(int userId) =>
         _http.GetFromJsonAsync<List<UserNotification>>($"/api/users/{userId}/notifications", JsonOptions);
 

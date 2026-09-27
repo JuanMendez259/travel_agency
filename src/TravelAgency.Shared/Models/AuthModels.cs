@@ -27,3 +27,22 @@ public class UpdateUserRoleRequest
 {
     public UserRole Role { get; set; }
 }
+
+public class CreateCoordinatorRequest
+{
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Password { get; set; }
+}
+
+public class CreatedCoordinator
+{
+    public int Id { get; set; }
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public UserRole Role { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public string TemporaryPassword { get; set; } = string.Empty;
+}

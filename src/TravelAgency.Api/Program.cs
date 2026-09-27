@@ -476,6 +476,53 @@ app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request,
     return Results.Ok(user);
 }).RequireAuthorization("AdminOnly");
 
+app.MapPost("/api/users/coordinators", async (CreateCoordinatorRequest request, AppDbContext db) =>
+{
+    var name = request.Name?.Trim();
+    var email = request.Email?.Trim().ToLowerInvariant();
+
+    if (string.IsNullOrWhiteSpace(name))
+        return Results.BadRequest("El nombre del coordinador es obligatorio.");
+
+    if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        return Results.BadRequest("El correo no es válido.");
+
+    if (await db.Users.AnyAsync(u => u.Email == email))
+        return Results.Conflict("Ya existe una cuenta con ese correo.");
+
+    var password = string.IsNullOrWhiteSpace(request.Password)
+        ? GenerateTemporaryPassword()
+        : request.Password.Trim();
+
+    if (password.Length < 6)
+        return Results.BadRequest("La contraseña debe tener al menos 6 caracteres.");
+
+    var user = new User
+    {
+        Name = name.Length <= 120 ? name : name[..120],
+        Email = email,
+        PasswordHash = HashPassword(password),
+        Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
+        Role = UserRole.Coordinador,
+        CreatedAt = DateTime.UtcNow,
+        QrToken = GenerateQrToken()
+    };
+
+    db.Users.Add(user);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/api/users/{user.Id}", new CreatedCoordinator
+    {
+        Id = user.Id,
+        Name = user.Name,
+        Email = user.Email,
+        Phone = user.Phone,
+        Role = user.Role,
+        CreatedAt = user.CreatedAt,
+        TemporaryPassword = password
+    });
+}).RequireAuthorization("AdminOnly");
+
 app.MapGet("/api/users/{id}/bookings", async (int id, AppDbContext db, ClaimsPrincipal principal, string? status) =>
 {
     var tokenUserId = GetUserId(principal);
@@ -1570,6 +1617,12 @@ static bool TryParseBookingStatus(string? status, out BookingStatus parsed)
     if (status.Equals("All", StringComparison.OrdinalIgnoreCase))
         return false;
     return Enum.TryParse(status, ignoreCase: true, out parsed) && Enum.IsDefined(parsed);
+}
+
+static string GenerateTemporaryPassword()
+{
+    const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    return RandomNumberGenerator.GetString(alphabet, 10);
 }
 
 static string GenerateQrToken()
