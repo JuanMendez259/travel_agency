@@ -11,6 +11,7 @@ public partial class LoginPage : ContentPage
     private readonly ApiService _api;
     private readonly SessionService _session;
     private bool _isRegistering;
+    private bool _isPasswordVisible;
 
     public LoginPage(ApiService api, SessionService session)
     {
@@ -76,14 +77,12 @@ public partial class LoginPage : ContentPage
     }
 
     private async void OnRememberTapped(object? sender, TappedEventArgs e)
-    {
-        RememberCheckBox.IsChecked = RememberCheckBox.IsChecked != true;
+        => RememberCheckBox.IsChecked = RememberCheckBox.IsChecked != true;
 
-        if (RememberCheckBox.IsChecked != true)
-        {
+    private void OnRememberCheckedChanged(object? sender, CheckedChangedEventArgs e)
+    {
+        if (e.Value == false)
             ForgetRemembered();
-            await Task.CompletedTask;
-        }
     }
 
     private async void OnQuickLoginSelected(object? sender, EventArgs e)
@@ -114,9 +113,22 @@ public partial class LoginPage : ContentPage
 
         FormTitleLabel.Text = _isRegistering ? "Crear cuenta" : "Iniciar sesión";
         SubmitButton.Text = _isRegistering ? "Registrarse" : "Entrar";
-        NameEntry.IsVisible = _isRegistering;
-        PhoneEntry.IsVisible = _isRegistering;
+        NameFieldLayout.IsVisible = _isRegistering;
+        PhoneFieldLayout.IsVisible = _isRegistering;
         ToggleButton.Text = _isRegistering ? "Ya tengo cuenta" : "¿No tienes cuenta? Crea una";
+    }
+
+    private void OnTogglePasswordClicked(object? sender, EventArgs e)
+    {
+        _isPasswordVisible = !_isPasswordVisible;
+        PasswordEntry.IsPassword = !_isPasswordVisible;
+        TogglePasswordButton.Text = _isPasswordVisible ? "Ocultar" : "Mostrar";
+    }
+
+    private async void OnForgotPasswordTapped(object? sender, TappedEventArgs e)
+    {
+        // TODO: conectar con el flujo real de recuperacion de contraseña.
+        await DisplayAlertAsync("Próximamente", "La recuperación de contraseña estará disponible pronto.", "OK");
     }
 
     private async void OnSubmitClicked(object? sender, EventArgs e)

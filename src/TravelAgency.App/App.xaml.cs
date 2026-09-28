@@ -12,6 +12,7 @@ public partial class App : Application
     {
         InitializeComponent();
         Services = services;
+        UserAppTheme = AppTheme.Light;
 #if WINDOWS
         Microsoft.UI.Xaml.Application.Current.UnhandledException += (_, e) =>
         {

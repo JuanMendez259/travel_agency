@@ -68,7 +68,7 @@ public partial class ClientMyTripsPage : ContentPage
 
     private void ApplySearch()
     {
-        var text = SearchBar.Text?.Trim();
+        var text = SearchEntry.Text?.Trim();
         IEnumerable<Booking> result = _current;
 
         if (!string.IsNullOrWhiteSpace(text))

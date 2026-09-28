@@ -75,7 +75,7 @@ public partial class AdminTripBookingsPage : ContentPage
 
     private void ApplySearch()
     {
-        var text = SearchBar.Text?.Trim();
+        var text = SearchEntry.Text?.Trim();
         IEnumerable<TripBookingItem> result = _current;
 
         if (!string.IsNullOrWhiteSpace(text))

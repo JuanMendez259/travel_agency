@@ -3,100 +3,275 @@
     x:Class="TravelAgency.App.Modules.Auth.Views.LoginPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    BackgroundColor="{StaticResource ColorSurface}"
     Title="TravelAgency">
 
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <!-- Tokens de color tomados del diseño de Stitch (RutaVerde palette) -->
+            <Color x:Key="ColorPrimary">#003B1B</Color>
+            <Color x:Key="ColorPrimaryContainer">#14532D</Color>
+            <Color x:Key="ColorSecondary">#006C49</Color>
+            <Color x:Key="ColorSecondaryFixed">#6FFBBE</Color>
+            <Color x:Key="ColorSurface">#FAF8FF</Color>
+            <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
+            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
+            <Color x:Key="ColorSurfaceContainerHigh">#E2E7FF</Color>
+            <Color x:Key="ColorOnSurface">#131B2E</Color>
+            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
+            <Color x:Key="ColorOutline">#717970</Color>
+
+            <!-- Estilo compartido para los campos de texto dentro de su "cápsula" -->
+            <Style x:Key="FieldEntry" TargetType="Entry">
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="TextColor" Value="{StaticResource ColorOnSurface}" />
+                <Setter Property="PlaceholderColor" Value="{StaticResource ColorOutline}" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="HeightRequest" Value="50" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
     <ScrollView>
-        <VerticalStackLayout Padding="30" Spacing="12" VerticalOptions="Center">
+        <VerticalStackLayout Padding="24,20" Spacing="0">
 
-            <Image Source="logo.jpg"
-                   HeightRequest="180"
-                   Aspect="AspectFit"
-                   HorizontalOptions="Center"
-                   Margin="0,0,0,10" />
+            <!-- ============ MARCA / LOGO ============ -->
+            <VerticalStackLayout HorizontalOptions="Center" Spacing="2" Margin="0,4,0,22">
+                <Grid WidthRequest="96" HeightRequest="96" HorizontalOptions="Center">
+                    <Border StrokeShape="RoundRectangle 48"
+                            Stroke="Transparent"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                            Padding="4">
+                        <Border.Shadow>
+                            <Shadow Brush="Black" Opacity="0.12" Radius="12" Offset="0,3" />
+                        </Border.Shadow>
+                        <Image Source="logo.jpg" Aspect="AspectFill" />
+                    </Border>
+                    <Border StrokeShape="RoundRectangle 14"
+                            WidthRequest="28" HeightRequest="28"
+                            BackgroundColor="{StaticResource ColorSecondaryFixed}"
+                            HorizontalOptions="End" VerticalOptions="End"
+                            Padding="0">
+                        <Label Text="🧭" FontSize="14" HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                </Grid>
 
-            <Label Text="TravelAgency"
-                   FontSize="34"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center" />
-            <Label Text="Tu agencia de viajes"
-                   FontSize="15"
-                   TextColor="Gray"
-                   HorizontalOptions="Center"
-                   Margin="0,0,0,20" />
+                <Label Text="TravelAgency"
+                       FontSize="26"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource ColorPrimary}"
+                       HorizontalOptions="Center"
+                       Margin="0,10,0,0" />
 
-            <Label x:Name="FormTitleLabel" Text="Iniciar sesión" FontSize="20" FontAttributes="Bold" />
+                <Border StrokeShape="RoundRectangle 20"
+                        BackgroundColor="#4D6FFBBE"
+                        Padding="12,5"
+                        HorizontalOptions="Center"
+                        Margin="0,6,0,0">
+                    <Label Text="Descubre la magia cerca de ti · Viajes locales"
+                           FontSize="12"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource ColorSecondary}" />
+                </Border>
 
-            <Entry x:Name="NameEntry"
-                   Placeholder="Nombre"
-                   IsVisible="False" />
+                <Label x:Name="FormTitleLabel"
+                       Text="Iniciar sesión"
+                       FontSize="19"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource ColorOnSurface}"
+                       HorizontalOptions="Center"
+                       Margin="0,16,0,0" />
 
-            <Entry x:Name="PhoneEntry"
-                   Placeholder="Celular (opcional)"
-                   Keyboard="Telephone"
-                   IsVisible="False" />
+                <Label Text="Ingresa tus credenciales para continuar tu próxima aventura."
+                       FontSize="13"
+                       TextColor="{StaticResource ColorOnSurfaceVariant}"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center"
+                       WidthRequest="250"
+                       Margin="0,3,0,0" />
+            </VerticalStackLayout>
 
-            <Entry x:Name="EmailEntry"
-                   Placeholder="Correo electrónico"
-                   Keyboard="Email" />
+            <!-- ============ TARJETA DEL FORMULARIO ============ -->
+            <Border StrokeShape="RoundRectangle 16"
+                    Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                    Padding="16">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.06" Radius="16" Offset="0,4" />
+                </Border.Shadow>
 
-            <Entry x:Name="PasswordEntry"
-                   Placeholder="Contraseña"
-                   IsPassword="True" />
+                <VerticalStackLayout Spacing="14">
 
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,4,0,0">
-                <CheckBox x:Name="RememberCheckBox" VerticalOptions="Center" />
-                <Label Grid.Column="1"
-                       Text="Recordar contraseña"
-                       FontSize="14"
-                       VerticalOptions="Center">
-                    <Label.GestureRecognizers>
-                        <TapGestureRecognizer Tapped="OnRememberTapped" />
-                    </Label.GestureRecognizers>
-                </Label>
-            </Grid>
+                    <!-- Nombre (solo registro) -->
+                    <VerticalStackLayout x:Name="NameFieldLayout"
+                                         Spacing="5"
+                                         IsVisible="False">
+                        <Label Text="Nombre" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Text="👤" FontSize="16" VerticalOptions="Center" />
+                                <Entry x:Name="NameEntry" Grid.Column="1" Placeholder="Nombre" Style="{StaticResource FieldEntry}" />
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
 
-            <Button x:Name="SubmitButton" Text="Entrar" Clicked="OnSubmitClicked" />
+                    <!-- Celular (solo registro) -->
+                    <VerticalStackLayout x:Name="PhoneFieldLayout"
+                                         Spacing="5"
+                                         IsVisible="False">
+                        <Label Text="Celular (opcional)" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Text="📱" FontSize="16" VerticalOptions="Center" />
+                                <Entry x:Name="PhoneEntry" Grid.Column="1" Placeholder="Celular (opcional)" Keyboard="Telephone" Style="{StaticResource FieldEntry}" />
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <!-- Correo -->
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Correo electrónico" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Text="✉️" FontSize="16" VerticalOptions="Center" />
+                                <Entry x:Name="EmailEntry" Grid.Column="1" Placeholder="ejemplo@correo.com" Keyboard="Email" Style="{StaticResource FieldEntry}" />
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <!-- Contraseña -->
+                    <VerticalStackLayout Spacing="5">
+                        <Label Text="Contraseña" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                <Label Text="🔒" FontSize="16" VerticalOptions="Center" />
+                                <Entry x:Name="PasswordEntry" Grid.Column="1" Placeholder="••••••••" IsPassword="True" Style="{StaticResource FieldEntry}" />
+                                <Button x:Name="TogglePasswordButton"
+                                        Grid.Column="2"
+                                        Text="Mostrar"
+                                        FontSize="11"
+                                        FontAttributes="Bold"
+                                        Padding="8,0"
+                                        BackgroundColor="Transparent"
+                                        TextColor="{StaticResource ColorSecondary}"
+                                        Clicked="OnTogglePasswordClicked" />
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+
+                    <!-- Recordar cuenta + Olvidaste contraseña -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2,0,0">
+                        <CheckBox x:Name="RememberCheckBox"
+                                  Color="{StaticResource ColorPrimary}"
+                                  VerticalOptions="Center"
+                                  CheckedChanged="OnRememberCheckedChanged" />
+                        <Label Grid.Column="1"
+                               Text="Recordar mi cuenta"
+                               FontSize="13"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}"
+                               VerticalOptions="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnRememberTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                        <Label Grid.Column="2"
+                               Text="¿Olvidaste tu contraseña?"
+                               FontSize="12"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource ColorPrimary}"
+                               VerticalOptions="Center">
+                            <Label.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnForgotPasswordTapped" />
+                            </Label.GestureRecognizers>
+                        </Label>
+                    </Grid>
+
+                    <!-- Botón principal -->
+                    <Button x:Name="SubmitButton"
+                            Text="Entrar"
+                            Clicked="OnSubmitClicked"
+                            BackgroundColor="{StaticResource ColorPrimary}"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            CornerRadius="10"
+                            HeightRequest="50"
+                            Margin="0,4,0,0" />
+
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- ============ ALTERNAR LOGIN / REGISTRO ============ -->
             <Button x:Name="ToggleButton"
                     Text="¿No tienes cuenta? Crea una"
+                    Clicked="OnToggleClicked"
                     BackgroundColor="Transparent"
-                    TextColor="{AppThemeBinding Light=#1976D2, Dark=#82B1FF}"
-                    Clicked="OnToggleClicked" />
+                    TextColor="{StaticResource ColorPrimary}"
+                    FontAttributes="Bold"
+                    Margin="0,14,0,0" />
 
-            <Label Text="Acceso rápido (solo pruebas)"
-                   FontSize="12"
-                   TextColor="{AppThemeBinding Light=#757575, Dark=#9E9E9E}"
-                   Margin="0,20,0,0" />
-            <Picker x:Name="QuickLoginPicker"
-                    Title="Seleccionar perfil de prueba"
-                    SelectedIndexChanged="OnQuickLoginSelected" />
+            <!-- ============ DIVISOR ============ -->
+            <Grid ColumnDefinitions="*,Auto,*" Margin="0,18,0,14" VerticalOptions="Center">
+                <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainerHigh}" VerticalOptions="Center" />
+                <Label Grid.Column="1" Text="O CONTINÚA CON" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource ColorOutline}" Margin="10,0" />
+                <BoxView Grid.Column="2" HeightRequest="1" Color="{StaticResource ColorSurfaceContainerHigh}" VerticalOptions="Center" />
+            </Grid>
 
-            <BoxView HeightRequest="1"
-                     Color="{AppThemeBinding Light=#E2E8F0, Dark=#374151}"
-                     Margin="0,24,0,14" />
+            <!-- ============ REDES SOCIALES ============ -->
+            <VerticalStackLayout Spacing="10">
+                <Button x:Name="FacebookButton"
+                        Text="Continuar con Facebook"
+                        ImageSource="https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/company_image/fb.png"
+                        ContentLayout="Left,10"
+                        Clicked="OnFacebookClicked"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                        TextColor="{StaticResource ColorOnSurface}"
+                        BorderColor="{StaticResource ColorSurfaceContainerHigh}"
+                        BorderWidth="1"
+                        CornerRadius="10"
+                        HeightRequest="48"
+                        FontAttributes="Bold" />
+                <Button x:Name="InstagramButton"
+                        Text="Continuar con Instagram"
+                        ImageSource="https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/company_image/insta.png"
+                        ContentLayout="Left,10"
+                        Clicked="OnInstagramClicked"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                        TextColor="{StaticResource ColorOnSurface}"
+                        BorderColor="{StaticResource ColorSurfaceContainerHigh}"
+                        BorderWidth="1"
+                        CornerRadius="10"
+                        HeightRequest="48"
+                        FontAttributes="Bold" />
+            </VerticalStackLayout>
 
-            <Label Text="Síguenos en redes sociales"
-                   FontSize="13"
-                   TextColor="Gray"
-                   HorizontalOptions="Center"
-                   Margin="0,0,0,10" />
+            <!-- ============ ACCESO RÁPIDO (SOLO PRUEBAS) ============ -->
+            <VerticalStackLayout x:Name="QuickLoginLayout" Margin="0,22,0,0">
+                <Label Text="Acceso rápido (solo pruebas)"
+                       FontSize="11"
+                       TextColor="{StaticResource ColorOutline}"
+                       Margin="0,0,0,4" />
+                <Picker x:Name="QuickLoginPicker"
+                        Title="Seleccionar perfil de prueba"
+                        SelectedIndexChanged="OnQuickLoginSelected"
+                        TextColor="{StaticResource ColorOnSurfaceVariant}"
+                        FontSize="13" />
+            </VerticalStackLayout>
 
-            <HorizontalStackLayout Spacing="24"
-                                   HorizontalOptions="Center">
-                <ImageButton x:Name="FacebookButton"
-                             Source="https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/company_image/fb.png"
-                             WidthRequest="44"
-                             HeightRequest="44"
-                             Aspect="AspectFit"
-                             BackgroundColor="Transparent"
-                             Clicked="OnFacebookClicked" />
-                <ImageButton x:Name="InstagramButton"
-                             Source="https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/company_image/insta.png"
-                             WidthRequest="44"
-                             HeightRequest="44"
-                             Aspect="AspectFit"
-                             BackgroundColor="Transparent"
-                             Clicked="OnInstagramClicked" />
-            </HorizontalStackLayout>
+            <!-- ============ BADGE ECO ============ -->
+            <Border StrokeShape="RoundRectangle 20"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerHigh}"
+                    Padding="12,6"
+                    HorizontalOptions="Center"
+                    Margin="0,20,0,0">
+                <HorizontalStackLayout Spacing="6">
+                    <Label Text="🌿" FontSize="13" VerticalOptions="Center" />
+                    <Label Text="Turismo local consciente y responsable"
+                           FontSize="11"
+                           TextColor="{StaticResource ColorOnSurfaceVariant}"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Border>
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

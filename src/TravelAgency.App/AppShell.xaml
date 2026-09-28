@@ -5,6 +5,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:client="clr-namespace:TravelAgency.App.Modules.Client.Views"
     xmlns:admin="clr-namespace:TravelAgency.App.Modules.Admin.Views"
+    Shell.BackgroundColor="{StaticResource White}"
+    Shell.ForegroundColor="{StaticResource Gray900}"
     Title="TravelAgency">
 
     <TabBar>
