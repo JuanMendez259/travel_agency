@@ -61,20 +61,52 @@
                 </HorizontalStackLayout>
 
                 <VerticalStackLayout x:Name="StepTwoPanel" Spacing="8" IsVisible="False">
-                    <Label Text="Última confirmación: escribe la frase corta de confirmación."
+                    <Label Text="Última confirmación: desliza hasta el final para aceptar las condiciones."
                            FontSize="14" FontAttributes="Bold" />
-                    <Border StrokeThickness="1" Stroke="#3B82F6"
-                            BackgroundColor="{AppThemeBinding Light=#EFF6FF, Dark=#1E3A8A}">
-                        <Label Text="ACEPTO" FontSize="18" FontAttributes="Bold"
-                               HorizontalOptions="Center" Margin="8" TextColor="#3B82F6" />
-                    </Border>
-                    <Label Text="Escribe la frase de arriba para finalizar la confirmación."
-                           FontSize="12" TextColor="Gray" />
-                    <Entry x:Name="PhraseEntry"
-                           Placeholder="Escribe: ACEPTO"
-                           HorizontalTextAlignment="Center"
-                           ReturnType="Done"
-                           TextChanged="OnPhraseTextChanged" />
+
+                    <Grid x:Name="SwipeTrack"
+                          HeightRequest="56"
+                          BackgroundColor="Transparent"
+                          InputTransparent="False"
+                          SemanticProperties.Description="Desliza para aceptar las condiciones">
+                        <Grid.GestureRecognizers>
+                            <PanGestureRecognizer PanUpdated="OnSwipePanUpdated" />
+                        </Grid.GestureRecognizers>
+
+                        <Border StrokeShape="RoundRectangle 28"
+                                Stroke="#D1D5DB"
+                                BackgroundColor="#F3F4F6"
+                                Padding="0" />
+
+                        <Border x:Name="SwipeFill"
+                                StrokeShape="RoundRectangle 28"
+                                BackgroundColor="#2F855A"
+                                HorizontalOptions="Start"
+                                WidthRequest="0" />
+
+                        <Label x:Name="SwipeLabel"
+                               Text="Acepto las condiciones"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center"
+                               FontSize="15"
+                               FontAttributes="Bold"
+                               TextColor="#374151"
+                               InputTransparent="True" />
+
+                        <Border x:Name="SwipeThumb"
+                                WidthRequest="48"
+                                HeightRequest="48"
+                                StrokeShape="RoundRectangle 24"
+                                BackgroundColor="#2F855A"
+                                HorizontalOptions="Start"
+                                VerticalOptions="Center"
+                                Margin="4,0,0,0"
+                                InputTransparent="True">
+                            <Label Text="→" FontSize="20" FontAttributes="Bold" TextColor="White"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
+
                     <Button x:Name="FinalConfirmButton"
                             Text="Confirmar y reservar"
                             BackgroundColor="#2F855A"
