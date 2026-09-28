@@ -43,6 +43,18 @@
                    Placeholder="Contraseña"
                    IsPassword="True" />
 
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="6" Margin="0,4,0,0">
+                <CheckBox x:Name="RememberCheckBox" VerticalOptions="Center" />
+                <Label Grid.Column="1"
+                       Text="Recordar contraseña"
+                       FontSize="14"
+                       VerticalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnRememberTapped" />
+                    </Label.GestureRecognizers>
+                </Label>
+            </Grid>
+
             <Button x:Name="SubmitButton" Text="Entrar" Clicked="OnSubmitClicked" />
             <Button x:Name="ToggleButton"
                     Text="¿No tienes cuenta? Crea una"

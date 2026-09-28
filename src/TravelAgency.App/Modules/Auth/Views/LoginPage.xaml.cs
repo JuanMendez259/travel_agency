@@ -5,6 +5,9 @@ namespace TravelAgency.App.Modules.Auth.Views;
 
 public partial class LoginPage : ContentPage
 {
+    private const string RememberedEmailKey = "login_remembered_email";
+    private const string RememberedPasswordKey = "login_remembered_password";
+
     private readonly ApiService _api;
     private readonly SessionService _session;
     private bool _isRegistering;
@@ -15,6 +18,72 @@ public partial class LoginPage : ContentPage
         _api = api;
         _session = session;
         QuickLoginPicker.ItemsSource = new[] { "Admin", "Cliente" };
+    }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await LoadRememberedAsync();
+    }
+
+    private async Task LoadRememberedAsync()
+    {
+        try
+        {
+            var email = await SecureStorage.Default.GetAsync(RememberedEmailKey);
+            if (string.IsNullOrWhiteSpace(email)) return;
+
+            RememberCheckBox.IsChecked = true;
+            EmailEntry.Text = email;
+            PasswordEntry.Text = await SecureStorage.Default.GetAsync(RememberedPasswordKey) ?? string.Empty;
+        }
+        catch (Exception)
+        {
+            // Sin almacenamiento seguro disponible: el login sigue funcionando.
+        }
+    }
+
+    private async Task SaveRememberedAsync()
+    {
+        try
+        {
+            if (RememberCheckBox.IsChecked == true && !_isRegistering)
+            {
+                await SecureStorage.Default.SetAsync(RememberedEmailKey, EmailEntry.Text?.Trim() ?? string.Empty);
+                await SecureStorage.Default.SetAsync(RememberedPasswordKey, PasswordEntry.Text ?? string.Empty);
+            }
+            else
+            {
+                ForgetRemembered();
+            }
+        }
+        catch (Exception)
+        {
+            // Si no se puede guardar, el login sigue funcionando.
+        }
+    }
+
+    private static void ForgetRemembered()
+    {
+        try
+        {
+            SecureStorage.Default.Remove(RememberedEmailKey);
+            SecureStorage.Default.Remove(RememberedPasswordKey);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private async void OnRememberTapped(object? sender, TappedEventArgs e)
+    {
+        RememberCheckBox.IsChecked = RememberCheckBox.IsChecked != true;
+
+        if (RememberCheckBox.IsChecked != true)
+        {
+            ForgetRemembered();
+            await Task.CompletedTask;
+        }
     }
 
     private async void OnQuickLoginSelected(object? sender, EventArgs e)
@@ -97,6 +166,7 @@ public partial class LoginPage : ContentPage
 
             _session.Start(auth);
             _api.SetAuthToken(auth.Token);
+            await SaveRememberedAsync();
             App.GoToMainShell();
         }
         catch (Exception ex)
