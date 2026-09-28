@@ -181,12 +181,15 @@ public class ApiService
     if (!response.IsSuccessStatusCode)
     {
         var errorBody = await response.Content.ReadAsStringAsync();
-        
+
+        // Detalle técnico solo en logs, no visible al usuario
+        System.Diagnostics.Debug.WriteLine($"[CreateTripAsync] Error {(int)response.StatusCode}: {errorBody}");
+
         if (Application.Current?.MainPage != null)
         {
             await Application.Current.MainPage.DisplayAlert(
-                $"Error {(int)response.StatusCode}", 
-                errorBody, 
+                "No se pudo guardar el viaje",
+                "Verifica que todos los campos estén completos e intenta de nuevo.",
                 "OK");
         }
     }

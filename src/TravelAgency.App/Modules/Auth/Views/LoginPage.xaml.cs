@@ -108,4 +108,22 @@ public partial class LoginPage : ContentPage
             SubmitButton.IsEnabled = true;
         }
     }
+
+    private async void OnFacebookClicked(object? sender, EventArgs e)
+        => await OpenSocialAsync("https://www.facebook.com/proximaparadat");
+
+    private async void OnInstagramClicked(object? sender, EventArgs e)
+        => await OpenSocialAsync("https://www.instagram.com/proxima_parada_tours/");
+
+    private async Task OpenSocialAsync(string url)
+    {
+        try
+        {
+            await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred);
+        }
+        catch (Exception)
+        {
+            await DisplayAlertAsync("No se pudo abrir", url, "OK");
+        }
+    }
 }
