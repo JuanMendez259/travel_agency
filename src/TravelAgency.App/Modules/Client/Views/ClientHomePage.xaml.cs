@@ -1,3 +1,4 @@
+using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
 using TravelAgency.App.ViewModels;
 using TravelAgency.Shared.Models;
@@ -6,8 +7,14 @@ namespace TravelAgency.App.Modules.Client.Views;
 
 public partial class ClientHomePage : ContentPage
 {
+    private static readonly Color ChipSelectedBackground = Color.FromArgb("#512BD4");
+    private static readonly Color ChipSelectedText = Colors.White;
+    private static readonly Color ChipIdleBackground = Color.FromArgb("#E1E1E1");
+    private static readonly Color ChipIdleText = Color.FromArgb("#141414");
+
     private readonly ApiService _api;
     private List<TripListItem> _items = new();
+    private string? _selectedCategory;
 
     public ClientHomePage(ApiService api)
     {
@@ -53,6 +60,7 @@ public partial class ClientHomePage : ContentPage
                 }
             }
             _items = items;
+            BuildCategoryFilters();
             ApplyFilter();
         }
         catch (Exception ex)
@@ -69,6 +77,69 @@ public partial class ClientHomePage : ContentPage
         }
     }
 
+    private void BuildCategoryFilters()
+    {
+        CategoryFiltersLayout.Children.Clear();
+
+        var categories = _items
+            .Select(i => i.Trip.Category?.Trim())
+            .Where(c => !string.IsNullOrEmpty(c))
+            .Select(c => c!)
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(CatalogOrder)
+            .ThenBy(c => c, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        if (_selectedCategory is not null && !categories.Contains(_selectedCategory, StringComparer.CurrentCultureIgnoreCase))
+            _selectedCategory = null;
+
+        CategoryFiltersScroll.IsVisible = categories.Count > 0;
+        if (categories.Count == 0) return;
+
+        AddCategoryChip("Todas", null);
+        foreach (var category in categories)
+            AddCategoryChip(category, category);
+    }
+
+    private static int CatalogOrder(string category)
+    {
+        var index = Array.FindIndex(TripCategoryOptions.All, c => string.Equals(c, category, StringComparison.CurrentCultureIgnoreCase));
+        return index < 0 ? int.MaxValue : index;
+    }
+
+    private void AddCategoryChip(string text, string? category)
+    {
+        var selected = category is null
+            ? _selectedCategory is null
+            : string.Equals(_selectedCategory, category, StringComparison.CurrentCultureIgnoreCase);
+
+        var chip = new Button
+        {
+            Text = text,
+            FontSize = 13,
+            Padding = new Thickness(16, 0),
+            HeightRequest = 34,
+            CornerRadius = 17,
+            MinimumWidthRequest = 0,
+            BackgroundColor = selected ? ChipSelectedBackground : ChipIdleBackground,
+            TextColor = selected ? ChipSelectedText : ChipIdleText
+        };
+        chip.Clicked += (_, _) => ToggleCategory(category);
+
+        CategoryFiltersLayout.Children.Add(chip);
+    }
+
+    private void ToggleCategory(string? category)
+    {
+        _selectedCategory = _selectedCategory is not null
+            && string.Equals(_selectedCategory, category, StringComparison.CurrentCultureIgnoreCase)
+            ? null
+            : category;
+
+        BuildCategoryFilters();
+        ApplyFilter();
+    }
+
     private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
     {
         ApplyFilter();
@@ -77,25 +148,48 @@ public partial class ClientHomePage : ContentPage
     private void ApplyFilter()
     {
         var text = SearchEntry.Text?.Trim();
+        var hasText = !string.IsNullOrEmpty(text);
+        var hasCategory = !string.IsNullOrEmpty(_selectedCategory);
 
-        if (string.IsNullOrEmpty(text))
+        IEnumerable<TripListItem> query = _items;
+
+        if (hasCategory)
         {
-            TripsList.ItemsSource = _items;
-            TripsList.EmptyView = "No hay viajes disponibles.";
-            return;
+            var category = _selectedCategory;
+            query = query.Where(i => string.Equals(i.Trip.Category?.Trim(), category, StringComparison.CurrentCultureIgnoreCase));
         }
 
-        var matches = _items
-            .Where(i => Matches(i.Trip.Title, text)
-                     || Matches(i.Trip.Destination, text)
-                     || Matches(i.Trip.Category, text)
-                     || Matches(i.Trip.Description, text))
-            .ToList();
+        if (hasText)
+        {
+            query = query.Where(i => Matches(i.Trip.Title, text)
+                                   || Matches(i.Trip.Destination, text)
+                                   || Matches(i.Trip.Category, text)
+                                   || Matches(i.Trip.Description, text));
+        }
 
+        var matches = query.ToList();
         TripsList.ItemsSource = matches;
-        TripsList.EmptyView = matches.Count == 0
-            ? $"Sin resultados para \"{text}\"."
-            : "No hay viajes disponibles.";
+        TripsList.EmptyView = BuildEmptyView(hasText, hasCategory);
+        UpdateCountLabel(matches.Count, _items.Count);
+    }
+
+    private string BuildEmptyView(bool hasText, bool hasCategory)
+    {
+        if (hasText && hasCategory)
+            return $"Sin resultados para \"{SearchEntry.Text?.Trim()}\" en {_selectedCategory}.";
+        if (hasText)
+            return $"Sin resultados para \"{SearchEntry.Text?.Trim()}\".";
+        if (hasCategory)
+            return $"No hay viajes en {_selectedCategory}.";
+        return "No hay viajes disponibles.";
+    }
+
+    private void UpdateCountLabel(int shown, int total)
+    {
+        var noun = total == 1 ? "viaje" : "viajes";
+        TripsCountLabel.Text = shown == total
+            ? $"{total} {noun}"
+            : $"{shown} de {total} {noun}";
     }
 
     private static bool Matches(string? value, string text)

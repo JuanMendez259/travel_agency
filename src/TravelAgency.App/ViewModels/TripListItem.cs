@@ -61,6 +61,12 @@ public class TripListItem : INotifyPropertyChanged
 
     public string CategoryText => HasCategory ? Trip.Category : string.Empty;
 
+    public bool HasDescription => !string.IsNullOrWhiteSpace(Trip.Description);
+
+    public string DescriptionText => HasDescription
+        ? string.Join(' ', Trip.Description.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+        : string.Empty;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
