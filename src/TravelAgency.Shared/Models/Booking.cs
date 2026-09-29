@@ -15,6 +15,12 @@ public class Booking
     public DateTime? CheckedInAt { get; set; }
     public string? QrToken { get; set; }
 
+    /// Auditoria de la cancelacion. `CancelledByUserId` guarda quien cancelo
+    /// (el cliente o el administrador), lo que permite distinguir una cancelacion
+    /// hecha desde la app de una hecha por la agencia.
+    public DateTime? CancelledAt { get; set; }
+    public int? CancelledByUserId { get; set; }
+
     public User? User { get; set; }
     public Trip? Trip { get; set; }
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();

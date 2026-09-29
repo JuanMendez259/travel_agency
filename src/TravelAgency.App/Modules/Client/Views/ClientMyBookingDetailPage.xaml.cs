@@ -20,6 +20,8 @@ public partial class ClientMyBookingDetailPage : ContentPage
     private int? _tripId;
     private int _remainingSlots;
     private decimal _cancelRefund;
+    private decimal _cancelPenalty;
+    private decimal _paidTotal;
 
     public string BookingId { get; set; } = string.Empty;
 
@@ -87,8 +89,8 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         StatusLabel.Text = $"Estado: {booking.Status}";
 
-        var paid = booking.Payments?.Where(p => p.Status == PaymentStatus.Completed).Sum(p => p.Amount) ?? 0;
-        var refunded = booking.Payments?.Where(p => p.Status == PaymentStatus.Refunded).Sum(p => p.Amount) ?? 0;
+        var paid = booking.PaidTotal();
+        var refunded = booking.RefundedTotal();
         var total = booking.TotalAmount;
         var remaining = total - paid;
 
@@ -164,9 +166,13 @@ public partial class ClientMyBookingDetailPage : ContentPage
             ? $"Puedes cancelar con al menos {limit} día(s) antes de la salida. Quedan {remainingDays} día(s)."
             : $"Política del viaje: cancelar con al menos {limit} día(s) de anticipación. Quedan {remainingDays} día(s); ya no se puede cancelar desde la app.";
 
-        _cancelRefund = paid;
-        CancelRefundLabel.Text = _cancelRefund > 0
-            ? $"Reembolso estimado: {_cancelRefund:C} (total abonado)"
+        // Multa del 30% por cancelacion: el cliente recupera el 70% de lo abonado.
+        _paidTotal = paid;
+        _cancelPenalty = BookingRefundPolicy.PenaltyFrom(paid);
+        _cancelRefund = BookingRefundPolicy.RefundFrom(paid);
+
+        CancelRefundLabel.Text = paid > 0
+            ? $"Multa por cancelación 30%: -{_cancelPenalty:C}. Reembolso: {_cancelRefund:C} de {_paidTotal:C} abonados."
             : "No hay pagos abonados: la cancelación no genera reembolso.";
         CancelButton.IsVisible = withinPolicy;
     }
@@ -177,7 +183,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         var confirmed = await DisplayAlertAsync("Cancelar reserva",
             _cancelRefund > 0
-                ? $"Se cancelará tu reserva y se reembolsará {_cancelRefund:C} por tu forma de pago. Esta acción no puede deshacerse."
+                ? $"Al cancelar se aplica una multa del 30%: se retienen {_cancelPenalty:C} de {_paidTotal:C} abonados y se reembolsan {_cancelRefund:C} por tu forma de pago. Esta acción no puede deshacerse."
                 : "Se cancelará tu reserva. Esta acción no puede deshacerse.",
             "Cancelar reserva", "Seguir en la reserva");
         if (!confirmed) return;
@@ -187,7 +193,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
         {
             var result = await _api.CancelBookingAsync(id);
             var message = result is not null && result.RefundAmount > 0
-                ? $"Reserva cancelada. Se reembolsará {result.RefundAmount:C} por tu forma de pago."
+                ? $"Reserva cancelada. Multa 30% aplicada. Se reembolsarán {result.RefundAmount:C} por tu forma de pago original."
                 : "Reserva cancelada. No había pagos que reembolsar.";
             await DisplayAlertAsync("Reserva cancelada", message, "OK");
             await LoadBookingAsync(id);

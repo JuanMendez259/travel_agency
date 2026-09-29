@@ -10,6 +10,10 @@ public class Payment
     public PaymentStatus Status { get; set; }
     public string? TransactionReference { get; set; }
 
+    /// Monto efectivamente devuelto. Es menor que `Amount` cuando la cancelacion
+    /// incluyo multa. En pagos no reembolsados queda en 0.
+    public decimal RefundedAmount { get; set; }
+
     public Booking? Booking { get; set; }
 }
 

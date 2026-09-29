@@ -128,6 +128,8 @@ using (var scope = app.Services.CreateScope())
     await EnsureTripCategoryColumnAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
+    await EnsureBookingCancellationAuditColumnsAsync(db, provider);
+    await EnsurePaymentRefundedAmountColumnAsync(db, provider);
     await EnsureFavoriteTripsTableAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
     await EnsureSeedUsersAsync(db);
@@ -849,7 +851,7 @@ app.MapPost("/api/bookings/{id}/payments", async (int id, Payment payment, AppDb
     return Results.Created($"/api/bookings/{id}/payments/{payment.Id}", payment);
 }).RequireAuthorization("AdminOnly");
 
-app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusRequest request, AppDbContext db) =>
+app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
     var booking = await db.Bookings
         .Include(b => b.Trip)
@@ -862,6 +864,19 @@ app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusReques
         return Results.BadRequest("Registra la forma de pago antes de confirmar la reserva.");
 
     booking.Status = request.Status;
+    if (request.Status == BookingStatus.Cancelled)
+    {
+        // Queda registrado que fue la agencia, no el cliente, para que la app
+        // no le diga al usuario que el cancelo el.
+        booking.CancelledAt = DateTime.UtcNow;
+        booking.CancelledByUserId = GetUserId(principal);
+    }
+    else
+    {
+        booking.CancelledAt = null;
+        booking.CancelledByUserId = null;
+    }
+
     await db.SaveChangesAsync();
 
     if (booking.Trip is not null)
@@ -912,13 +927,33 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsP
         return Results.BadRequest(
             $"Solo puedes cancelar con al menos {limit.Value} día(s) de anticipación. Faltan {remainingDays} día(s).");
 
-    var paid = await db.Payments
-        .Where(p => p.BookingId == id && p.Status == PaymentStatus.Completed)
-        .SumAsync(p => p.Amount);
+    var completedPayments = booking.Payments
+        .Where(p => p.Status == PaymentStatus.Completed)
+        .ToList();
+    var paid = completedPayments.Sum(p => p.Amount);
+
+    // Multa del 30% por cancelacion: el cliente recupera el 70% de lo abonado.
+    var refund = BookingRefundPolicy.RefundFrom(paid);
+    var penalty = paid - refund;
+
+    // El reembolso se reparte entre los pagos en proporcion a su monto. El ultimo
+    // absorbe el redondeo para que la suma coincida exactamente con el total.
+    var pending = refund;
+    for (var i = 0; i < completedPayments.Count; i++)
+    {
+        var payment = completedPayments[i];
+        var share = i == completedPayments.Count - 1
+            ? pending
+            : Math.Min(payment.Amount, Math.Round(refund * (payment.Amount / paid), 2));
+
+        payment.Status = PaymentStatus.Refunded;
+        payment.RefundedAmount = share;
+        pending -= share;
+    }
 
     booking.Status = BookingStatus.Cancelled;
-    foreach (var payment in booking.Payments.Where(p => p.Status == PaymentStatus.Completed))
-        payment.Status = PaymentStatus.Refunded;
+    booking.CancelledAt = DateTime.UtcNow;
+    booking.CancelledByUserId = userId;
 
     await db.SaveChangesAsync();
     await RecomputeAvailabilityAsync(db, trip);
@@ -926,9 +961,9 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsP
 
     if (booking.User is not null)
         await SendToStaffAsync(db,
-            $"El cliente {booking.User.Name} canceló su reserva para \"{trip.Title}\". Reembolso {paid:C}.");
+            $"El cliente {booking.User.Name} canceló su reserva para \"{trip.Title}\". Reembolso {refund:C} (multa 30% por cancelación: {penalty:C}).");
 
-    return Results.Ok(new CancelBookingResult(booking, paid));
+    return Results.Ok(new CancelBookingResult(booking, refund));
 }).RequireAuthorization();
 
 app.MapGet("/api/favorites", async (AppDbContext db, ClaimsPrincipal principal) =>
@@ -2058,6 +2093,37 @@ static async Task EnsureCancellationPolicyColumnAsync(AppDbContext db, string pr
         await TryExecAsync(db, provider == "sqlite"
             ? "ALTER TABLE \"Trips\" ADD COLUMN \"CancellationDaysLimit\" INTEGER NULL;"
             : "ALTER TABLE \"Trips\" ADD COLUMN \"CancellationDaysLimit\" integer NULL;");
+    }
+}
+
+/// Registra quien cancelo una reserva, para poder distinguir la cancelacion
+/// hecha por el cliente desde la app de la hecha por la agencia.
+static async Task EnsureBookingCancellationAuditColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Bookings", "CancelledAt", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"CancelledAt\" TEXT NULL;"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"CancelledAt\" timestamptz NULL;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Bookings", "CancelledByUserId", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"CancelledByUserId\" INTEGER NULL;"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"CancelledByUserId\" integer NULL;");
+    }
+}
+
+/// Permite reembolsos parciales: la multa de cancelacion no se devuelve,
+/// asi que el pago queda marcado como Refunded con un monto menor a Amount.
+static async Task EnsurePaymentRefundedAmountColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Payments", "RefundedAmount", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Payments\" ADD COLUMN \"RefundedAmount\" TEXT NOT NULL DEFAULT 0;"
+            : "ALTER TABLE \"Payments\" ADD COLUMN \"RefundedAmount\" numeric(18,2) NOT NULL DEFAULT 0;");
     }
 }
 
