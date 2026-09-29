@@ -7,6 +7,7 @@ namespace TravelAgency.App.Modules.Client.Views;
 public partial class ClientHomePage : ContentPage
 {
     private readonly ApiService _api;
+    private List<TripListItem> _items = new();
 
     public ClientHomePage(ApiService api)
     {
@@ -51,7 +52,8 @@ public partial class ClientHomePage : ContentPage
                     items.Add(new TripListItem(trip, thumb, favIds.Contains(trip.Id)));
                 }
             }
-            TripsList.ItemsSource = items;
+            _items = items;
+            ApplyFilter();
         }
         catch (Exception ex)
         {
@@ -66,6 +68,37 @@ public partial class ClientHomePage : ContentPage
             }
         }
     }
+
+    private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
+    {
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        var text = SearchEntry.Text?.Trim();
+
+        if (string.IsNullOrEmpty(text))
+        {
+            TripsList.ItemsSource = _items;
+            TripsList.EmptyView = "No hay viajes disponibles.";
+            return;
+        }
+
+        var matches = _items
+            .Where(i => Matches(i.Trip.Title, text)
+                     || Matches(i.Trip.Destination, text)
+                     || Matches(i.Trip.Description, text))
+            .ToList();
+
+        TripsList.ItemsSource = matches;
+        TripsList.EmptyView = matches.Count == 0
+            ? $"Sin resultados para \"{text}\"."
+            : "No hay viajes disponibles.";
+    }
+
+    private static bool Matches(string? value, string text)
+        => value is not null && value.Contains(text, StringComparison.CurrentCultureIgnoreCase);
 
     private async void OnRefreshing(object? sender, EventArgs e)
     {
