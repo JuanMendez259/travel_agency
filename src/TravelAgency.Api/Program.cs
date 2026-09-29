@@ -333,8 +333,27 @@ app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbCo
     await using var stream = file.OpenReadStream();
     var imageUrl = await storage.UploadAsync(stream, extension, file.ContentType ?? "application/octet-stream");
 
+    var previousImageUrl = trip.ImageUrl;
+
     trip.ImageUrl = imageUrl;
     await db.SaveChangesAsync();
+
+    // La BD ya apunta a la nueva imagen, asi que ahora es seguro borrar la anterior.
+    // Si el borrado falla no se reporta como error: el viaje ya quedo actualizado.
+    if (!string.IsNullOrEmpty(previousImageUrl) &&
+        !string.Equals(previousImageUrl, imageUrl, StringComparison.OrdinalIgnoreCase))
+    {
+        try
+        {
+            await storage.DeleteAsync(previousImageUrl);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(
+                $"[ImageStorage] No se pudo borrar la imagen anterior del viaje {id}: {ex.Message}");
+        }
+    }
+
     return Results.Ok(trip);
 }).RequireAuthorization("AdminOnly");
 

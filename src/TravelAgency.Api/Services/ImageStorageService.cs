@@ -31,6 +31,17 @@ public class ImageStorageService
 
     public async Task DeleteAsync(string imageUrl, CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(imageUrl)) return;
+
+        // Solo borramos archivos que generamos nosotros: nombre "{Guid:N}" mas una
+        // extension permitida. Cualquier otra cosa en el bucket se administra a mano
+        // (p.ej. placeholder.jpg, compartido por todos los viajes) y se conserva.
+        var fileName = Path.GetFileName(imageUrl);
+        var stem = Path.GetFileNameWithoutExtension(fileName);
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        if (!Guid.TryParseExact(stem, "N", out _) || !allowed.Contains(extension)) return;
+
         if (_mode == "supabase")
         {
             await DeleteSupabaseAsync(imageUrl, ct);
