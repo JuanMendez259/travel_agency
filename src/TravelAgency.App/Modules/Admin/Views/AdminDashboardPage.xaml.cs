@@ -75,6 +75,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 CancellationDaysLimit = int.TryParse(CancellationDaysLimitEntry.Text, out var cancelDays) && cancelDays >= 0
                     ? cancelDays
                     : null,
+                BookingDeadline = BookingDeadlineSwitch.IsToggled
+                    ? BookingDeadlinePicker.Date.GetValueOrDefault().Date
+                    : null,
             };
 
             if (string.IsNullOrEmpty(trip.Title) || string.IsNullOrEmpty(trip.Destination))
@@ -111,6 +114,21 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             {
                 await DisplayAlertAsync("Error", "El precio de niño no puede ser negativo.", "OK");
                 return;
+            }
+
+            if (trip.BookingDeadline is { } deadline)
+            {
+                if (deadline.Date > trip.StartDate.Date)
+                {
+                    await DisplayAlertAsync("Error", "La fecha límite de reserva no puede ser posterior a la fecha de salida.", "OK");
+                    return;
+                }
+
+                if (deadline.Date < DateTime.Today)
+                {
+                    await DisplayAlertAsync("Error", "La fecha límite de reserva no puede estar en el pasado.", "OK");
+                    return;
+                }
             }
 
 
@@ -184,6 +202,10 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ChildPriceEntry.Text = trip.ChildPrice?.ToString();
         CapacityEntry.Text = trip.Capacity.ToString();
         CancellationDaysLimitEntry.Text = trip.CancellationDaysLimit?.ToString();
+        BookingDeadlineSwitch.IsToggled = trip.BookingDeadline.HasValue;
+        if (trip.BookingDeadline is { } editDeadline)
+            BookingDeadlinePicker.Date = editDeadline;
+        ApplyBookingDeadlineState();
         TransportTypePicker.SelectedIndex = (int)trip.TransportType;
         ActiveSwitch.IsToggled = trip.IsActive;
         ApplyActiveState();
@@ -214,6 +236,8 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ChildPriceEntry.Text = string.Empty;
         CapacityEntry.Text = string.Empty;
         CancellationDaysLimitEntry.Text = string.Empty;
+        BookingDeadlineSwitch.IsToggled = false;
+        ApplyBookingDeadlineState();
         DescriptionEditor.Text = string.Empty;
         TransportTypePicker.SelectedIndex = 0;
         ActiveSwitch.IsToggled = true;
@@ -240,6 +264,25 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ActiveHintLabel.Text = active
             ? "Los clientes podrán verlo y reservar."
             : "No aparecerá para nuevas reservas; las existentes se mantienen.";
+    }
+
+    private void OnBookingDeadlineToggled(object? sender, ToggledEventArgs e)
+    {
+        ApplyBookingDeadlineState();
+    }
+
+    private void ApplyBookingDeadlineState()
+    {
+        var enabled = BookingDeadlineSwitch.IsToggled;
+        BookingDeadlinePicker.IsVisible = enabled;
+        BookingDeadlineHintLabel.Text = enabled
+            ? "Se puede reservar hasta este día inclusive."
+            : "Actívalo para cerrar las reservas antes de la salida.";
+
+        if (enabled && BookingDeadlinePicker.Date.GetValueOrDefault().Date < DateTime.Today)
+        {
+            BookingDeadlinePicker.Date = StartDatePicker.Date.GetValueOrDefault().AddDays(-1);
+        }
     }
 
     private async void OnPickImageClicked(object? sender, EventArgs e)

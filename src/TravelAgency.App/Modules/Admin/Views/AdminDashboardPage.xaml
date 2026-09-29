@@ -44,6 +44,17 @@
                 </VerticalStackLayout>
             </Grid>
 
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                    <Label Text="Fecha límite de reserva" />
+                    <Label x:Name="BookingDeadlineHintLabel"
+                           Text="Actívalo para cerrar las reservas antes de la salida."
+                           FontSize="12" TextColor="Gray" />
+                </VerticalStackLayout>
+                <Switch x:Name="BookingDeadlineSwitch" Grid.Column="1" Toggled="OnBookingDeadlineToggled" VerticalOptions="Center" />
+            </Grid>
+            <DatePicker x:Name="BookingDeadlinePicker" IsVisible="False" Margin="0,6,0,0" />
+
             <Label Text="Cancelación (política del cliente)" />
             <Entry x:Name="CancellationDaysLimitEntry" Keyboard="Numeric" />
             <Label Text="Mínimo de días de anticipación para que el cliente cancele por la app. Vacío = no permitido." FontSize="12" TextColor="Gray" />

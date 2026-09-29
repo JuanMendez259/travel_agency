@@ -28,6 +28,9 @@ public class Trip
 
     public int? CancellationDaysLimit { get; set; }
 
+    /// Fecha límite para crear reservas. Si es null, se usa la StartDate.
+    public DateTime? BookingDeadline { get; set; }
+
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     public ICollection<CapacityRequest> CapacityRequests { get; set; } = new List<CapacityRequest>();
     public ICollection<TripPointOfInterest> PointsOfInterest { get; set; } = new List<TripPointOfInterest>();

@@ -124,6 +124,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureTripFinalizedColumnAsync(db, provider);
     await EnsureRatingsTableAsync(db, provider);
     await EnsureChildPriceColumnAsync(db, provider);
+    await EnsureBookingDeadlineColumnAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
     await EnsureFavoriteTripsTableAsync(db, provider);
@@ -299,6 +300,8 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
         return Results.BadRequest("El precio no puede ser negativo.");
     if (trip.ChildPrice < 0)
         return Results.BadRequest("El precio de niño no puede ser negativo.");
+    if (trip.BookingDeadline is { } createDeadline && createDeadline.Date > trip.StartDate.Date)
+        return Results.BadRequest("La fecha límite de reserva no puede ser posterior a la fecha de salida.");
 
     trip.CreatedAt = DateTime.UtcNow;
     trip.AvailableSeats = trip.Capacity;
@@ -346,6 +349,8 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
         return Results.BadRequest("El precio no puede ser negativo.");
     if (input.ChildPrice < 0)
         return Results.BadRequest("El precio de niño no puede ser negativo.");
+    if (input.BookingDeadline is { } editDeadline && editDeadline.Date > input.StartDate.Date)
+        return Results.BadRequest("La fecha límite de reserva no puede ser posterior a la fecha de salida.");
 
     var capacityIncreased = input.Capacity > trip.Capacity;
 
@@ -360,6 +365,7 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     trip.TransportType = input.TransportType;
     trip.IsActive = input.IsActive;
     trip.CancellationDaysLimit = input.CancellationDaysLimit is >= 0 ? input.CancellationDaysLimit : null;
+    trip.BookingDeadline = input.BookingDeadline?.Date;
     trip.OriginLatitude = input.OriginLatitude;
     trip.OriginLongitude = input.OriginLongitude;
     trip.DestinationLatitude = input.DestinationLatitude;
@@ -590,6 +596,10 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     if (!trip.IsActive)
         return Results.BadRequest("El viaje está pausado y no acepta nuevas reservas.");
 
+    var bookingDeadline = trip.BookingDeadline ?? trip.StartDate;
+    if (DateTime.Today > bookingDeadline.Date)
+        return Results.BadRequest($"Este viaje cerró reservas el {bookingDeadline:dd/MM/yyyy}.");
+
     if (request.NumberOfSeats < 1)
         return Results.BadRequest("Indica al menos un asiento.");
 
@@ -601,21 +611,21 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     if (request.Passengers is { Count: > 0 })
         requestedSeats.AddRange(request.Passengers.Where(p => p.SeatNumber.HasValue).Select(p => p.SeatNumber!.Value));
 
-    if (requestedSeats.Count > 0)
-    {
-        if (requestedSeats.Count != request.NumberOfSeats)
-            return Results.BadRequest($"Debes elegir exactamente {request.NumberOfSeats} asiento(s).");
+    if (requestedSeats.Count == 0)
+        return Results.BadRequest("Debes seleccionar los asientos antes de confirmar la reserva.");
 
-        if (requestedSeats.Distinct().Count() != requestedSeats.Count)
-            return Results.BadRequest("No puedes elegir el mismo asiento dos veces.");
+    if (requestedSeats.Count != request.NumberOfSeats)
+        return Results.BadRequest($"Debes elegir exactamente {request.NumberOfSeats} asiento(s).");
 
-        if (requestedSeats.Any(s => s < 1 || s > trip.Capacity))
-            return Results.BadRequest("Uno de los asientos seleccionados no existe en este viaje.");
+    if (requestedSeats.Distinct().Count() != requestedSeats.Count)
+        return Results.BadRequest("No puedes elegir el mismo asiento dos veces.");
 
-        var alreadyTaken = await GetTakenSeatNumbersAsync(db, trip);
-        if (requestedSeats.Any(alreadyTaken.Contains))
-            return Results.BadRequest("Alguno de los asientos seleccionados ya fue ocupado. Elige otros en el mapa.");
-    }
+    if (requestedSeats.Any(s => s < 1 || s > trip.Capacity))
+        return Results.BadRequest("Uno de los asientos seleccionados no existe en este viaje.");
+
+    var alreadyTaken = await GetTakenSeatNumbersAsync(db, trip);
+    if (requestedSeats.Any(alreadyTaken.Contains))
+        return Results.BadRequest("Alguno de los asientos seleccionados ya fue ocupado. Elige otros en el mapa.");
 
     var passengers = new List<TripPassenger>();
     if (request.Passengers is { Count: > 0 })
@@ -665,13 +675,6 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         foreach (var p in passengers) p.BookingId = booking.Id;
         db.TripPassengers.AddRange(passengers);
         await db.SaveChangesAsync();
-    }
-
-    if (!booking.SeatNumber.HasValue)
-    {
-        var taken = await GetTakenSeatNumbersAsync(db, trip);
-        var free = Enumerable.Range(1, trip.Capacity).FirstOrDefault(n => !taken.Contains(n));
-        if (free > 0) booking.SeatNumber = free;
     }
 
     await RecomputeAvailabilityAsync(db, trip);
@@ -1900,6 +1903,16 @@ static async Task EnsureTripFinalizedColumnAsync(AppDbContext db, string provide
         await TryExecAsync(db, provider == "sqlite"
             ? "ALTER TABLE \"Trips\" ADD COLUMN \"Finalized\" INTEGER NOT NULL DEFAULT 0;"
             : "ALTER TABLE \"Trips\" ADD COLUMN \"Finalized\" boolean NOT NULL DEFAULT false;");
+    }
+}
+
+static async Task EnsureBookingDeadlineColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "BookingDeadline", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"BookingDeadline\" TEXT NULL;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"BookingDeadline\" timestamp NULL;");
     }
 }
 

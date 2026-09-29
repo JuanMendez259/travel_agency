@@ -74,8 +74,20 @@ public partial class ClientTripDetailPage : ContentPage
         SeatsLabel.Text = available > 0
             ? $"{available} de {_trip.Capacity} asientos disponibles"
             : $"Sin cupo disponible (capacidad {_trip.Capacity})";
+
+        var deadline = _trip.BookingDeadline ?? _trip.StartDate;
+        var bookingClosed = DateTime.Today > deadline.Date;
+        DeadlineLabel.Text = bookingClosed
+            ? $"Reservas cerradas (cerraron el {deadline:dd/MM/yyyy})."
+            : $"Reservas abiertas hasta el {deadline:dd/MM/yyyy}.";
+        DeadlineLabel.IsVisible = !bookingClosed;
+
         BookPanel.IsVisible = available > 0;
         NoCapacityPanel.IsVisible = available <= 0;
+        BookButton.IsEnabled = available > 0 && !bookingClosed;
+        BookClosedLabel.Text = $"Este viaje cerró reservas el {deadline:dd/MM/yyyy}.";
+        BookClosedLabel.IsVisible = available > 0 && bookingClosed;
+        SeatsEntry.IsEnabled = !bookingClosed;
 
         if (!string.IsNullOrEmpty(_trip.ImageUrl))
             TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
