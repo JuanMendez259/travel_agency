@@ -93,23 +93,32 @@ public class BookingFullyPaidConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// Aviso de cancelacion. Depende de la bandera que deja el servidor: si la
-/// cancelo el propio cliente lo dice, y si fue la agencia avisa que contacte
-/// a la agencia. Devuelve null cuando la reserva no esta cancelada.
+/// Visibilidad de lo que solo aplica a reservas canceladas: el aviso y el
+/// boton "Ver Comprobante". No importa quien la cancelo, el tramite del
+/// reembolso lo hace igual el usuario.
+public class BookingCancelledConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is Booking { Status: BookingStatus.Cancelled };
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// Aviso de cancelacion. Se muestra para toda reserva cancelada, sin importar
+/// si la cancelo el cliente o la agencia, porque el tramite del reembolso lo
+/// hace el usuario en los dos casos.
+/// Devuelve null cuando la reserva no esta cancelada.
+/// OJO: devuelve TEXTO para usar en Label.Text. Para IsVisible usa
+/// BookingCancelledConverter, que devuelve bool; un string en IsVisible deja
+/// la visibilidad colgada en su valor por defecto (visible).
 public class BookingCancellationNoticeConverter : IValueConverter
 {
-    public const string ByClient =
+    public const string Notice =
         "Cancelado por el usuario. Solicita tu reembolso por el medio que realizaste el pago original.";
 
-    public const string ByAgency =
-        "Cancelada por la agencia. Contacta a la agencia para conocer tus opciones de reembolso.";
-
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        if (value is not Booking { Status: BookingStatus.Cancelled } booking) return null;
-
-        return booking.WasCancelledByClient() ? ByClient : ByAgency;
-    }
+        => value is Booking { Status: BookingStatus.Cancelled } ? Notice : null;
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();

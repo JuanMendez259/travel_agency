@@ -17,6 +17,7 @@
             <conv:BookingNeedsPaymentConverter x:Key="NeedsPayment" />
             <conv:BookingFullyPaidConverter x:Key="FullyPaid" />
             <conv:BookingCancellationNoticeConverter x:Key="CancellationNotice" />
+            <conv:BookingCancelledConverter x:Key="Cancelled" />
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -138,23 +139,24 @@
 
                             <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
                                     BackgroundColor="#14DC2626" Padding="10"
-                                    IsVisible="{Binding ., Converter={StaticResource CancellationNotice}}">
+                                    IsVisible="{Binding ., Converter={StaticResource Cancelled}}">
                                 <Label Text="{Binding ., Converter={StaticResource CancellationNotice}}"
                                        FontSize="12" TextColor="#991B1B" />
                             </Border>
 
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,4,0,0">
-                                <Button Text="Ver Detalles"
-                                        Clicked="OnPaymentsClicked"
-                                        CommandParameter="{Binding .}" />
-                                <Button Grid.Column="1"
-                                        Text="Ver Comprobante"
-                                        BackgroundColor="{StaticResource Tertiary}"
-                                        TextColor="White"
-                                        FontAttributes="Bold"
-                                        CornerRadius="8"
-                                        HeightRequest="40" />
-                            </Grid>
+                            <Button Text="Ver Detalles"
+                                    Clicked="OnPaymentsClicked"
+                                    CommandParameter="{Binding .}"
+                                    Margin="0,4,0,0" />
+
+                            <Button Text="Ver Comprobante"
+                                    BackgroundColor="{StaticResource Tertiary}"
+                                    TextColor="White"
+                                    FontAttributes="Bold"
+                                    CornerRadius="8"
+                                    HeightRequest="40"
+                                    Margin="0,8,0,0"
+                                    IsVisible="{Binding ., Converter={StaticResource Cancelled}}" />
                         </VerticalStackLayout>
                     </Border>
                 </DataTemplate>
