@@ -72,8 +72,35 @@
                      Refreshing="OnRefreshing">
             <CollectionView x:Name="TripsList"
                             SelectionMode="None"
-                            Footer=" "
                             EmptyView="No hay viajes disponibles.">
+            <CollectionView.Footer>
+                <Border Margin="10,16,10,24"
+                        StrokeThickness="0"
+                        BackgroundColor="#F1EDF9"
+                        Padding="16">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="4" VerticalOptions="Center">
+                            <Label Text="Tienes un grupo privado?"
+                                   FontSize="15"
+                                   FontAttributes="Bold"
+                                   TextColor="#2B0B98" />
+                            <Label Text="Personalizamos salidas para familias, amigos o empresas desde 10 viajeros"
+                                   FontSize="13"
+                                   TextColor="Gray" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="1"
+                                Text="Cotizar"
+                                Clicked="OnQuoteClicked"
+                                VerticalOptions="Center"
+                                WidthRequest="104"
+                                HeightRequest="40"
+                                CornerRadius="20"
+                                FontSize="14"
+                                BackgroundColor="#512BD4"
+                                TextColor="White" />
+                    </Grid>
+                </Border>
+            </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="viewmodels:TripListItem">
                     <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">

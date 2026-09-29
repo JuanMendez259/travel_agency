@@ -12,6 +12,10 @@ public partial class ClientHomePage : ContentPage
     private static readonly Color ChipIdleBackground = Color.FromArgb("#E1E1E1");
     private static readonly Color ChipIdleText = Color.FromArgb("#141414");
 
+    /// Numero de WhatsApp de la agencia en formato internacional, solo digitos
+    /// con lada (52 = Mexico, 445 = Puebla). Vacio = se informa el Instagram.
+    private const string AgencyWhatsApp = "5214444579256";
+
     private readonly ApiService _api;
     private List<TripListItem> _items = new();
     private string? _selectedCategory;
@@ -225,6 +229,30 @@ public partial class ClientHomePage : ContentPage
         catch (Exception ex)
         {
             await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
+
+    private async void OnQuoteClicked(object? sender, EventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(AgencyWhatsApp))
+        {
+            await DisplayAlertAsync("Cotizaciones",
+                "Escríbenos por Instagram en @proxima_parada_tours para cotizar tu grupo privado.",
+                "OK");
+            return;
+        }
+
+        var message = Uri.EscapeDataString(
+            "Hola, quiero cotizar una salida para un grupo privado de 10 o más viajeros.");
+        var url = $"https://wa.me/{AgencyWhatsApp}?text={message}";
+
+        try
+        {
+            await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred);
+        }
+        catch (Exception)
+        {
+            await DisplayAlertAsync("No se pudo abrir", url, "OK");
         }
     }
 
