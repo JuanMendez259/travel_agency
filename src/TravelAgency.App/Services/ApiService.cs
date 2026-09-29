@@ -21,6 +21,10 @@ public class ApiService
 
     public static string BaseUrl { get; set; } = "https://travelagency-production-f6cf.up.railway.app";
 
+    // Se usa cuando el viaje no tiene imagen o la descarga falla.
+    public const string TripPlaceholderUrl =
+        "https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/trips/placeholder.jpg";
+
     public static string? ResolveUrl(string? url)
     {
         if (string.IsNullOrWhiteSpace(url)) return null;
@@ -392,11 +396,20 @@ public class ApiService
     public async Task<Microsoft.Maui.Controls.ImageSource?> GetTripImageAsync(string? url)
     {
         var absolute = ResolveUrl(url);
-        if (absolute is null) return null;
+        if (absolute is not null)
+        {
+            var image = await DownloadImageAsync(_http, absolute);
+            if (image is not null) return image;
+        }
 
+        return await DownloadImageAsync(_http, TripPlaceholderUrl);
+    }
+
+    static async Task<Microsoft.Maui.Controls.ImageSource?> DownloadImageAsync(HttpClient http, string url)
+    {
         try
         {
-            var bytes = await _http.GetByteArrayAsync(absolute);
+            var bytes = await http.GetByteArrayAsync(url);
             if (bytes.Length == 0) return null;
             return Microsoft.Maui.Controls.ImageSource.FromStream(() => new MemoryStream(bytes));
         }

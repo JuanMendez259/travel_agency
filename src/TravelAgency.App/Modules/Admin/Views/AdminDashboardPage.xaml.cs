@@ -138,7 +138,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             var wasEditing = _editingTrip is not null;
             await DisplayAlertAsync("Listo", wasEditing ? "Cambios guardados." : "Viaje publicado.", "OK");
             ResetFormToCreateMode();
-            ClearForm();
+            await ClearFormAsync();
             await Shell.Current.GoToAsync("//admintrips");
         }
         catch (Exception ex)
@@ -153,26 +153,22 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
 
     private async Task LoadPreviewAsync(string? imageUrl)
     {
-        if (string.IsNullOrEmpty(imageUrl))
-        {
-            ImagePreview.IsVisible = false;
-            ImageNameLabel.IsVisible = false;
-            return;
-        }
+        var hasImage = !string.IsNullOrEmpty(imageUrl);
 
         ImagePreview.Source = await _api.GetTripImageAsync(imageUrl);
-        if (ImagePreview.Source is not null)
-        {
-            ImagePreview.IsVisible = true;
-            ImageNameLabel.Text = _selectedImage is null ? "Imagen actual" : _selectedImage.FileName;
-            ImageNameLabel.IsVisible = true;
-        }
+        if (ImagePreview.Source is null) return;
+
+        ImagePreview.IsVisible = true;
+        ImageNameLabel.Text = hasImage
+            ? (_selectedImage is null ? "Imagen actual" : _selectedImage.FileName)
+            : "Sin imagen: se usará el placeholder";
+        ImageNameLabel.IsVisible = true;
     }
 
-    private void OnCancelEditClicked(object? sender, EventArgs e)
+    private async void OnCancelEditClicked(object? sender, EventArgs e)
     {
         ResetFormToCreateMode();
-        ClearForm();
+        await ClearFormAsync();
     }
 
     private void StartEdit(Trip trip)
@@ -210,7 +206,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         CancelEditButton.IsVisible = false;
     }
 
-    private void ClearForm()
+    private async Task ClearFormAsync()
     {
         TitleEntry.Text = string.Empty;
         DestinationEntry.Text = string.Empty;
@@ -223,10 +219,10 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ActiveSwitch.IsToggled = true;
         ApplyActiveState();
         _selectedImage = null;
-        ImagePreview.Source = null;
-        ImagePreview.IsVisible = false;
         ImageNameLabel.Text = string.Empty;
         ImageNameLabel.IsVisible = false;
+
+        await LoadPreviewAsync(null);
     }
 
     private void OnActiveToggled(object? sender, ToggledEventArgs e)

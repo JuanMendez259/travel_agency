@@ -287,7 +287,19 @@ public partial class ClientBookingSeatsPage : ContentPage
 
     private async void OnConfirmClicked(object? sender, EventArgs e)
     {
-        if (_slots.Count == 0 || _slots.Any(s => !s.Seat.HasValue)) return;
+        if (_slots.Count == 0)
+        {
+            await DisplayAlertAsync("Error", "No hay asientos que reservar.", "OK");
+            return;
+        }
+
+        var missing = _slots.Count(s => !s.Seat.HasValue);
+        if (missing > 0)
+        {
+            await DisplayAlertAsync("Faltan asientos",
+                $"Selecciona un asiento para las {missing} persona(s) restante(s) antes de confirmar.", "OK");
+            return;
+        }
 
         var passengers = new List<(string Name, int Age, int SeatNumber)>();
         for (var i = 1; i < _slots.Count; i++)

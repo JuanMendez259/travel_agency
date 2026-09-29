@@ -198,24 +198,25 @@ public partial class AddPassengersPage : ContentPage
             if (!policiesAccepted) return;
         }
 
+        if (_tripId > 0)
+        {
+            // No se puede crear una reserva sin elegir asientos: se redirige al mapa.
+            await Shell.Current.GoToAsync($"bookseats?tripId={_tripId}&seats={_seats}");
+            return;
+        }
+
+        if (_bookingId <= 0)
+        {
+            await DisplayAlertAsync("Error", "No se encontró la reserva a la que agregar pasajeros.", "OK");
+            return;
+        }
+
         ConfirmButton.IsEnabled = false;
         try
         {
-            if (_tripId > 0 && _seats > 1)
-            {
-                var created = await _api.CreateBookingAsync(_tripId, _seats, passengers);
-                await DisplayAlertAsync("Reserva creada",
-                    $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. Ya puedes ver tus códigos QR.",
-                    "OK");
-                if (created is not null && created.Id > 0)
-                    await Shell.Current.GoToAsync($"//mytrips/mybooking?id={created.Id}");
-            }
-            else
-            {
-                await _api.CreatePassengersAsync(_bookingId, passengers);
-                await DisplayAlertAsync("Listo", "Acompañantes registrados. Ya puedes ver sus códigos QR.", "OK");
-                await Shell.Current.GoToAsync("..");
-            }
+            await _api.CreatePassengersAsync(_bookingId, passengers);
+            await DisplayAlertAsync("Listo", "Acompañantes registrados. Ya puedes ver sus códigos QR.", "OK");
+            await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
         {
