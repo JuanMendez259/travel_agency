@@ -440,3 +440,15 @@ FodyWeavers.xsd
 *.db-wal
 
 MapConfigSecrets.cs
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+
+# Salida de herramientas locales
+graphify-out/
