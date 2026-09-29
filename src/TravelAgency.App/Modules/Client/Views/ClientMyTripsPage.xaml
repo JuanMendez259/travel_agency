@@ -4,7 +4,14 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
+    xmlns:conv="clr-namespace:TravelAgency.App.Converters"
     Title="Mis Viajes">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <conv:TripDurationConverter x:Key="TripDuration" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
@@ -31,12 +38,29 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1" Padding="12,2" ColumnDefinitions="Auto,*" ColumnSpacing="10">
-            <Label Text="Estado:" VerticalOptions="Center" FontSize="14" />
-            <Picker x:Name="StatusPicker" Grid.Column="1"
-                    FontSize="14"
-                    SelectedIndexChanged="OnStatusChanged" />
-        </Grid>
+        <ScrollView Grid.Row="1"
+                    Orientation="Horizontal"
+                    HorizontalScrollBarVisibility="Never"
+                    Margin="12,4,0,4">
+            <HorizontalStackLayout Spacing="8" Padding="0,0,12,0">
+                <Button x:Name="PillTodas" Text="Todas"
+                        FontSize="13" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
+                        CornerRadius="18" MinimumWidthRequest="0"
+                        Clicked="OnFilterPillClicked" CommandParameter="all" />
+                <Button x:Name="PillPendientes" Text="Pendientes"
+                        FontSize="13" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
+                        CornerRadius="18" MinimumWidthRequest="0"
+                        Clicked="OnFilterPillClicked" CommandParameter="pending" />
+                <Button x:Name="PillConfirmadas" Text="Confirmadas"
+                        FontSize="13" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
+                        CornerRadius="18" MinimumWidthRequest="0"
+                        Clicked="OnFilterPillClicked" CommandParameter="confirmed" />
+                <Button x:Name="PillCanceladas" Text="Canceladas"
+                        FontSize="13" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
+                        CornerRadius="18" MinimumWidthRequest="0"
+                        Clicked="OnFilterPillClicked" CommandParameter="cancelled" />
+            </HorizontalStackLayout>
+        </ScrollView>
 
         <ActivityIndicator x:Name="Loading"
                            Grid.Row="2"
@@ -59,10 +83,21 @@
                         <VerticalStackLayout Padding="12" Spacing="4">
                             <Label Text="{Binding Trip.Title}" FontSize="17" FontAttributes="Bold" />
                             <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
-                            <HorizontalStackLayout Spacing="4">
-                                <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
-                                <Label Text="al" />
-                                <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                            <HorizontalStackLayout Spacing="8">
+                                <HorizontalStackLayout Spacing="4">
+                                    <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                    <Label Text="al" />
+                                    <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                </HorizontalStackLayout>
+                                <Border StrokeShape="RoundRectangle 8"
+                                        BackgroundColor="#1A512BD4"
+                                        Padding="7,1"
+                                        VerticalOptions="Center">
+                                    <Label Text="{Binding Trip, Converter={StaticResource TripDuration}}"
+                                           FontSize="11"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Tertiary}" />
+                                </Border>
                             </HorizontalStackLayout>
                             <HorizontalStackLayout Spacing="4">
                                 <Label Text="{Binding NumberOfSeats}" />

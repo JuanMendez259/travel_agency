@@ -9,14 +9,14 @@ public partial class ClientMyTripsPage : ContentPage
     private readonly SessionService _session;
 
     private List<Booking> _current = new();
+    private BookingStatus? _statusFilter;
 
     public ClientMyTripsPage(ApiService api, SessionService session)
     {
         InitializeComponent();
         _api = api;
         _session = session;
-        StatusPicker.ItemsSource = new[] { "Todas", "Pendientes", "Confirmadas", "Canceladas" };
-        StatusPicker.SelectedIndex = 0;
+        SetActivePill(PillTodas);
     }
 
     protected override async void OnAppearing()
@@ -26,17 +26,7 @@ public partial class ClientMyTripsPage : ContentPage
         await LoadMyTripsAsync();
     }
 
-    private BookingStatus? SelectedStatus()
-    {
-        if (StatusPicker.SelectedIndex < 0) return null;
-        return StatusPicker.SelectedIndex switch
-        {
-            1 => BookingStatus.Pending,
-            2 => BookingStatus.Confirmed,
-            3 => BookingStatus.Cancelled,
-            _ => null
-        };
-    }
+    private BookingStatus? SelectedStatus() => _statusFilter;
 
     private async Task LoadMyTripsAsync(bool showLoading = true)
     {
@@ -81,18 +71,34 @@ public partial class ClientMyTripsPage : ContentPage
         MyTripsList.ItemsSource = result.ToList();
     }
 
-    private bool _handlingPicker;
-    private async void OnStatusChanged(object? sender, EventArgs e)
+    private static readonly Color PillActiveBackground = Color.FromArgb("#512BD4");
+    private static readonly Color PillActiveText = Colors.White;
+    private static readonly Color PillIdleBackground = Color.FromArgb("#E1E1E1");
+    private static readonly Color PillIdleText = Color.FromArgb("#141414");
+
+    private async void OnFilterPillClicked(object? sender, EventArgs e)
     {
-        if (_session.UserId == 0 || _handlingPicker) return;
-        _handlingPicker = true;
-        try
+        if (sender is not Button clicked || clicked.CommandParameter is not string key) return;
+
+        _statusFilter = key switch
         {
-            await LoadMyTripsAsync();
-        }
-        finally
+            "pending" => BookingStatus.Pending,
+            "confirmed" => BookingStatus.Confirmed,
+            "cancelled" => BookingStatus.Cancelled,
+            _ => null
+        };
+
+        SetActivePill(clicked);
+        await LoadMyTripsAsync();
+    }
+
+    private void SetActivePill(Button active)
+    {
+        foreach (var pill in new[] { PillTodas, PillPendientes, PillConfirmadas, PillCanceladas })
         {
-            _handlingPicker = false;
+            var isActive = pill == active;
+            pill.BackgroundColor = isActive ? PillActiveBackground : PillIdleBackground;
+            pill.TextColor = isActive ? PillActiveText : PillIdleText;
         }
     }
 
