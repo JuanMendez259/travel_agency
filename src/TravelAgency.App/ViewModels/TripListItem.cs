@@ -57,6 +57,10 @@ public class TripListItem : INotifyPropertyChanged
 
     public string TransportText => TransportTypeConverter.ToDisplay(Trip.TransportType);
 
+    public bool HasCategory => !string.IsNullOrWhiteSpace(Trip.Category);
+
+    public string CategoryText => HasCategory ? Trip.Category : string.Empty;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>

@@ -125,6 +125,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureRatingsTableAsync(db, provider);
     await EnsureChildPriceColumnAsync(db, provider);
     await EnsureBookingDeadlineColumnAsync(db, provider);
+    await EnsureTripCategoryColumnAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
     await EnsureFavoriteTripsTableAsync(db, provider);
@@ -302,8 +303,11 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
         return Results.BadRequest("El precio de niño no puede ser negativo.");
     if (trip.BookingDeadline is { } createDeadline && createDeadline.Date > trip.StartDate.Date)
         return Results.BadRequest("La fecha límite de reserva no puede ser posterior a la fecha de salida.");
+    if (trip.Category?.Length > 60)
+        return Results.BadRequest("La categoría no puede superar los 60 caracteres.");
 
     trip.CreatedAt = DateTime.UtcNow;
+    trip.Category = NormalizeCategory(trip.Category);
     trip.AvailableSeats = trip.Capacity;
     db.Trips.Add(trip);
     await db.SaveChangesAsync();
@@ -351,6 +355,8 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
         return Results.BadRequest("El precio de niño no puede ser negativo.");
     if (input.BookingDeadline is { } editDeadline && editDeadline.Date > input.StartDate.Date)
         return Results.BadRequest("La fecha límite de reserva no puede ser posterior a la fecha de salida.");
+    if (input.Category?.Length > 60)
+        return Results.BadRequest("La categoría no puede superar los 60 caracteres.");
 
     var capacityIncreased = input.Capacity > trip.Capacity;
 
@@ -366,6 +372,7 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     trip.IsActive = input.IsActive;
     trip.CancellationDaysLimit = input.CancellationDaysLimit is >= 0 ? input.CancellationDaysLimit : null;
     trip.BookingDeadline = input.BookingDeadline?.Date;
+    trip.Category = NormalizeCategory(input.Category);
     trip.OriginLatitude = input.OriginLatitude;
     trip.OriginLongitude = input.OriginLongitude;
     trip.DestinationLatitude = input.DestinationLatitude;
@@ -1477,6 +1484,12 @@ static int GetUserId(ClaimsPrincipal principal)
 
 static bool IsChildAge(int? age) => age is >= 0 and <= 11;
 
+static string? NormalizeCategory(string? category)
+{
+    var trimmed = category?.Trim();
+    return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+}
+
 static List<TripSeatRow> BuildSeatRows(int capacity, Dictionary<int, TripSeat> assigned)
 {
     const int leftSeats = 2;
@@ -1913,6 +1926,16 @@ static async Task EnsureBookingDeadlineColumnAsync(AppDbContext db, string provi
         await TryExecAsync(db, provider == "sqlite"
             ? "ALTER TABLE \"Trips\" ADD COLUMN \"BookingDeadline\" TEXT NULL;"
             : "ALTER TABLE \"Trips\" ADD COLUMN \"BookingDeadline\" timestamp NULL;");
+    }
+}
+
+static async Task EnsureTripCategoryColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "Category", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"Category\" TEXT NULL;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"Category\" varchar(60) NULL;");
     }
 }
 

@@ -73,6 +73,7 @@
                                             VerticalOptions="Center" />
                                 </Grid>
                                 <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
+                                <Label Text="{Binding CategoryText}" FontSize="13" TextColor="#2B6CB0" IsVisible="{Binding HasCategory}" />
                                 <HorizontalStackLayout Spacing="4">
                                     <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
                                     <Label Text="al" />

@@ -68,6 +68,8 @@ public partial class ClientTripDetailPage : ContentPage
             ChildPriceLabel.IsVisible = true;
         }
         DescriptionLabel.Text = _trip.Description;
+        CategoryLabel.Text = _trip.Category;
+        CategoryLabel.IsVisible = !string.IsNullOrWhiteSpace(_trip.Category);
         TransportLabel.Text = $"Transporte: {TransportTypeConverter.ToDisplay(_trip.TransportType)}";
 
         var available = Math.Max(0, _trip.AvailableSeats);

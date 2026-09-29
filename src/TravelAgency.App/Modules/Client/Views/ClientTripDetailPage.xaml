@@ -27,6 +27,7 @@
             </Grid>
             <Label x:Name="ChildPriceLabel" FontSize="14" TextColor="Gray" IsVisible="False" />
             <Label x:Name="DescriptionLabel" FontSize="14" />
+            <Label x:Name="CategoryLabel" FontSize="13" TextColor="#2B6CB0" IsVisible="False" />
             <Label x:Name="TransportLabel" FontSize="14" />
             <Label x:Name="SeatsLabel" FontSize="14" TextColor="Gray" />
 

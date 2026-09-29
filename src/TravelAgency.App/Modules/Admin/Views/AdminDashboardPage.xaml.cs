@@ -16,6 +16,10 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         _api = api;
         TransportTypePicker.ItemsSource = TransportTypeConverter.Options.ToList();
         TransportTypePicker.SelectedIndex = 0;
+        CategoryPicker.ItemsSource = TripCategoryOptions.PickerOptions
+            .Select(c => string.IsNullOrEmpty(c) ? "Sin categoría" : c)
+            .ToList();
+        CategoryPicker.SelectedIndex = 0;
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -60,6 +64,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 ChildPrice = decimal.TryParse(ChildPriceEntry.Text, out var childPrice) ? childPrice : (decimal?)null,
                 Capacity = int.TryParse(CapacityEntry.Text, out var capacity) ? capacity : 0,
                 TransportType = (TransportType)Math.Max(0, TransportTypePicker.SelectedIndex),
+                Category = TripCategoryOptions.FromIndex(CategoryPicker.SelectedIndex),
                 IsActive = ActiveSwitch.IsToggled,
                 CancellationDaysLimit = int.TryParse(CancellationDaysLimitEntry.Text, out var cancelDays) && cancelDays >= 0
                     ? cancelDays
@@ -196,6 +201,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             BookingDeadlinePicker.Date = editDeadline;
         ApplyBookingDeadlineState();
         TransportTypePicker.SelectedIndex = (int)trip.TransportType;
+        CategoryPicker.SelectedIndex = TripCategoryOptions.IndexOf(trip.Category);
         ActiveSwitch.IsToggled = trip.IsActive;
         ApplyActiveState();
 
@@ -229,6 +235,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ApplyBookingDeadlineState();
         DescriptionEditor.Text = string.Empty;
         TransportTypePicker.SelectedIndex = 0;
+        CategoryPicker.SelectedIndex = 0;
         ActiveSwitch.IsToggled = true;
         ApplyActiveState();
         _selectedImage = null;

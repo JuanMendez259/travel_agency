@@ -88,6 +88,7 @@ public partial class ClientHomePage : ContentPage
         var matches = _items
             .Where(i => Matches(i.Trip.Title, text)
                      || Matches(i.Trip.Destination, text)
+                     || Matches(i.Trip.Category, text)
                      || Matches(i.Trip.Description, text))
             .ToList();
 
