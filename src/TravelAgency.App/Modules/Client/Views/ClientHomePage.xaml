@@ -9,8 +9,27 @@
     Title="Explorar Viajes">
 
     <ContentPage.Resources>
-        <conv:HasValueConverter x:Key="HasValue" />
-        <conv:TransportTypeConverter x:Key="TransportType" />
+        <ResourceDictionary>
+            <Color x:Key="ColorPrimary">#003B1B</Color>
+            <Color x:Key="ColorPrimaryContainer">#14532D</Color>
+            <Color x:Key="ColorSecondary">#006C49</Color>
+            <Color x:Key="ColorSecondaryFixed">#6FFBBE</Color>
+            <Color x:Key="ColorSurface">#FAF8FF</Color>
+            <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
+            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
+            <Color x:Key="ColorSurfaceContainer">#EAEDFF</Color>
+            <Color x:Key="ColorSurfaceContainerHigh">#E2E7FF</Color>
+            <Color x:Key="ColorOnSurface">#131B2E</Color>
+            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
+            <Color x:Key="ColorOutline">#717970</Color>
+            <Color x:Key="ColorError">#BA1A1A</Color>
+
+            <!-- Tus convertidores existentes, sin tocar -->
+            <conv:HasValueConverter x:Key="HasValue" />
+            <conv:TransportTypeConverter x:Key="TransportType" />
+            <!-- Reutilizado de la pantalla "Mis Viajes" (mismo Trip.TransportType) -->
+            <conv:TransportTypeToIconConverter x:Key="TransportTypeIcon" />
+        </ResourceDictionary>
     </ContentPage.Resources>
 
     <ContentPage.ToolbarItems>
@@ -18,137 +37,231 @@
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,Auto,*">
-        <Border Grid.Row="0"
-                StrokeShape="RoundRectangle 10"
-                Stroke="{StaticResource Gray200}"
-                BackgroundColor="{StaticResource Gray100}"
-                Padding="12,0"
-                Margin="12,8,12,4">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                <Label Text="🔍" FontSize="15" VerticalOptions="Center" />
-                <Entry x:Name="SearchEntry"
-                       Grid.Column="1"
-                       Placeholder="Buscar por destino o viaje"
-                       BackgroundColor="Transparent"
-                       TextColor="{StaticResource Gray950}"
-                       PlaceholderColor="{StaticResource Gray500}"
-                       FontSize="14"
-                       HeightRequest="44"
-                       TextChanged="OnSearchTextChanged" />
-            </Grid>
-        </Border>
+    <Grid RowDefinitions="Auto,*" BackgroundColor="{StaticResource ColorSurface}">
 
-        <ScrollView Grid.Row="1"
-                    Orientation="Horizontal"
-                    HorizontalScrollBarVisibility="Never"
-                    Margin="12,8,0,0"
-                    IsVisible="False"
-                    x:Name="CategoryFiltersScroll">
-            <HorizontalStackLayout x:Name="CategoryFiltersLayout" Spacing="8" Padding="0,0,12,0" />
-        </ScrollView>
+        <!-- ============ ENCABEZADO: SALUDO + BUSCADOR + CHIPS + TRUST STRIP ============ -->
+        <VerticalStackLayout Grid.Row="0" Spacing="12" Padding="16,12,16,4">
 
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="12,8,12,0" ColumnSpacing="8">
-            <Label Text="Próximas Salidas Locales"
-                   FontSize="16"
-                   FontAttributes="Bold"
-                   VerticalOptions="Center" />
-            <Label x:Name="TripsCountLabel"
-                   Grid.Column="1"
-                   FontSize="13"
-                   TextColor="Gray"
-                   VerticalOptions="Center" />
-        </Grid>
-
-        <ActivityIndicator x:Name="Loading"
-                           Grid.Row="3"
-                           IsRunning="False"
-                           IsVisible="False"
-                           Margin="0,10"
-                           HorizontalOptions="Center" />
-
-        <RefreshView x:Name="TripsRefresh"
-                     Grid.Row="4"
-                     Refreshing="OnRefreshing">
-            <CollectionView x:Name="TripsList"
-                            SelectionMode="None"
-                            EmptyView="No hay viajes disponibles.">
-            <CollectionView.Footer>
-                <Border Margin="10,16,10,24"
-                        StrokeThickness="0"
-                        BackgroundColor="#F1EDF9"
-                        Padding="16">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                        <VerticalStackLayout Spacing="4" VerticalOptions="Center">
-                            <Label Text="Tienes un grupo privado?"
-                                   FontSize="15"
-                                   FontAttributes="Bold"
-                                   TextColor="#2B0B98" />
-                            <Label Text="Personalizamos salidas para familias, amigos o empresas desde 10 viajeros"
-                                   FontSize="13"
-                                   TextColor="Gray" />
-                        </VerticalStackLayout>
-                        <Button Grid.Column="1"
-                                Text="Cotizar"
-                                Clicked="OnQuoteClicked"
-                                VerticalOptions="Center"
-                                WidthRequest="104"
-                                HeightRequest="40"
-                                CornerRadius="20"
-                                FontSize="14"
-                                BackgroundColor="#512BD4"
-                                TextColor="White" />
-                    </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+                <VerticalStackLayout Spacing="1">
+                    <HorizontalStackLayout Spacing="4">
+                        <Label Text="¡Hola, Aventurero!" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                        <Label Text="🌲" FontSize="18" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label Text="¿A dónde nos escapamos este fin de semana?" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                </VerticalStackLayout>
+                <Border Grid.Column="1" StrokeShape="RoundRectangle 22" WidthRequest="44" HeightRequest="44"
+                        BackgroundColor="#4D6FFBBE" Padding="0" VerticalOptions="Start">
+                    <Label Text="🌳" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
                 </Border>
-            </CollectionView.Footer>
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="viewmodels:TripListItem">
-                    <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
-                        <VerticalStackLayout Spacing="4">
-                            <Image Source="{Binding Thumb}" IsVisible="{Binding Thumb, Converter={StaticResource HasValue}}"
-                                   HeightRequest="140" Aspect="AspectFill" />
-                            <VerticalStackLayout Padding="12" Spacing="4">
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                    <Label Text="{Binding Trip.Title}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
-                                    <Button Grid.Column="1"
-                                            Text="{Binding HeartText}"
-                                            TextColor="{Binding HeartColor}"
-                                            FontSize="24"
-                                            Padding="8"
-                                            BackgroundColor="Transparent"
-                                            Clicked="OnFavoriteClicked"
-                                            CommandParameter="{Binding}"
-                                            VerticalOptions="Center" />
-                                </Grid>
-                                <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
-                                <Label Text="{Binding CategoryText}" FontSize="13" TextColor="#2B6CB0" IsVisible="{Binding HasCategory}" />
-                                <Label Text="{Binding DescriptionText}"
-                                       FontSize="13"
-                                       TextColor="Gray"
-                                       LineBreakMode="TailTruncation"
-                                       MaxLines="2"
-                                       IsVisible="{Binding HasDescription}" />
-                                <HorizontalStackLayout Spacing="4">
-                                    <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
-                                    <Label Text="al" />
-                                    <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
-                                </HorizontalStackLayout>
-                                <HorizontalStackLayout Spacing="4">
-                                    <Label Text="{Binding Trip.Price, StringFormat='{0:C}'}" FontAttributes="Bold" />
-                                    <Label Text="·" />
-                                    <Label Text="{Binding AvailabilityText}" TextColor="Gray" />
-                                </HorizontalStackLayout>
-                                <Label Text="{Binding Trip.TransportType, Converter={StaticResource TransportType}}" FontSize="12" TextColor="Gray" />
-                                <Button Text="{Binding BookButtonText}"
-                                        Clicked="OnBookClicked"
-                                        CommandParameter="{Binding Trip}"
-                                        Margin="0,8,0,0" />
-                            </VerticalStackLayout>
-                        </VerticalStackLayout>
-                    </Border>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-        </RefreshView>
+            </Grid>
+
+            <!-- Buscador -->
+            <Border StrokeShape="RoundRectangle 12" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="12,0">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="10" Offset="0,2" />
+                </Border.Shadow>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Label Text="🔍" FontSize="15" VerticalOptions="Center" TextColor="{StaticResource ColorOutline}" />
+                    <Entry x:Name="SearchEntry"
+                           Grid.Column="1"
+                           Placeholder="Buscar ríos, cascadas, pueblos mágicos..."
+                           BackgroundColor="Transparent"
+                           TextColor="{StaticResource ColorOnSurface}"
+                           PlaceholderColor="{StaticResource ColorOutline}"
+                           FontSize="14"
+                           HeightRequest="46"
+                           TextChanged="OnSearchTextChanged" />
+                </Grid>
+            </Border>
+
+            <!-- Chips de categoría (se siguen generando desde tu code-behind, solo cambian de color ahí) -->
+            <ScrollView Orientation="Horizontal"
+                        HorizontalScrollBarVisibility="Never"
+                        x:Name="CategoryFiltersScroll">
+                <HorizontalStackLayout x:Name="CategoryFiltersLayout" Spacing="8" />
+            </ScrollView>
+
+            <!-- Trust strip -->
+            <Border StrokeShape="RoundRectangle 14" BackgroundColor="#4D6FFBBE" Padding="10,8">
+                <HorizontalStackLayout Spacing="10" HorizontalOptions="Center">
+                    <HorizontalStackLayout Spacing="3">
+                        <Label Text="✅" FontSize="12" />
+                        <Label Text="Salidas garantizadas" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource ColorSecondary}" />
+                    </HorizontalStackLayout>
+                    <BoxView WidthRequest="1" HeightRequest="12" Color="#33006C49" />
+                    <HorizontalStackLayout Spacing="3">
+                        <Label Text="🤝" FontSize="12" />
+                        <Label Text="Guías certificados" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource ColorSecondary}" />
+                    </HorizontalStackLayout>
+                    <BoxView WidthRequest="1" HeightRequest="12" Color="#33006C49" />
+                    <HorizontalStackLayout Spacing="3">
+                        <Label Text="🚗" FontSize="12" />
+                        <Label Text="Seguro de viaje" FontSize="10" FontAttributes="Bold" TextColor="{StaticResource ColorSecondary}" />
+                    </HorizontalStackLayout>
+                </HorizontalStackLayout>
+            </Border>
+
+            <!-- Encabezado de sección -->
+            <Grid ColumnDefinitions="*,Auto">
+                <Label Text="Próximas Salidas Locales" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" VerticalOptions="Center" />
+                <Border Grid.Column="1" StrokeShape="RoundRectangle 12" BackgroundColor="{StaticResource ColorSurfaceContainer}" Padding="8,3" VerticalOptions="Center">
+                    <Label x:Name="TripsCountLabel" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource ColorSecondary}" />
+                </Border>
+            </Grid>
+        </VerticalStackLayout>
+
+        <!-- ============ LISTA DE VIAJES ============ -->
+        <Grid Grid.Row="1">
+
+            <ActivityIndicator x:Name="Loading"
+                               IsRunning="False"
+                               IsVisible="False"
+                               Color="{StaticResource ColorPrimary}"
+                               Margin="0,16"
+                               VerticalOptions="Start"
+                               HorizontalOptions="Center" />
+
+            <RefreshView x:Name="TripsRefresh" Refreshing="OnRefreshing">
+                <CollectionView x:Name="TripsList" SelectionMode="None" EmptyView="No hay viajes disponibles.">
+
+                    <CollectionView.Footer>
+                        <Border StrokeShape="RoundRectangle 16" BackgroundColor="{StaticResource ColorSurfaceContainer}" Padding="14" Margin="16,10,16,24">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Border StrokeShape="RoundRectangle 22" WidthRequest="44" HeightRequest="44" BackgroundColor="{StaticResource ColorSecondaryFixed}" Padding="0">
+                                    <Label Text="👥" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                    <Label Text="¿Tienes un grupo privado?" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                    <Label Text="Personalizamos salidas para familias, amigos o empresas desde 10 viajeros."
+                                           FontSize="11" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                </VerticalStackLayout>
+                                <Button Grid.Column="2"
+                                        Text="Cotizar"
+                                        Clicked="OnQuoteClicked"
+                                        VerticalOptions="Center"
+                                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                        TextColor="{StaticResource ColorPrimary}"
+                                        FontAttributes="Bold"
+                                        CornerRadius="18"
+                                        HeightRequest="38"
+                                        Padding="14,0" />
+                            </Grid>
+                        </Border>
+                    </CollectionView.Footer>
+
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="viewmodels:TripListItem">
+                            <Border Margin="16,8" StrokeShape="RoundRectangle 16"
+                                    Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                    Padding="0">
+                                <Border.Shadow>
+                                    <Shadow Brush="Black" Opacity="0.08" Radius="16" Offset="0,4" />
+                                </Border.Shadow>
+
+                                <VerticalStackLayout>
+
+                                    <!-- Portada con badges sobrepuestos -->
+                                    <Grid HeightRequest="170" BackgroundColor="{StaticResource ColorSurfaceContainerHigh}">
+                                        <Image Source="{Binding Thumb}"
+                                               IsVisible="{Binding Thumb, Converter={StaticResource HasValue}}"
+                                               Aspect="AspectFill" />
+
+                                        <!-- Tag de transporte -->
+                                        <Border StrokeShape="RoundRectangle 16" BackgroundColor="#E6003B1B"
+                                                Padding="9,4" HorizontalOptions="Start" VerticalOptions="Start" Margin="10">
+                                            <HorizontalStackLayout Spacing="4">
+                                                <Label Text="{Binding Trip.TransportType, Converter={StaticResource TransportTypeIcon}}" FontSize="12" />
+                                                <Label Text="{Binding Trip.TransportType, Converter={StaticResource TransportType}}"
+                                                       FontSize="11" FontAttributes="Bold" TextColor="White" />
+                                            </HorizontalStackLayout>
+                                        </Border>
+
+                                        <!-- Botón de favorito flotante -->
+                                        <Border StrokeShape="RoundRectangle 20" WidthRequest="40" HeightRequest="40"
+                                                BackgroundColor="#E6FFFFFF" Padding="0"
+                                                HorizontalOptions="End" VerticalOptions="Start" Margin="10">
+                                            <Button Text="{Binding HeartText}"
+                                                    TextColor="{Binding HeartColor}"
+                                                    FontSize="18"
+                                                    Padding="0"
+                                                    BackgroundColor="Transparent"
+                                                    Clicked="OnFavoriteClicked"
+                                                    CommandParameter="{Binding .}" />
+                                        </Border>
+
+                                        <!-- Pill de disponibilidad -->
+                                        <Border StrokeShape="RoundRectangle 16" BackgroundColor="#F2FFFFFF"
+                                                Padding="10,4" HorizontalOptions="Start" VerticalOptions="End" Margin="10">
+                                            <Label Text="{Binding AvailabilityText}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
+                                        </Border>
+                                    </Grid>
+
+                                    <VerticalStackLayout Padding="14" Spacing="8">
+
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="📍" FontSize="11" />
+                                            <Label Text="{Binding Trip.Destination}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorSecondary}" />
+                                        </HorizontalStackLayout>
+
+                                        <Label Text="{Binding Trip.Title}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
+
+                                        <Label Text="{Binding CategoryText}" FontSize="11" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondary}" IsVisible="{Binding HasCategory}" />
+
+                                        <Label Text="{Binding DescriptionText}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                               LineBreakMode="TailTruncation"
+                                               MaxLines="2"
+                                               IsVisible="{Binding HasDescription}" />
+
+                                        <!-- Fechas -->
+                                        <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                                BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="10">
+                                            <VerticalStackLayout Spacing="4">
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <Label Text="📅" FontSize="12" />
+                                                    <Label Text="Ida:" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
+                                                    <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd MMM, HH:mm}'}"
+                                                           FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                                </HorizontalStackLayout>
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <Label Text="↩️" FontSize="12" />
+                                                    <Label Text="Regreso:" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
+                                                    <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd MMM, HH:mm}'}"
+                                                           FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                                </HorizontalStackLayout>
+                                            </VerticalStackLayout>
+                                        </Border>
+
+                                        <!-- Precio + acción -->
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                            <VerticalStackLayout>
+                                                <Label Text="Precio por persona" FontSize="10" TextColor="{StaticResource ColorOutline}" />
+                                                <Label Text="{Binding Trip.Price, StringFormat='{0:C}'}" FontSize="19" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                            </VerticalStackLayout>
+                                            <Button Grid.Column="1"
+                                                    Text="{Binding BookButtonText}"
+                                                    Clicked="OnBookClicked"
+                                                    CommandParameter="{Binding Trip}"
+                                                    BackgroundColor="{StaticResource ColorPrimaryContainer}"
+                                                    TextColor="White"
+                                                    FontAttributes="Bold"
+                                                    CornerRadius="10"
+                                                    HeightRequest="46"
+                                                    Padding="18,0"
+                                                    VerticalOptions="Center" />
+                                        </Grid>
+
+                                    </VerticalStackLayout>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+        </Grid>
     </Grid>
 </ContentPage>

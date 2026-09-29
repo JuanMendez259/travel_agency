@@ -7,10 +7,10 @@ namespace TravelAgency.App.Modules.Client.Views;
 
 public partial class ClientHomePage : ContentPage
 {
-    private static readonly Color ChipSelectedBackground = Color.FromArgb("#512BD4");
+    private static readonly Color ChipSelectedBackground = Color.FromArgb("#003B1B");
     private static readonly Color ChipSelectedText = Colors.White;
-    private static readonly Color ChipIdleBackground = Color.FromArgb("#E1E1E1");
-    private static readonly Color ChipIdleText = Color.FromArgb("#141414");
+    private static readonly Color ChipIdleBackground = Color.FromArgb("#F2F3FF");
+    private static readonly Color ChipIdleText = Color.FromArgb("#404941");
 
     /// Numero de WhatsApp de la agencia en formato internacional, solo digitos
     /// con lada (52 = Mexico, 445 = Puebla). Vacio = se informa el Instagram.
