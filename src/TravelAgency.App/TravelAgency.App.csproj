@@ -46,6 +46,12 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 	</PropertyGroup>
+	
+	<PropertyGroup Condition="$(TargetFramework.Contains('-ios')) And '$(RuntimeIdentifier)' == 'ios-arm64'">
+    <CodesignKey>Apple Development: juan.mendez.uaslp@gmail.com (PJP6Y668C6)</CodesignKey>
+    <CodesignProvision>iOS Team Provisioning Profile: com.companyname.travelagency.app</CodesignProvision>
+    <CodesignTeamId>QV76TB794D</CodesignTeamId>
+	</PropertyGroup>
 
 	<ItemGroup>
 		<!-- App Icon -->
@@ -67,6 +73,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
+<PackageReference Include="Mapsui.Maui" Version="5.1.0" />
+<PackageReference Include="Mapsui.Nts" Version="5.1.0" />
 <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     <PackageReference Include="QRCoder" Version="1.6.0" />

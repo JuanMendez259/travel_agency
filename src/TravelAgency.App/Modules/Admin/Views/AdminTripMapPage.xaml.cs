@@ -1,30 +1,30 @@
-using System.Globalization;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using Mapsui;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
+using Map = Mapsui.Map;
 
 namespace TravelAgency.App.Modules.Admin.Views;
 
 [QueryProperty(nameof(TripId), "id")]
 public partial class AdminTripMapPage : ContentPage
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
     private readonly ApiService _api;
+    private readonly NominatimGeocoder _geocoder;
+
     private Trip? _trip;
-    private bool _handlingNavigation;
+    private string _mode = "pan";
+    private bool _layersReady;
+    private List<MapMarkerInfo> _markers = new();
 
     public string TripId { get; set; } = string.Empty;
 
-    public AdminTripMapPage(ApiService api)
+    public AdminTripMapPage(ApiService api, NominatimGeocoder geocoder)
     {
         InitializeComponent();
         _api = api;
+        _geocoder = geocoder;
+        TripMap.Map ??= new Map();
+        TripMap.Map.Tapped += OnMapTapped;
     }
 
     protected override async void OnAppearing()
@@ -54,46 +54,264 @@ public partial class AdminTripMapPage : ContentPage
 
         TripLabel.Text = _trip.Title;
 
-        var cfg = new
+        if (!_layersReady)
         {
-            originLat = _trip.OriginLatitude,
-            originLng = _trip.OriginLongitude,
-            destLat = _trip.DestinationLatitude,
-            destLng = _trip.DestinationLongitude,
-            pois = _trip.PointsOfInterest
-                .OrderBy(p => p.Order)
-                .Select(p => new { p.Id, p.Name, p.Description, lat = p.Latitude, lng = p.Longitude })
-        };
+            _layersReady = true;
+            TripMapRenderer.AddTileLayer(TripMap.Map);
+        }
 
-        var cfgJson = JsonSerializer.Serialize(cfg, JsonOptions);
-
-        var html = await ReadMapHtmlAsync();
-        html = html
-            .Replace("{{KEY}}", MapConfig.GoogleMapsApiKey)
-            .Replace("{{CFG}}", "const CFG = " + cfgJson + ";");
-
-        MapView.Source = new HtmlWebViewSource { Html = html };
+        _markers = BuildMarkers();
+        RefreshMapLayers();
+        TripMapRenderer.FitToMarkers(TripMap.Map, _markers);
+        UpdateHint();
     }
 
-    private static async Task<string> ReadMapHtmlAsync()
+    private List<MapMarkerInfo> BuildMarkers()
     {
-        using var stream = await FileSystem.OpenAppPackageFileAsync("map.html");
-        using var reader = new StreamReader(stream);
-        return await reader.ReadToEndAsync();
+        var list = new List<MapMarkerInfo>();
+        if (_trip is null) return list;
+
+        if (_trip.OriginLatitude is double olat && _trip.OriginLongitude is double olng)
+            list.Add(new MapMarkerInfo(MapMarkerKinds.Origin, 0, olat, olng));
+
+        foreach (var poi in _trip.PointsOfInterest.OrderBy(p => p.Order))
+            list.Add(new MapMarkerInfo(MapMarkerKinds.Poi, poi.Id, poi.Latitude, poi.Longitude));
+
+        if (_trip.DestinationLatitude is double dlat && _trip.DestinationLongitude is double dlng)
+            list.Add(new MapMarkerInfo(MapMarkerKinds.Dest, 0, dlat, dlng));
+
+        return list;
     }
 
-    private async void OnWebNavigating(object? sender, WebNavigatingEventArgs e)
+    private void RefreshMapLayers()
     {
-        var url = e.Url ?? "";
-        if (!url.StartsWith("app://", StringComparison.OrdinalIgnoreCase)) return;
+        if (TripMap.Map is not { } map) return;
+        RemoveLayer(map, "ruta");
+        RemoveLayer(map, "marcadores");
+        map.Layers.Add(TripMapRenderer.BuildRouteLayer(_markers), 1);
+        map.Layers.Add(TripMapRenderer.BuildMarkersLayer(_markers), 2);
+        map.Refresh(ChangeType.Discrete);
+    }
 
-        e.Cancel = true;
-        if (_handlingNavigation) return;
-        _handlingNavigation = true;
+    private static void RemoveLayer(Map map, string name)
+        => map.Layers.Remove(layer => layer.Name == name);
+
+    private async void OnMapTapped(object? sender, MapEventArgs e)
+    {
+        if (_trip is null || TripMap.Map is not { } map) return;
 
         try
         {
-            await HandleCommandAsync(url.Substring("app://".Length));
+            var world = e.WorldPosition;
+            if (world is null) return;
+
+            var (lng, lat) = TripMapRenderer.ProjectToLonLat(world.X, world.Y);
+            var resolution = map.Navigator.Viewport.Resolution;
+
+            switch (_mode)
+            {
+                case MapMarkerKinds.Origin:
+                    await SaveOriginAsync(lat, lng);
+                    SetMode("pan");
+                    break;
+                case MapMarkerKinds.Dest:
+                    await SaveDestAsync(lat, lng);
+                    SetMode("pan");
+                    break;
+                case MapMarkerKinds.Poi:
+                    await AddPoiAtAsync(lat, lng, null);
+                    SetMode("pan");
+                    break;
+                default:
+                    var hit = TripMapRenderer.HitTest(_markers, world, resolution);
+                    if (hit is not null) await HandleMarkerTapAsync(hit);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
+
+    private async Task SaveOriginAsync(double lat, double lng)
+    {
+        _trip!.OriginLatitude = lat;
+        _trip.OriginLongitude = lng;
+        await _api.UpdateTripRouteAsync(_trip.Id, lat, lng, _trip.DestinationLatitude, _trip.DestinationLongitude);
+        _markers = BuildMarkers();
+        RefreshMapLayers();
+    }
+
+    private async Task SaveDestAsync(double lat, double lng)
+    {
+        _trip!.DestinationLatitude = lat;
+        _trip.DestinationLongitude = lng;
+        await _api.UpdateTripRouteAsync(_trip.Id, _trip.OriginLatitude, _trip.OriginLongitude, lat, lng);
+        _markers = BuildMarkers();
+        RefreshMapLayers();
+    }
+
+    private async Task AddPoiAtAsync(double lat, double lng, string? defaultName)
+    {
+        var name = await DisplayPromptAsync("Punto de interés", "Nombre del punto:", accept: "OK", cancel: "Cancelar",
+            initialValue: defaultName ?? "");
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        var description = await DisplayPromptAsync("Punto de interés", "Descripción (opcional):", accept: "OK", cancel: "Cancelar");
+
+        var poi = await _api.AddPoiAsync(_trip!.Id, new TripPointOfInterest
+        {
+            Name = name.Trim(),
+            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+            Latitude = lat,
+            Longitude = lng
+        });
+
+        if (poi is not null) _trip.PointsOfInterest.Add(poi);
+
+        _markers = BuildMarkers();
+        RefreshMapLayers();
+    }
+
+    private async Task HandleMarkerTapAsync(MapMarkerInfo marker)
+    {
+        switch (marker.Kind)
+        {
+            case MapMarkerKinds.Origin:
+            {
+                var option = await DisplayActionSheetAsync("Origen", "Cancelar", null, "Fijar de nuevo", "Quitar origen");
+                if (option == "Fijar de nuevo")
+                    SetMode(MapMarkerKinds.Origin);
+                else if (option == "Quitar origen")
+                    await ClearOriginAsync();
+                break;
+            }
+            case MapMarkerKinds.Dest:
+            {
+                var option = await DisplayActionSheetAsync("Destino", "Cancelar", null, "Fijar de nuevo", "Quitar destino");
+                if (option == "Fijar de nuevo")
+                    SetMode(MapMarkerKinds.Dest);
+                else if (option == "Quitar destino")
+                    await ClearDestAsync();
+                break;
+            }
+            case MapMarkerKinds.Poi:
+            {
+                var poi = _trip?.PointsOfInterest.FirstOrDefault(p => p.Id == marker.PoiId);
+                var option = await DisplayActionSheetAsync(poi?.Name ?? "Punto de interés", "Cancelar", null, "Editar", "Eliminar");
+                if (option == "Editar" && poi is not null)
+                    await EditPoiAsync(poi);
+                else if (option == "Eliminar" && poi is not null)
+                    await DeletePoiAsync(poi);
+                break;
+            }
+        }
+    }
+
+    private async Task ClearOriginAsync()
+    {
+        _trip!.OriginLatitude = null;
+        _trip.OriginLongitude = null;
+        await _api.UpdateTripRouteAsync(_trip.Id, null, null, _trip.DestinationLatitude, _trip.DestinationLongitude);
+        _markers = BuildMarkers();
+        RefreshMapLayers();
+    }
+
+    private async Task ClearDestAsync()
+    {
+        _trip!.DestinationLatitude = null;
+        _trip.DestinationLongitude = null;
+        await _api.UpdateTripRouteAsync(_trip.Id, _trip.OriginLatitude, _trip.OriginLongitude, null, null);
+        _markers = BuildMarkers();
+        RefreshMapLayers();
+    }
+
+    private async Task EditPoiAsync(TripPointOfInterest poi)
+    {
+        var marker = _markers.FirstOrDefault(m => m.Kind == MapMarkerKinds.Poi && m.PoiId == poi.Id);
+        var lat = marker?.Latitude ?? poi.Latitude;
+        var lng = marker?.Longitude ?? poi.Longitude;
+
+        var name = await DisplayPromptAsync("Editar punto", "Nombre:", accept: "OK", cancel: "Cancelar",
+            initialValue: poi.Name ?? "");
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        var description = await DisplayPromptAsync("Editar punto", "Descripción (opcional):", accept: "OK", cancel: "Cancelar",
+            initialValue: poi.Description ?? "");
+
+        var updated = await _api.UpdatePoiAsync(_trip!.Id, poi.Id, new TripPointOfInterest
+        {
+            Name = name.Trim(),
+            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+            Latitude = lat,
+            Longitude = lng
+        });
+
+        if (updated is not null)
+        {
+            poi.Name = updated.Name;
+            poi.Description = updated.Description;
+        }
+
+        _markers = BuildMarkers();
+        RefreshMapLayers();
+    }
+
+    private async Task DeletePoiAsync(TripPointOfInterest poi)
+    {
+        var confirm = await DisplayAlertAsync("Eliminar punto", $"¿Eliminar \"{poi.Name}\"?", "Sí", "No");
+        if (!confirm) return;
+
+        await _api.DeletePoiAsync(_trip!.Id, poi.Id);
+        _trip.PointsOfInterest.Remove(poi);
+        _markers = BuildMarkers();
+        RefreshMapLayers();
+    }
+
+    private async void OnSearchClicked(object? sender, EventArgs e)
+    {
+        var query = PlaceSearch.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(query) || SearchButton.IsEnabled == false) return;
+
+        SearchButton.IsEnabled = false;
+        try
+        {
+            var results = await _geocoder.SearchAsync(query);
+            if (results.Count == 0)
+            {
+                await DisplayAlertAsync("Sin resultados", "No se encontró ningún lugar con ese texto.", "OK");
+                return;
+            }
+
+            var selected = await DisplayActionSheetAsync(
+                "Resultados", "Cancelar", null,
+                results.Select(r => r.DisplayName).ToArray());
+
+            if (string.IsNullOrEmpty(selected) || selected == "Cancelar") return;
+
+            var result = results.FirstOrDefault(r => r.DisplayName == selected);
+            if (result is null) return;
+
+            switch (_mode)
+            {
+                case MapMarkerKinds.Origin:
+                    await SaveOriginAsync(result.Latitude, result.Longitude);
+                    SetMode("pan");
+                    break;
+                case MapMarkerKinds.Dest:
+                    await SaveDestAsync(result.Latitude, result.Longitude);
+                    SetMode("pan");
+                    break;
+                case MapMarkerKinds.Poi:
+                    await AddPoiAtAsync(result.Latitude, result.Longitude, result.Name);
+                    SetMode("pan");
+                    break;
+                default:
+                    var (mx, my) = TripMapRenderer.ProjectToMercator(result.Longitude, result.Latitude);
+                    TripMap.Map?.Navigator.CenterOnAndZoomTo(new MPoint(mx, my), 50);
+                    break;
+            }
         }
         catch (Exception ex)
         {
@@ -101,188 +319,29 @@ public partial class AdminTripMapPage : ContentPage
         }
         finally
         {
-            _handlingNavigation = false;
+            SearchButton.IsEnabled = true;
         }
     }
 
-    private async Task HandleCommandAsync(string raw)
+    private void SetMode(string mode)
     {
-        var fragment = raw;
-        var query = string.Empty;
-        var qIndex = raw.IndexOf('?');
-        if (qIndex >= 0)
-        {
-            fragment = raw.Substring(0, qIndex);
-            query = raw.Substring(qIndex + 1);
-        }
-
-        var qs = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => p.Split('=', 2))
-            .Where(a => a.Length == 2)
-            .ToDictionary(
-                a => a[0],
-                a => Uri.UnescapeDataString(a[1].Replace("+", " ")),
-                StringComparer.OrdinalIgnoreCase);
-
-        double GetDouble(string key)
-            => qs.TryGetValue(key, out var v) && double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? d : 0;
-
-        int GetInt(string key)
-            => qs.TryGetValue(key, out var v) && int.TryParse(v, out var i) ? i : 0;
-
-        if (_trip is null) return;
-
-        switch (fragment)
-        {
-            case "route":
-            {
-                var kind = qs.GetValueOrDefault("kind");
-                var lat = GetDouble("lat");
-                var lng = GetDouble("lng");
-
-                if (kind == "origin")
-                {
-                    _trip.OriginLatitude = lat;
-                    _trip.OriginLongitude = lng;
-                    await _api.UpdateTripRouteAsync(_trip.Id, lat, lng, _trip.DestinationLatitude, _trip.DestinationLongitude);
-                }
-                else if (kind == "dest")
-                {
-                    _trip.DestinationLatitude = lat;
-                    _trip.DestinationLongitude = lng;
-                    await _api.UpdateTripRouteAsync(_trip.Id, _trip.OriginLatitude, _trip.OriginLongitude, lat, lng);
-                }
-
-                await SetModeAsync("pan");
-                break;
-            }
-
-            case "pick":
-            {
-                var lat = GetDouble("lat");
-                var lng = GetDouble("lng");
-
-                var name = await DisplayPromptAsync("Punto de interés", "Nombre del punto:", accept: "OK", cancel: "Cancelar");
-                if (string.IsNullOrWhiteSpace(name)) return;
-
-                var description = await DisplayPromptAsync("Punto de interés", "Descripción (opcional):", accept: "OK", cancel: "Cancelar");
-
-                var poi = await _api.AddPoiAsync(_trip.Id, new TripPointOfInterest
-                {
-                    Name = name.Trim(),
-                    Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
-                    Latitude = lat,
-                    Longitude = lng
-                });
-
-                if (poi is not null)
-                {
-                    _trip.PointsOfInterest.Add(poi);
-                    await EvaluateJsSafeAsync($"addPoi({JsonSerializer.Serialize(new { poi.Id, poi.Name, poi.Description, lat = poi.Latitude, lng = poi.Longitude }, JsonOptions)});");
-                }
-
-                await SetModeAsync("pan");
-                break;
-            }
-
-            case "edit-poi":
-            {
-                var id = GetInt("id");
-                var lat = GetDouble("lat");
-                var lng = GetDouble("lng");
-                var existing = _trip.PointsOfInterest.FirstOrDefault(p => p.Id == id);
-                if (existing is null) return;
-
-                var name = await DisplayPromptAsync("Editar punto", "Nombre:", accept: "OK", cancel: "Cancelar", initialValue: existing.Name ?? "");
-                if (string.IsNullOrWhiteSpace(name)) return;
-
-                var description = await DisplayPromptAsync("Editar punto", "Descripción (opcional):", accept: "OK", cancel: "Cancelar", initialValue: existing.Description ?? "");
-
-                var updated = await _api.UpdatePoiAsync(_trip.Id, id, new TripPointOfInterest
-                {
-                    Name = name.Trim(),
-                    Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
-                    Latitude = lat,
-                    Longitude = lng
-                });
-
-                if (updated is not null)
-                {
-                    existing.Name = updated.Name;
-                    existing.Description = updated.Description;
-                    await EvaluateJsSafeAsync($"updatePoi({id}, {JsonSerializer.Serialize(new { updated.Name, Description = updated.Description }, JsonOptions)});");
-                }
-                break;
-            }
-
-            case "poi-move":
-            {
-                var id = GetInt("id");
-                var lat = GetDouble("lat");
-                var lng = GetDouble("lng");
-                var existing = _trip.PointsOfInterest.FirstOrDefault(p => p.Id == id);
-                if (existing is null) return;
-
-                await _api.UpdatePoiAsync(_trip.Id, id, new TripPointOfInterest
-                {
-                    Name = existing.Name,
-                    Description = existing.Description,
-                    Latitude = lat,
-                    Longitude = lng
-                });
-
-                existing.Latitude = lat;
-                existing.Longitude = lng;
-                break;
-            }
-
-            case "del-poi":
-            {
-                var id = GetInt("id");
-                var existing = _trip.PointsOfInterest.FirstOrDefault(p => p.Id == id);
-                if (existing is null) return;
-
-                var confirm = await DisplayAlertAsync("Eliminar punto", $"¿Eliminar \"{existing.Name}\"?", "Sí", "No");
-                if (!confirm) return;
-
-                await _api.DeletePoiAsync(_trip.Id, id);
-                _trip.PointsOfInterest.Remove(existing);
-                await EvaluateJsSafeAsync($"removePoi({id});");
-                break;
-            }
-        }
+        _mode = mode;
+        UpdateHint();
     }
 
-    private async Task SetModeAsync(string mode)
+    private void UpdateHint() => ModeHint.Text = _mode switch
     {
-        await EvaluateJsSafeAsync($"setMode('{mode}');");
-    }
+        MapMarkerKinds.Origin => "Toca el mapa para fijar el ORIGEN, o busca un lugar arriba.",
+        MapMarkerKinds.Dest => "Toca el mapa para fijar el DESTINO, o busca un lugar arriba.",
+        MapMarkerKinds.Poi => "Toca el mapa para agregar el PUNTO DE INTERÉS, o busca un lugar arriba.",
+        _ => "Busca un lugar o usa los botones para marcar origen, puntos y destino. Toca un marcador para editarlo."
+    };
 
-    private async Task EvaluateJsSafeAsync(string script)
-    {
-        try
-        {
-            await MapView.EvaluateJavaScriptAsync(script);
-        }
-        catch
-        {
-        }
-    }
+    private void OnOriginModeClicked(object? sender, EventArgs e) => SetMode(MapMarkerKinds.Origin);
 
-    private async void OnOriginModeClicked(object? sender, EventArgs e)
-    {
-        await SetModeAsync("origin");
-    }
+    private void OnPoiModeClicked(object? sender, EventArgs e) => SetMode(MapMarkerKinds.Poi);
 
-    private async void OnPoiModeClicked(object? sender, EventArgs e)
-    {
-        await SetModeAsync("poi");
-    }
-
-    private async void OnDestModeClicked(object? sender, EventArgs e)
-    {
-        await SetModeAsync("dest");
-    }
+    private void OnDestModeClicked(object? sender, EventArgs e) => SetMode(MapMarkerKinds.Dest);
 
     private async void OnLogoutClicked(object? sender, EventArgs e)
     {

@@ -3,38 +3,56 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripMapPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:mapsui="clr-namespace:Mapsui.UI.Maui;assembly=Mapsui.UI.Maui"
     Title="Mapa e itinerario">
 
     <ContentPage.ToolbarItems>
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,*,Auto" Padding="8">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="8" RowSpacing="6">
         <Label x:Name="TripLabel"
                Grid.Row="0"
                FontSize="16"
                FontAttributes="Bold"
                HorizontalOptions="Center"
-               VerticalOptions="Center"
-               Margin="4,0,0,6" />
+               VerticalOptions="Center" />
 
-        <WebView x:Name="MapView" Grid.Row="1" Navigating="OnWebNavigating" />
-
-        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="8" Padding="0,8,0,0">
-            <Button Text="Marcar origen"
-                    Clicked="OnOriginModeClicked"
-                    BackgroundColor="#00A85A"
-                    TextColor="White" />
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
+            <Entry x:Name="PlaceSearch"
+                   Placeholder="Escribe una ciudad o lugar…"
+                   Completed="OnSearchClicked" />
             <Button Grid.Column="1"
-                    Text="Agregar punto"
-                    Clicked="OnPoiModeClicked"
-                    BackgroundColor="#1E88E5"
-                    TextColor="White" />
-            <Button Grid.Column="2"
-                    Text="Marcar destino"
-                    Clicked="OnDestModeClicked"
-                    BackgroundColor="#C62828"
-                    TextColor="White" />
+                    x:Name="SearchButton"
+                    Text="Buscar"
+                    Clicked="OnSearchClicked" />
         </Grid>
+
+        <mapsui:MapControl x:Name="TripMap" Grid.Row="2" />
+
+        <VerticalStackLayout Grid.Row="3" Spacing="6">
+            <Label x:Name="ModeHint"
+                   FontSize="12"
+                   TextColor="Gray"
+                   HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center" />
+
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                <Button Text="Marcar origen"
+                        Clicked="OnOriginModeClicked"
+                        BackgroundColor="#00A85A"
+                        TextColor="White" />
+                <Button Grid.Column="1"
+                        Text="Agregar punto"
+                        Clicked="OnPoiModeClicked"
+                        BackgroundColor="#1E88E5"
+                        TextColor="White" />
+                <Button Grid.Column="2"
+                        Text="Marcar destino"
+                        Clicked="OnDestModeClicked"
+                        BackgroundColor="#C62828"
+                        TextColor="White" />
+            </Grid>
+        </VerticalStackLayout>
     </Grid>
 </ContentPage>

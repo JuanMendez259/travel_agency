@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using SkiaSharp.Views.Maui.Controls.Hosting;
 using TravelAgency.App.Modules.Admin.Views;
 using TravelAgency.App.Modules.Auth.Views;
 using TravelAgency.App.Modules.Client.Views;
@@ -16,6 +17,7 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
+			.UseSkiaSharp()
 			.UseBarcodeReader()
 			.ConfigureFonts(fonts =>
 			{
@@ -24,6 +26,7 @@ public static class MauiProgram
 			});
 
 		builder.Services.AddSingleton<ApiService>();
+		builder.Services.AddSingleton<NominatimGeocoder>();
 		builder.Services.AddSingleton<SessionService>();
 		builder.Services.AddTransient<AppShell>();
 		builder.Services.AddTransient<LoginPage>();

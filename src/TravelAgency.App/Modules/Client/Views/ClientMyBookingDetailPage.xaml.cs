@@ -1,6 +1,6 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.Maui.Controls;
+using Mapsui;
+using Mapsui.Layers;
 using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
@@ -10,18 +10,13 @@ namespace TravelAgency.App.Modules.Client.Views;
 [QueryProperty(nameof(BookingId), "id")]
 public partial class ClientMyBookingDetailPage : ContentPage
 {
-    private static readonly JsonSerializerOptions MapJsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
     private readonly ApiService _api;
     private int? _tripId;
     private int _remainingSlots;
     private decimal _cancelRefund;
     private decimal _cancelPenalty;
     private decimal _paidTotal;
+    private bool _mapLayersReady;
 
     public string BookingId { get; set; } = string.Empty;
 
@@ -29,6 +24,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
     {
         InitializeComponent();
         _api = api;
+        TripMapView.Map ??= new Mapsui.Map();
     }
 
     protected override async void OnAppearing()
@@ -63,7 +59,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
         DestinationLabel.Text = trip?.Destination;
         DatesLabel.Text = trip is null
             ? ""
-            : $"{trip.StartDate:dd/MM/yyyy} al {trip.EndDate:dd/MM/yyyy}";
+            : $"{trip.StartDate:dd/MM/yyyy HH:mm} al {trip.EndDate:dd/MM/yyyy HH:mm}";
         PriceLabel.Text = trip is null ? "" : $"{trip.Price:C} por asiento";
         DescriptionLabel.Text = trip?.Description;
 
@@ -254,40 +250,36 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
     private async Task LoadTripMapAsync(Trip? trip)
     {
-        var hasAnyRoute = trip is not null &&
-            (trip.OriginLatitude.HasValue || trip.DestinationLatitude.HasValue ||
-             trip.PointsOfInterest is { Count: > 0 });
+        if (trip is null || TripMapView.Map is not { } map) return;
 
-        if (!hasAnyRoute || string.IsNullOrEmpty(MapConfig.GoogleMapsApiKey))
-            return;
+        var markers = new List<MapMarkerInfo>();
 
-        var cfg = new
+        if (trip.OriginLatitude is double olat && trip.OriginLongitude is double olng)
+            markers.Add(new MapMarkerInfo(MapMarkerKinds.Origin, 0, olat, olng));
+
+        foreach (var poi in trip.PointsOfInterest.OrderBy(p => p.Order))
+            markers.Add(new MapMarkerInfo(MapMarkerKinds.Poi, poi.Id, poi.Latitude, poi.Longitude));
+
+        if (trip.DestinationLatitude is double dlat && trip.DestinationLongitude is double dlng)
+            markers.Add(new MapMarkerInfo(MapMarkerKinds.Dest, 0, dlat, dlng));
+
+        if (markers.Count == 0) return;
+
+        if (!_mapLayersReady)
         {
-            readOnly = true,
-            originLat = trip!.OriginLatitude,
-            originLng = trip.OriginLongitude,
-            destLat = trip.DestinationLatitude,
-            destLng = trip.DestinationLongitude,
-            pois = trip.PointsOfInterest
-                .OrderBy(p => p.Order)
-                .Select(p => new { p.Id, p.Name, p.Description, lat = p.Latitude, lng = p.Longitude })
-        };
+            _mapLayersReady = true;
+            TripMapRenderer.AddTileLayer(map);
+        }
 
-        var cfgJson = JsonSerializer.Serialize(cfg, MapJsonOptions);
-        var html = await ReadMapHtmlAsync();
-        html = html
-            .Replace("{{KEY}}", MapConfig.GoogleMapsApiKey)
-            .Replace("{{CFG}}", "const CFG = " + cfgJson + ";");
+        map.Layers.Remove(layer => layer is MemoryLayer &&
+                                   (layer.Name == "ruta" || layer.Name == "marcadores"));
+        map.Layers.Add(TripMapRenderer.BuildRouteLayer(markers), 1);
+        map.Layers.Add(TripMapRenderer.BuildMarkersLayer(markers), 2);
+        map.Refresh(ChangeType.Discrete);
 
-        TripMapView.Source = new HtmlWebViewSource { Html = html };
+        TripMapRenderer.FitToMarkers(map, markers);
+
         MapHeader.IsVisible = true;
         TripMapView.IsVisible = true;
-    }
-
-    private static async Task<string> ReadMapHtmlAsync()
-    {
-        using var stream = await FileSystem.OpenAppPackageFileAsync("map.html");
-        using var reader = new StreamReader(stream);
-        return await reader.ReadToEndAsync();
     }
 }
