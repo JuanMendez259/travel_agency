@@ -1951,24 +1951,26 @@ static async Task EnsureUserQrColumnAsync(AppDbContext db, string provider)
             : "ALTER TABLE \"Users\" ADD COLUMN \"QrToken\" character varying(64) NULL;");
     }
 
-    var missing = await db.Users
+var missing = await db.Users
         .Where(u => u.QrToken == null || u.QrToken == "")
+        .Select(u => u.Id)
         .ToListAsync();
 
-    var used = new HashSet<string>(await db.Users
-        .Where(u => u.QrToken != null)
-        .Select(u => u.QrToken!)
-        .ToListAsync(), StringComparer.Ordinal);
-
-    foreach (var user in missing)
-    {
-        string token;
-        do { token = GenerateQrToken(); } while (!used.Add(token));
-        user.QrToken = token;
-    }
-
     if (missing.Count > 0)
-        await db.SaveChangesAsync();
+    {
+        var used = new HashSet<string>(await db.Users
+            .Where(u => u.QrToken != null)
+            .Select(u => u.QrToken!)
+            .ToListAsync(), StringComparer.Ordinal);
+
+        foreach (var userId in missing)
+        {
+            string token;
+            do { token = GenerateQrToken(); } while (!used.Add(token));
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE \"Users\" SET \"QrToken\" = {token} WHERE \"Id\" = {userId}");
+        }
+    }
 
     await TryExecAsync(db, provider == "sqlite"
         ? "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_QrToken\" ON \"Users\" (\"QrToken\");"
