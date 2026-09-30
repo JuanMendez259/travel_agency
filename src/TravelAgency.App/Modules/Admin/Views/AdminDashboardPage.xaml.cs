@@ -299,7 +299,11 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
 
             ImagePreview.Source = ImageSource.FromStream(() => new MemoryStream(memory.ToArray()));
             ImagePreview.IsVisible = true;
-            ImageNameLabel.Text = result.FileName;
+
+            var sizeLabel = $"{result.FileName} · {FormatFileSize(memory.Length)}";
+            if (memory.Length > 5L * 1024 * 1024)
+                sizeLabel += " (se comprimirá al subir)";
+            ImageNameLabel.Text = sizeLabel;
             ImageNameLabel.IsVisible = true;
 
             _selectedImage = result;
@@ -315,4 +319,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de la cuenta de administrador?", "Sí", "No");
         if (confirm) App.GoToLogin();
     }
+
+    private static string FormatFileSize(long bytes)
+        => bytes >= 1024 * 1024
+            ? $"{bytes / (1024.0 * 1024):0.#} MB"
+            : $"{bytes / 1024.0:0.#} KB";
 }

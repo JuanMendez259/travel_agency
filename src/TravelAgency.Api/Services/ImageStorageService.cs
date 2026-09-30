@@ -24,6 +24,13 @@ public class ImageStorageService
 
     public bool IsSupabase => _mode == "supabase";
 
+    /// URL publica del placeholder compartido, que ya existe en el bucket.
+    /// Sirve para los viajes que se crean sin imagen.
+    public string? PlaceholderUrl
+        => !string.IsNullOrEmpty(_supabaseUrl)
+            ? $"{_supabaseUrl}/storage/v1/object/public/{_bucket}/placeholder.jpg"
+            : null;
+
     public async Task<string> UploadAsync(Stream stream, string extension, string contentType, CancellationToken ct = default)
         => _mode == "supabase"
             ? await UploadSupabaseAsync(stream, extension, contentType, ct)

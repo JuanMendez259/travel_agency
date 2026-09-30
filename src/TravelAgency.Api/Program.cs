@@ -140,6 +140,9 @@ using (var scope = app.Services.CreateScope())
 
 app.UseHttpsRedirection();
 
+Console.WriteLine($"[ImageStorage] Modo de almacenamiento: {(storage.IsSupabase ? "Supabase" : "local")} " +
+    $"| placeholder: {storage.PlaceholderUrl ?? "(sin Supabase:Url)"}");
+
 if (!storage.IsSupabase)
 {
     var uploadsPath = Path.Combine(app.Environment.WebRootPath ?? Directory.GetCurrentDirectory(), "uploads");
@@ -294,7 +297,7 @@ app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
     return Results.Ok(map);
 }).RequireAuthorization();
 
-app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
+app.MapPost("/api/trips", async (Trip trip, AppDbContext db, ImageStorageService storage) =>
 {
     if (trip.StartDate <= DateTime.UtcNow)
         return Results.BadRequest("La fecha de salida no puede estar en el pasado.");
@@ -314,6 +317,12 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db) =>
     trip.CreatedAt = DateTime.UtcNow;
     trip.Category = NormalizeCategory(trip.Category);
     trip.AvailableSeats = trip.Capacity;
+
+    // Sin imagen elegida se usa el placeholder compartido que ya existe en el
+    // bucket, para que el viaje siempre tenga una portada consistente.
+    if (string.IsNullOrWhiteSpace(trip.ImageUrl) && storage.PlaceholderUrl is not null)
+        trip.ImageUrl = storage.PlaceholderUrl;
+
     db.Trips.Add(trip);
     await db.SaveChangesAsync();
     return Results.Created($"/api/trips/{trip.Id}", trip);
@@ -331,35 +340,56 @@ app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbCo
     var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
     if (!allowed.Contains(extension)) return Results.BadRequest("Formato no permitido. Usa JPG, PNG o WebP.");
 
-    const long maxBytes = 5L * 1024 * 1024;
-    if (file.Length > maxBytes)
-        return Results.BadRequest("La imagen no puede superar los 5 MB.");
+    if (file.Length > TripImageProcessor.MaxInputBytes)
+        return Results.BadRequest($"La imagen no puede superar los {TripImageProcessor.MaxInputBytes / (1024 * 1024)} MB.");
 
-    await using var stream = file.OpenReadStream();
-    var imageUrl = await storage.UploadAsync(stream, extension, file.ContentType ?? "application/octet-stream");
+    await using var input = new MemoryStream();
+    await file.CopyToAsync(input);
 
-    var previousImageUrl = trip.ImageUrl;
-
-    trip.ImageUrl = imageUrl;
-    await db.SaveChangesAsync();
-
-    // La BD ya apunta a la nueva imagen, asi que ahora es seguro borrar la anterior.
-    // Si el borrado falla no se reporta como error: el viaje ya quedo actualizado.
-    if (!string.IsNullOrEmpty(previousImageUrl) &&
-        !string.Equals(previousImageUrl, imageUrl, StringComparison.OrdinalIgnoreCase))
+    Stream uploadStream;
+    var ownStream = false;
+    string contentType;
+    try
     {
-        try
-        {
-            await storage.DeleteAsync(previousImageUrl);
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine(
-                $"[ImageStorage] No se pudo borrar la imagen anterior del viaje {id}: {ex.Message}");
-        }
+        var prepared = TripImageProcessor.Prepare(input, extension);
+        uploadStream = prepared.Stream;
+        ownStream = prepared.Owned;
+        contentType = prepared.ContentType;
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(ex.Message);
     }
 
-    return Results.Ok(trip);
+    try
+    {
+        var imageUrl = await storage.UploadAsync(uploadStream, extension, contentType);
+
+        var previousImageUrl = trip.ImageUrl;
+        trip.ImageUrl = imageUrl;
+        await db.SaveChangesAsync();
+
+        // La BD ya apunta a la nueva imagen, asi que ahora es seguro borrar la anterior.
+        if (!string.IsNullOrEmpty(previousImageUrl) &&
+            !string.Equals(previousImageUrl, imageUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await storage.DeleteAsync(previousImageUrl);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(
+                    $"[ImageStorage] No se pudo borrar la imagen anterior del viaje {id}: {ex.Message}");
+            }
+        }
+
+        return Results.Ok(trip);
+    }
+    finally
+    {
+        if (ownStream && uploadStream is not null) await uploadStream.DisposeAsync();
+    }
 }).RequireAuthorization("AdminOnly");
 
 app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
