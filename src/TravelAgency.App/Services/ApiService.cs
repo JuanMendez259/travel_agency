@@ -91,6 +91,9 @@ public class ApiService
     public Task<User?> GetMyProfileAsync() =>
         _http.GetFromJsonAsync<User>("/api/users/me", JsonOptions);
 
+    public Task<ProfileStats?> GetMyProfileStatsAsync() =>
+        _http.GetFromJsonAsync<ProfileStats>("/api/users/me/stats", JsonOptions);
+
     public async Task<User?> UpdateUserRoleAsync(int userId, UserRole role)
     {
         var response = await _http.PutAsJsonAsync($"/api/users/{userId}/role",

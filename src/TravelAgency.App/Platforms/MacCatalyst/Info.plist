@@ -13,6 +13,8 @@
     <!-- <string>public.app-category.YOUR-CATEGORY-HERE</string> -->
 	<key>NSCameraUsageDescription</key>
 	<string>Se usa la cámara para leer los códigos QR de check-in de los pasajeros.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Se usa para guardar tu pase QR en la galería de fotos.</string>
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>2</integer>

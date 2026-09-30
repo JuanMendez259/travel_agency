@@ -5,51 +5,182 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Mi Perfil">
 
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="ColorPrimary">#003B1B</Color>
+            <Color x:Key="ColorPrimaryContainer">#14532D</Color>
+            <Color x:Key="ColorSecondary">#006C49</Color>
+            <Color x:Key="ColorSecondaryFixed">#6FFBBE</Color>
+            <Color x:Key="ColorSurface">#FAF8FF</Color>
+            <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
+            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
+            <Color x:Key="ColorSurfaceContainerHigh">#E2E7FF</Color>
+            <Color x:Key="ColorOnSurface">#131B2E</Color>
+            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
+            <Color x:Key="ColorOutline">#717970</Color>
+            <Color x:Key="ColorError">#BA1A1A</Color>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
     <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="12">
+        <VerticalStackLayout Padding="20,16" Spacing="14">
 
-            <Border StrokeThickness="0"
-                    BackgroundColor="#1976D2"
-                    StrokeShape="RoundRectangle 50"
-                    WidthRequest="96" HeightRequest="96"
-                    HorizontalOptions="Center"
-                    Margin="0,10,0,0">
-                <Label x:Name="AvatarLabel"
-                       Text="NA"
-                       FontSize="34"
-                       FontAttributes="Bold"
-                       TextColor="White"
-                       HorizontalOptions="Center"
-                       VerticalOptions="Center" />
-            </Border>
+            <!-- ============ ENCABEZADO ============ -->
+            <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+                <Border StrokeThickness="0"
+                        BackgroundColor="{StaticResource ColorPrimary}"
+                        StrokeShape="RoundRectangle 50"
+                        WidthRequest="92" HeightRequest="92"
+                        HorizontalOptions="Center"
+                        Margin="0,4,0,0">
+                    <Label x:Name="AvatarLabel"
+                           Text="NA"
+                           FontSize="32"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+                <Label x:Name="NameLabel"
+                       FontSize="21" FontAttributes="Bold"
+                       TextColor="{StaticResource ColorOnSurface}"
+                       HorizontalOptions="Center" />
+                <Label x:Name="EmailLabel"
+                       FontSize="14" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
 
-            <Label x:Name="NameLabel"
-                   FontSize="22" FontAttributes="Bold"
-                   HorizontalOptions="Center" />
-            <Label x:Name="EmailLabel"
-                   FontSize="15" TextColor="Gray"
-                   HorizontalOptions="Center" />
+            <!-- ============ CONTADORES ============ -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Border StrokeShape="RoundRectangle 16"
+                        Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                        Padding="16,14">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.05" Radius="10" Offset="0,2" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                        <Label x:Name="TripsCountLabel" Text="0"
+                               FontSize="26" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorPrimary}"
+                               HorizontalOptions="Center" />
+                        <Label Text="Viajes" FontSize="12" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="1" StrokeShape="RoundRectangle 16"
+                        Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                        Padding="16,14">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.05" Radius="10" Offset="0,2" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                        <Label x:Name="ReviewsCountLabel" Text="0"
+                               FontSize="26" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorPrimary}"
+                               HorizontalOptions="Center" />
+                        <Label Text="Reseñas" FontSize="12" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
 
-            <Border StrokeThickness="0"
-                    BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}"
-                    Padding="16"
-                    Margin="0,15,0,0">
-                <VerticalStackLayout Spacing="6">
-                    <Label Text="CELULAR" FontSize="12" TextColor="Gray" FontAttributes="Bold" />
-                    <Label x:Name="PhoneLabel" FontSize="16" />
+            <!-- ============ PASE / QR ============ -->
+            <Border StrokeShape="RoundRectangle 16"
+                    Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                    Padding="16">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.06" Radius="12" Offset="0,3" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Mi pase QR" FontSize="16" FontAttributes="Bold"
+                           TextColor="{StaticResource ColorOnSurface}" HorizontalOptions="Center" />
+                    <Image x:Name="QrImage" HeightRequest="210" WidthRequest="210" HorizontalOptions="Center" />
+                    <Label Text="Este código te identifica en los controles de salida."
+                           FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                           HorizontalOptions="Center" />
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button x:Name="SavePassButton"
+                                Text="Guardar Pase"
+                                Clicked="OnSavePassClicked"
+                                IsEnabled="False"
+                                BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                                TextColor="{StaticResource ColorPrimary}"
+                                BorderColor="{StaticResource ColorSurfaceContainerHigh}"
+                                BorderWidth="1"
+                                FontAttributes="Bold"
+                                CornerRadius="10"
+                                HeightRequest="44" />
+                        <Button x:Name="SharePassButton"
+                                Grid.Column="1"
+                                Text="Compartir"
+                                Clicked="OnSharePassClicked"
+                                IsEnabled="False"
+                                BackgroundColor="{StaticResource ColorPrimary}"
+                                TextColor="White"
+                                FontAttributes="Bold"
+                                CornerRadius="10"
+                                HeightRequest="44" />
+                    </Grid>
                 </VerticalStackLayout>
             </Border>
 
-            <Border StrokeThickness="0"
-                    BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#2C2C2C}"
-                    Padding="16"
-                    Margin="0,10,0,0">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="Mi código QR de cliente" FontSize="16" FontAttributes="Bold" HorizontalOptions="Center" />
-                    <Image x:Name="QrImage" HeightRequest="240" WidthRequest="240" HorizontalOptions="Center" />
-                    <Label Text="Este código te identifica en los controles de salida." FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+            <!-- ============ DATOS PERSONALES ============ -->
+            <Border StrokeShape="RoundRectangle 16"
+                    Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                    Padding="16">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.06" Radius="12" Offset="0,3" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Datos personales" FontSize="16" FontAttributes="Bold"
+                           TextColor="{StaticResource ColorOnSurface}" />
+                    <VerticalStackLayout Spacing="3">
+                        <Label Text="NOMBRE" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Label x:Name="ProfileNameValueLabel" Text="—"
+                               FontSize="15" TextColor="{StaticResource ColorOnSurface}" />
+                    </VerticalStackLayout>
+                    <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainerHigh}" />
+                    <VerticalStackLayout Spacing="3">
+                        <Label Text="CORREO" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Label x:Name="ProfileEmailValueLabel" Text="—"
+                               FontSize="15" TextColor="{StaticResource ColorOnSurface}" />
+                    </VerticalStackLayout>
+                    <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainerHigh}" />
+                    <VerticalStackLayout Spacing="3">
+                        <Label Text="TELÉFONO" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Label x:Name="ProfilePhoneValueLabel" Text="—"
+                               FontSize="15" TextColor="{StaticResource ColorOnSurface}" />
+                    </VerticalStackLayout>
+                    <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainerHigh}" />
+                    <VerticalStackLayout Spacing="3">
+                        <Label Text="CONTACTO DE EMERGENCIA" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Label x:Name="ProfileEmergencyValueLabel" Text="—"
+                               FontSize="15" TextColor="{StaticResource ColorOnSurface}" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
+
+            <!-- ============ CERRAR SESIÓN ============ -->
+            <Button x:Name="LogoutButton"
+                    Text="Cerrar sesión"
+                    Clicked="OnLogoutClicked"
+                    BackgroundColor="{StaticResource ColorError}"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    CornerRadius="10"
+                    HeightRequest="50"
+                    Margin="0,6,0,12" />
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

@@ -128,6 +128,19 @@
                         </Border>
                     </VerticalStackLayout>
 
+                    <!-- Contacto de emergencia (solo registro) -->
+                    <VerticalStackLayout x:Name="EmergencyContactFieldLayout"
+                                         Spacing="5"
+                                         IsVisible="False">
+                        <Label Text="Contacto de emergencia (opcional)" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Text="🆘" FontSize="16" VerticalOptions="Center" />
+                                <Entry x:Name="EmergencyContactEntry" Grid.Column="1" Placeholder="Nombre o teléfono de emergencia" Keyboard="Telephone" Style="{StaticResource FieldEntry}" />
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+
                     <!-- Correo -->
                     <VerticalStackLayout Spacing="5">
                         <Label Text="Correo electrónico" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurfaceVariant}" />

@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
             entity.Property(u => u.Name).HasMaxLength(120).IsRequired();
             entity.Property(u => u.Email).HasMaxLength(254).IsRequired();
             entity.Property(u => u.Phone).HasMaxLength(30);
+            entity.Property(u => u.EmergencyContact).HasMaxLength(120);
         });
 
         modelBuilder.Entity<Trip>(entity =>

@@ -115,6 +115,7 @@ public partial class LoginPage : ContentPage
         SubmitButton.Text = _isRegistering ? "Registrarse" : "Entrar";
         NameFieldLayout.IsVisible = _isRegistering;
         PhoneFieldLayout.IsVisible = _isRegistering;
+        EmergencyContactFieldLayout.IsVisible = _isRegistering;
         ToggleButton.Text = _isRegistering ? "Ya tengo cuenta" : "¿No tienes cuenta? Crea una";
     }
 
@@ -160,7 +161,8 @@ public partial class LoginPage : ContentPage
                     Name = name,
                     Email = email,
                     Password = password,
-                    Phone = PhoneEntry.Text?.Trim()
+                    Phone = PhoneEntry.Text?.Trim(),
+                    EmergencyContact = EmergencyContactEntry.Text?.Trim()
                 });
             }
             else

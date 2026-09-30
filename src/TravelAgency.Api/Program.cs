@@ -125,6 +125,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureCheckinColumnsAsync(db, provider);
     await EnsureBookingQrColumnAsync(db, provider);
     await EnsureUserQrColumnAsync(db, provider);
+    await EnsureUserEmergencyContactColumnAsync(db, provider);
     await EnsurePassengersTableAsync(db, provider);
     await EnsureTripFinalizedColumnAsync(db, provider);
     await EnsureRatingsTableAsync(db, provider);
@@ -196,6 +197,7 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, AppDbContext d
         Email = email,
         PasswordHash = HashPassword(request.Password),
         Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
+        EmergencyContact = string.IsNullOrWhiteSpace(request.EmergencyContact) ? null : request.EmergencyContact.Trim(),
         Role = UserRole.Client,
         CreatedAt = DateTime.UtcNow,
         QrToken = GenerateQrToken()
@@ -532,6 +534,14 @@ app.MapGet("/api/users/me", async (ClaimsPrincipal principal, AppDbContext db) =
 {
     var user = await db.Users.FindAsync(GetUserId(principal));
     return user is null ? Results.NotFound("Usuario no encontrado.") : Results.Ok(user);
+}).RequireAuthorization();
+
+app.MapGet("/api/users/me/stats", async (ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var userId = GetUserId(principal);
+    var trips = await db.Bookings.CountAsync(b => b.UserId == userId && b.Status != BookingStatus.Cancelled);
+    var reviews = await db.TripRatings.CountAsync(r => r.UserId == userId);
+    return Results.Ok(new ProfileStats { Trips = trips, Reviews = reviews });
 }).RequireAuthorization();
 
 app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request, AppDbContext db, ClaimsPrincipal principal) =>
@@ -1963,6 +1973,16 @@ static async Task EnsureUserQrColumnAsync(AppDbContext db, string provider)
     await TryExecAsync(db, provider == "sqlite"
         ? "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_QrToken\" ON \"Users\" (\"QrToken\");"
         : "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_QrToken\" ON \"Users\" (\"QrToken\");");
+}
+
+static async Task EnsureUserEmergencyContactColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Users", "EmergencyContact", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Users\" ADD COLUMN \"EmergencyContact\" TEXT NULL;"
+            : "ALTER TABLE \"Users\" ADD COLUMN \"EmergencyContact\" character varying(120) NULL;");
+    }
 }
 
 static async Task EnsurePassengersTableAsync(AppDbContext db, string provider)
