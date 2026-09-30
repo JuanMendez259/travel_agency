@@ -82,6 +82,18 @@ public class BookingNeedsPaymentConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+/// ColumnSpan del boton "Detalles": ocupa ambas columnas cuando no hay segunda
+/// accion que mostrar (Confirmado) y solo la primera cuando si la hay
+/// (Pending muestra Completar Pago, Cancelled muestra Ver Comprobante).
+public class BookingStatusToSpanConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is BookingStatus.Confirmed ? 2 : 1;
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
 /// "Pagado 100%" cuando la reserva esta liquidada: lo pagado cubre el total.
 /// Mismo criterio que usa el detalle de la reserva ("Liquidado").
 public class BookingFullyPaidConverter : IValueConverter

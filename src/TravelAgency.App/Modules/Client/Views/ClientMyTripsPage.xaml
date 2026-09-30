@@ -9,6 +9,20 @@
 
     <ContentPage.Resources>
         <ResourceDictionary>
+            <Color x:Key="ColorPrimary">#003B1B</Color>
+            <Color x:Key="ColorPrimaryContainer">#14532D</Color>
+            <Color x:Key="ColorSecondary">#006C49</Color>
+            <Color x:Key="ColorSecondaryFixed">#6FFBBE</Color>
+            <Color x:Key="ColorSurface">#FAF8FF</Color>
+            <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
+            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
+            <Color x:Key="ColorSurfaceContainer">#EAEDFF</Color>
+            <Color x:Key="ColorSurfaceContainerHigh">#E2E7FF</Color>
+            <Color x:Key="ColorOnSurface">#131B2E</Color>
+            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
+            <Color x:Key="ColorOutline">#717970</Color>
+
+            <!-- Tus convertidores existentes, sin tocar -->
             <conv:TripDurationConverter x:Key="TripDuration" />
             <conv:HasValueConverter x:Key="HasValue" />
             <conv:BookingPaymentUrgentConverter x:Key="PaymentUrgent" />
@@ -18,6 +32,12 @@
             <conv:BookingFullyPaidConverter x:Key="FullyPaid" />
             <conv:BookingCancellationNoticeConverter x:Key="CancellationNotice" />
             <conv:BookingCancelledConverter x:Key="Cancelled" />
+
+            <!-- Nuevos: solo texto/color de la pill de estado (no existía) -->
+            <conv:BookingStatusToLabelConverter x:Key="StatusLabel" />
+            <conv:BookingStatusToPillColorConverter x:Key="StatusPillColor" />
+            <conv:BookingStatusToPillTextColorConverter x:Key="StatusPillTextColor" />
+            <conv:BookingStatusToSpanConverter x:Key="DetailSpan" />
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -25,143 +45,239 @@
         <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,Auto,*">
-        <Border Grid.Row="0"
-                StrokeShape="RoundRectangle 10"
-                Stroke="{StaticResource Gray200}"
-                BackgroundColor="{StaticResource Gray100}"
+    <Grid RowDefinitions="Auto,Auto,Auto,*" BackgroundColor="{StaticResource ColorSurface}">
+
+        <!-- ============ ENCABEZADO ============ -->
+        <VerticalStackLayout Grid.Row="0" Padding="16,12,16,4" Spacing="4">
+            <HorizontalStackLayout Spacing="6">
+                <Border StrokeShape="RoundRectangle 16" WidthRequest="30" HeightRequest="30" BackgroundColor="#4D6FFBBE" Padding="0">
+                    <Label Text="🎒" FontSize="14" HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <Label Text="MIS RESERVACIONES" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource ColorSecondary}" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <Label Text="Gestiona y revisa tus próximas escapadas y reservas pasadas."
+                   FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+        </VerticalStackLayout>
+
+        <!-- ============ BUSCADOR ============ -->
+        <Border Grid.Row="1"
+                StrokeShape="RoundRectangle 12"
+                Stroke="Transparent"
+                BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
                 Padding="12,0"
-                Margin="12,8,12,4">
+                Margin="16,4,16,8">
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.05" Radius="10" Offset="0,2" />
+            </Border.Shadow>
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                <Label Text="🔍" FontSize="15" VerticalOptions="Center" />
+                <Label Text="🔍" FontSize="15" VerticalOptions="Center" TextColor="{StaticResource ColorSecondary}" />
                 <Entry x:Name="SearchEntry"
                        Grid.Column="1"
-                       Placeholder="Buscar por destino o viaje"
+                       Placeholder="Buscar por nombre de viaje o destino..."
                        BackgroundColor="Transparent"
-                       TextColor="{StaticResource Gray950}"
-                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource ColorOnSurface}"
+                       PlaceholderColor="{StaticResource ColorOutline}"
                        FontSize="14"
-                       HeightRequest="44"
+                       HeightRequest="46"
                        TextChanged="OnSearchTextChanged" />
             </Grid>
         </Border>
 
-        <ScrollView Grid.Row="1"
+        <!-- ============ PILLS DE FILTRO (mismos CommandParameter: all/pending/confirmed/cancelled) ============ -->
+        <ScrollView Grid.Row="2"
                     Orientation="Horizontal"
                     HorizontalScrollBarVisibility="Never"
-                    Margin="12,4,0,4">
-            <HorizontalStackLayout Spacing="8" Padding="0,0,12,0">
+                    Margin="16,0,0,8">
+            <HorizontalStackLayout Spacing="8" Padding="0,0,16,0">
                 <Button x:Name="PillTodas" Text="Todas"
-                        FontSize="13" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
+                        FontSize="12" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
                         CornerRadius="18" MinimumWidthRequest="0"
                         Clicked="OnFilterPillClicked" CommandParameter="all" />
                 <Button x:Name="PillPendientes" Text="Pendientes"
-                        FontSize="13" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
+                        FontSize="12" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
                         CornerRadius="18" MinimumWidthRequest="0"
                         Clicked="OnFilterPillClicked" CommandParameter="pending" />
                 <Button x:Name="PillConfirmadas" Text="Confirmadas"
-                        FontSize="13" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
+                        FontSize="12" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
                         CornerRadius="18" MinimumWidthRequest="0"
                         Clicked="OnFilterPillClicked" CommandParameter="confirmed" />
                 <Button x:Name="PillCanceladas" Text="Canceladas"
-                        FontSize="13" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
+                        FontSize="12" FontAttributes="Bold" HeightRequest="36" Padding="16,0"
                         CornerRadius="18" MinimumWidthRequest="0"
                         Clicked="OnFilterPillClicked" CommandParameter="cancelled" />
             </HorizontalStackLayout>
         </ScrollView>
 
-        <ActivityIndicator x:Name="Loading"
-                           Grid.Row="2"
-                           IsRunning="False"
-                           IsVisible="False"
-                           Margin="0,10"
-                           VerticalOptions="Start"
-                           HorizontalOptions="Center" />
+        <!-- ============ LISTA ============ -->
+        <Grid Grid.Row="3">
 
-        <RefreshView x:Name="MyTripsRefresh"
-                     Grid.Row="2"
-                     Refreshing="OnRefreshing">
-            <CollectionView x:Name="MyTripsList"
-                            SelectionMode="None"
-                            Footer=" "
-                            EmptyView="Todavía no tienes reservas. Explora la pestaña 'Explorar'.">
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="models:Booking">
-                    <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
-                        <VerticalStackLayout Padding="12" Spacing="4">
-                            <Label Text="{Binding Trip.Title}" FontSize="17" FontAttributes="Bold" />
-                            <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
+            <ActivityIndicator x:Name="Loading"
+                               IsRunning="False"
+                               IsVisible="False"
+                               Color="{StaticResource ColorPrimary}"
+                               Margin="0,10"
+                               VerticalOptions="Start"
+                               HorizontalOptions="Center" />
+
+            <RefreshView x:Name="MyTripsRefresh" Refreshing="OnRefreshing">
+                <CollectionView x:Name="MyTripsList"
+                                SelectionMode="None"
+                                EmptyView="Todavía no tienes reservas. Explora la pestaña 'Explorar'.">
+
+                    <CollectionView.Footer>
+                        <Border StrokeShape="RoundRectangle 14" BackgroundColor="#1A6FFBBE" Padding="12" Margin="16,10,16,20">
                             <HorizontalStackLayout Spacing="8">
-                                <HorizontalStackLayout Spacing="4">
-                                    <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
-                                    <Label Text="al" />
-                                    <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
-                                </HorizontalStackLayout>
-                                <Border StrokeShape="RoundRectangle 8"
-                                        BackgroundColor="#1A512BD4"
-                                        Padding="7,1"
-                                        VerticalOptions="Center">
-                                    <Label Text="{Binding Trip, Converter={StaticResource TripDuration}}"
-                                           FontSize="11"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Tertiary}" />
-                                </Border>
+                                <Label Text="🌲" FontSize="18" VerticalOptions="Start" />
+                                <VerticalStackLayout Spacing="2">
+                                    <Label Text="Viajero Responsable" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                    <Label Text="Recuerda llevar termo reutilizable y calzado de agarre. Practicamos 'No Dejar Rastro' en todos nuestros destinos."
+                                           FontSize="11" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                </VerticalStackLayout>
                             </HorizontalStackLayout>
-                            <HorizontalStackLayout Spacing="4">
-                                <Label Text="{Binding NumberOfSeats}" />
-                                <Label Text="asientos ·" />
-                                <Label Text="{Binding TotalAmount, StringFormat='{0:C}'}" FontAttributes="Bold" />
-                            </HorizontalStackLayout>
-                            <Label Text="{Binding Status}" FontAttributes="Bold"
-                                   TextColor="{AppThemeBinding Light=#1976D2, Dark=#82B1FF}" />
+                        </Border>
+                    </CollectionView.Footer>
 
-                            <!-- Aviso: la fecha limite de reserva vence en menos de 24 h -->
-                            <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
-                                    BackgroundColor="#14F59E0B" Padding="10"
-                                    IsVisible="{Binding ., Converter={StaticResource ExpiringSoon}}">
-                                <VerticalStackLayout Spacing="6">
-                                    <Border StrokeShape="RoundRectangle 8" BackgroundColor="#F59E0B"
-                                            Padding="8,2" HorizontalOptions="Start">
-                                        <Label Text="⏳ Expira Pronto" FontSize="11" FontAttributes="Bold" TextColor="White" />
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="models:Booking">
+                            <Border Margin="16,8" StrokeShape="RoundRectangle 16"
+                                    Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                    Padding="14">
+                                <Border.Shadow>
+                                    <Shadow Brush="Black" Opacity="0.07" Radius="14" Offset="0,4" />
+                                </Border.Shadow>
+
+                                <VerticalStackLayout Spacing="9">
+
+                                    <!-- Estado + duración -->
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Border StrokeShape="RoundRectangle 20"
+                                                BackgroundColor="{Binding Status, Converter={StaticResource StatusPillColor}}"
+                                                Padding="9,4" HorizontalOptions="Start">
+                                            <Label Text="{Binding Status, Converter={StaticResource StatusLabel}}"
+                                                   FontSize="11" FontAttributes="Bold"
+                                                   TextColor="{Binding Status, Converter={StaticResource StatusPillTextColor}}" />
+                                        </Border>
+                                        <Border Grid.Column="1" StrokeShape="RoundRectangle 8"
+                                                BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                                                Padding="7,2" HorizontalOptions="End">
+                                            <Label Text="{Binding Trip, Converter={StaticResource TripDuration}}"
+                                                   FontSize="11" FontAttributes="Bold" TextColor="{StaticResource ColorSecondary}" />
+                                        </Border>
+                                    </Grid>
+
+                                    <VerticalStackLayout Spacing="1">
+                                        <Label Text="{Binding Trip.Title}" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="📍" FontSize="11" />
+                                            <Label Text="{Binding Trip.Destination}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+
+                                    <!-- Aviso: expira pronto (tu ExpiringSoonConverter) -->
+                                    <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                            BackgroundColor="#14F59E0B" Padding="10"
+                                            IsVisible="{Binding ., Converter={StaticResource ExpiringSoon}}">
+                                        <VerticalStackLayout Spacing="6">
+                                            <Border StrokeShape="RoundRectangle 8" BackgroundColor="#F59E0B"
+                                                    Padding="8,2" HorizontalOptions="Start">
+                                                <Label Text="⏳ Expira pronto" FontSize="11" FontAttributes="Bold" TextColor="White" />
+                                            </Border>
+                                            <Label Text="{Binding ., Converter={StaticResource PaymentUrgent}}"
+                                                   IsVisible="{Binding ., Converter={StaticResource HasValue}}"
+                                                   FontSize="12" TextColor="#8A5200" />
+                                        </VerticalStackLayout>
                                     </Border>
-                                    <Label Text="{Binding ., Converter={StaticResource PaymentUrgent}}"
-                                           IsVisible="{Binding ., Converter={StaticResource HasValue}}"
-                                           FontSize="12" TextColor="#8A5200" />
+
+                                    <!-- Fechas -->
+                                    <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="10">
+                                        <VerticalStackLayout Spacing="4">
+                                            <HorizontalStackLayout Spacing="6">
+                                                <Label Text="📅" FontSize="12" />
+                                                <Label Text="Ida:" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
+                                                <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd MMM, HH:mm}'}"
+                                                       FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                            </HorizontalStackLayout>
+                                            <HorizontalStackLayout Spacing="6">
+                                                <Label Text="↩️" FontSize="12" />
+                                                <Label Text="Regreso:" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
+                                                <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd MMM, HH:mm}'}"
+                                                       FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                            </HorizontalStackLayout>
+                                        </VerticalStackLayout>
+                                    </Border>
+
+                                    <!-- Asientos + costo -->
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="💺" FontSize="12" />
+                                            <Label Text="{Binding NumberOfSeats}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                            <Label Text="asiento(s)" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                        </HorizontalStackLayout>
+                                        <Label Grid.Column="1" Text="{Binding TotalAmount, StringFormat='{0:C}'}"
+                                               FontSize="17" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                    </Grid>
+
+                                    <!-- Anticipo (tu AnticipoConverter) -->
+                                    <Label Text="{Binding ., Converter={StaticResource Anticipo}}"
+                                           FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+
+                                    <!-- Pagado 100% (tu FullyPaidConverter) -->
+                                    <Border StrokeShape="RoundRectangle 20" BackgroundColor="{StaticResource ColorSecondaryFixed}"
+                                            Padding="9,3" HorizontalOptions="Start"
+                                            IsVisible="{Binding ., Converter={StaticResource FullyPaid}}">
+                                        <Label Text="✔ Pagado 100%" FontSize="11" FontAttributes="Bold" TextColor="#002113" />
+                                    </Border>
+
+                                    <!-- Aviso de cancelación (tu CancellationNoticeConverter) -->
+                                    <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="10"
+                                            IsVisible="{Binding ., Converter={StaticResource Cancelled}}">
+                                        <Label Text="{Binding ., Converter={StaticResource CancellationNotice}}"
+                                               FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                    </Border>
+
+                                    <!-- Acciones -->
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" Margin="0,4,0,0">
+                                        <Button Text="Detalles"
+                                                Clicked="OnPaymentsClicked"
+                                                CommandParameter="{Binding .}"
+                                                Grid.ColumnSpan="{Binding Status, Converter={StaticResource DetailSpan}}"
+                                                BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                                                TextColor="{StaticResource ColorPrimary}"
+                                                FontAttributes="Bold"
+                                                CornerRadius="10"
+                                                HeightRequest="44" />
+                                        <Button Grid.Column="1"
+                                                Text="Completar pago"
+                                                Clicked="OnPaymentsClicked"
+                                                CommandParameter="{Binding .}"
+                                                BackgroundColor="{StaticResource ColorSecondary}"
+                                                TextColor="White"
+                                                FontAttributes="Bold"
+                                                CornerRadius="10"
+                                                HeightRequest="44"
+                                                IsVisible="{Binding ., Converter={StaticResource NeedsPayment}}" />
+                                        <!-- Reemplaza visualmente al botón "Completar pago" cuando está cancelada -->
+                                        <Button Grid.Column="1"
+                                                Text="Ver comprobante"
+                                                Clicked="OnPaymentsClicked"
+                                                CommandParameter="{Binding .}"
+                                                BackgroundColor="{StaticResource ColorPrimaryContainer}"
+                                                TextColor="White"
+                                                FontAttributes="Bold"
+                                                CornerRadius="10"
+                                                HeightRequest="44"
+                                                IsVisible="{Binding ., Converter={StaticResource Cancelled}}" />
+                                    </Grid>
+
                                 </VerticalStackLayout>
                             </Border>
-
-                            <Label Text="{Binding ., Converter={StaticResource Anticipo}}"
-                                   FontSize="12" TextColor="Gray" />
-
-                            <Label Text="Pagado 100%" FontSize="12" FontAttributes="Bold"
-                                   TextColor="#1B873B"
-                                   IsVisible="{Binding ., Converter={StaticResource FullyPaid}}" />
-
-                            <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
-                                    BackgroundColor="#14DC2626" Padding="10"
-                                    IsVisible="{Binding ., Converter={StaticResource Cancelled}}">
-                                <Label Text="{Binding ., Converter={StaticResource CancellationNotice}}"
-                                       FontSize="12" TextColor="#991B1B" />
-                            </Border>
-
-                            <Button Text="Ver Detalles"
-                                    Clicked="OnPaymentsClicked"
-                                    CommandParameter="{Binding .}"
-                                    Margin="0,4,0,0" />
-
-                            <Button Text="Ver Comprobante"
-                                    BackgroundColor="{StaticResource Tertiary}"
-                                    TextColor="White"
-                                    FontAttributes="Bold"
-                                    CornerRadius="8"
-                                    HeightRequest="40"
-                                    Margin="0,8,0,0"
-                                    IsVisible="{Binding ., Converter={StaticResource Cancelled}}" />
-                        </VerticalStackLayout>
-                    </Border>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-        </RefreshView>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+        </Grid>
     </Grid>
 </ContentPage>

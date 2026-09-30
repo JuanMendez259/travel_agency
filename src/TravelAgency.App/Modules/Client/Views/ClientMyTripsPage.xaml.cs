@@ -71,10 +71,10 @@ public partial class ClientMyTripsPage : ContentPage
         MyTripsList.ItemsSource = result.ToList();
     }
 
-    private static readonly Color PillActiveBackground = Color.FromArgb("#512BD4");
+    private static readonly Color PillActiveBackground = Color.FromArgb("#003B1B");
     private static readonly Color PillActiveText = Colors.White;
-    private static readonly Color PillIdleBackground = Color.FromArgb("#E1E1E1");
-    private static readonly Color PillIdleText = Color.FromArgb("#141414");
+    private static readonly Color PillIdleBackground = Color.FromArgb("#F2F3FF");
+    private static readonly Color PillIdleText = Color.FromArgb("#404941");
 
     private async void OnFilterPillClicked(object? sender, EventArgs e)
     {
