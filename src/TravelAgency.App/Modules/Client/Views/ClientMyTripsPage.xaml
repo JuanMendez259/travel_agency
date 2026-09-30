@@ -93,9 +93,9 @@
                             <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
                             <HorizontalStackLayout Spacing="8">
                                 <HorizontalStackLayout Spacing="4">
-                                    <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                    <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
                                     <Label Text="al" />
-                                    <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                    <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
                                 </HorizontalStackLayout>
                                 <Border StrokeShape="RoundRectangle 8"
                                         BackgroundColor="#1A512BD4"

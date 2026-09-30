@@ -299,10 +299,10 @@ app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
 
 app.MapPost("/api/trips", async (Trip trip, AppDbContext db, ImageStorageService storage) =>
 {
-    if (trip.StartDate <= DateTime.UtcNow)
+    if (trip.StartDate.Date < DateTime.UtcNow.Date)
         return Results.BadRequest("La fecha de salida no puede estar en el pasado.");
-    if (trip.EndDate < trip.StartDate)
-        return Results.BadRequest("La fecha de fin no puede ser anterior a la de salida.");
+    if (trip.EndDate <= trip.StartDate)
+        return Results.BadRequest("La fecha de fin no puede ser anterior (o igual) a la de salida.");
     if (trip.Capacity < 1)
         return Results.BadRequest("La capacidad debe ser de al menos 1 asiento.");
     if (trip.Price < 0)
@@ -399,8 +399,8 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
 
     if (input.StartDate.Date < DateTime.UtcNow.Date)
         return Results.BadRequest("La fecha de salida no puede estar en el pasado.");
-    if (input.EndDate < input.StartDate)
-        return Results.BadRequest("La fecha de fin no puede ser anterior a la de salida.");
+    if (input.EndDate <= input.StartDate)
+        return Results.BadRequest("La fecha de fin no puede ser anterior (o igual) a la de salida.");
     if (input.Capacity < 1)
         return Results.BadRequest("La capacidad debe ser de al menos 1 asiento.");
     if (input.Price < 0)

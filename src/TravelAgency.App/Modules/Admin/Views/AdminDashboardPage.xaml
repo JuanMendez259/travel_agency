@@ -21,13 +21,15 @@
             <Entry x:Name="DestinationEntry" />
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <VerticalStackLayout>
-                    <Label Text="Fecha de inicio" />
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Fecha y hora de inicio" />
                     <DatePicker x:Name="StartDatePicker" />
+                    <TimePicker x:Name="StartTimePicker" Format="t" />
                 </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="1">
-                    <Label Text="Fecha de fin" />
+                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                    <Label Text="Fecha y hora de fin" />
                     <DatePicker x:Name="EndDatePicker" />
+                    <TimePicker x:Name="EndTimePicker" Format="t" />
                 </VerticalStackLayout>
             </Grid>
 

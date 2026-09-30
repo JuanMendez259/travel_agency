@@ -60,7 +60,7 @@ public partial class ClientTripDetailPage : ContentPage
 
         TitleLabel.Text = _trip.Title;
         DestinationLabel.Text = _trip.Destination;
-        DatesLabel.Text = $"{_trip.StartDate:dd/MM/yyyy} al {_trip.EndDate:dd/MM/yyyy}";
+        DatesLabel.Text = $"{_trip.StartDate:dd/MM/yyyy HH:mm} al {_trip.EndDate:dd/MM/yyyy HH:mm}";
         PriceLabel.Text = _trip.Price.ToString("C");
         if (_trip.ChildPrice.HasValue)
         {

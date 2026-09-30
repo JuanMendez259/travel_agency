@@ -57,6 +57,8 @@ public class TripListItem : INotifyPropertyChanged
 
     public string TransportText => TransportTypeConverter.ToDisplay(Trip.TransportType);
 
+    public string ScheduleText => $"{Trip.StartDate:dd/MM/yyyy HH:mm} al {Trip.EndDate:dd/MM/yyyy HH:mm}";
+
     public bool HasCategory => !string.IsNullOrWhiteSpace(Trip.Category);
 
     public string CategoryText => HasCategory ? Trip.Category : string.Empty;

@@ -20,6 +20,8 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             .Select(c => string.IsNullOrEmpty(c) ? "Sin categoría" : c)
             .ToList();
         CategoryPicker.SelectedIndex = 0;
+        StartTimePicker.Time = new TimeSpan(8, 0, 0);
+        EndTimePicker.Time = new TimeSpan(18, 0, 0);
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -58,8 +60,8 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 Title = TitleEntry.Text?.Trim(),
                 Destination = DestinationEntry.Text?.Trim(),
                 Description = DescriptionEditor.Text?.Trim(),
-                StartDate = StartDatePicker.Date.GetValueOrDefault(),
-                EndDate = EndDatePicker.Date.GetValueOrDefault(),
+                StartDate = StartDatePicker.Date.GetValueOrDefault().Date + (StartTimePicker.Time ?? TimeSpan.Zero),
+                EndDate = EndDatePicker.Date.GetValueOrDefault().Date + (EndTimePicker.Time ?? TimeSpan.Zero),
                 Price = decimal.TryParse(PriceEntry.Text, out var price) ? price : 0,
                 ChildPrice = decimal.TryParse(ChildPriceEntry.Text, out var childPrice) ? childPrice : (decimal?)null,
                 Capacity = int.TryParse(CapacityEntry.Text, out var capacity) ? capacity : 0,
@@ -80,9 +82,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 return;
             }
 
-            if (trip.EndDate < trip.StartDate)
+            if (trip.EndDate <= trip.StartDate)
             {
-                await DisplayAlertAsync("Error", "La fecha de fin no puede ser anterior al inicio.", "OK");
+                await DisplayAlertAsync("Error", "La fecha y hora de fin no puede ser anterior (o igual) a la de inicio.", "OK");
                 return;
             }
 
@@ -92,9 +94,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 return;
             }
 
-            if (trip.StartDate.Date < DateTime.Today)
+            if (trip.StartDate <= DateTime.Now)
             {
-                await DisplayAlertAsync("Error", "La fecha de salida no puede estar en el pasado.", "OK");
+                await DisplayAlertAsync("Error", "La fecha y hora de salida no pueden estar en el pasado.", "OK");
                 return;
             }
 
@@ -191,7 +193,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         DestinationEntry.Text = trip.Destination;
         DescriptionEditor.Text = trip.Description;
         StartDatePicker.Date = trip.StartDate;
+        StartTimePicker.Time = trip.StartDate.TimeOfDay;
         EndDatePicker.Date = trip.EndDate;
+        EndTimePicker.Time = trip.EndDate.TimeOfDay;
         PriceEntry.Text = trip.Price.ToString();
         ChildPriceEntry.Text = trip.ChildPrice?.ToString();
         CapacityEntry.Text = trip.Capacity.ToString();
@@ -233,6 +237,8 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         CancellationDaysLimitEntry.Text = string.Empty;
         BookingDeadlineSwitch.IsToggled = false;
         ApplyBookingDeadlineState();
+        StartTimePicker.Time = new TimeSpan(8, 0, 0);
+        EndTimePicker.Time = new TimeSpan(18, 0, 0);
         DescriptionEditor.Text = string.Empty;
         TransportTypePicker.SelectedIndex = 0;
         CategoryPicker.SelectedIndex = 0;

@@ -47,9 +47,9 @@
                                     </Grid>
                                     <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
                                     <HorizontalStackLayout Spacing="4">
-                                        <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                        <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
                                         <Label Text="al" />
-                                        <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy}'}" />
+                                        <Label Text="{Binding Trip.EndDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
                                     </HorizontalStackLayout>
                                     <HorizontalStackLayout Spacing="4">
                                         <Label Text="{Binding Trip.Price, StringFormat='{0:C}'}" FontAttributes="Bold" />

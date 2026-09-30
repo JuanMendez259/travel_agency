@@ -79,6 +79,7 @@
                                         </Label.Triggers>
                                     </Label>
                                     <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
+                                    <Label Text="{Binding ScheduleText}" FontSize="13" TextColor="Gray" />
                                     <Label Text="{Binding TransportText}" FontSize="13" TextColor="Gray" />
                                     <Label Text="{Binding Trip.Price, StringFormat='{0:C} por asiento'}" FontSize="13" TextColor="Gray" />
                                 </VerticalStackLayout>

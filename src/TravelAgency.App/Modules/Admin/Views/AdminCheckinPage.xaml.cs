@@ -45,7 +45,7 @@ public partial class AdminCheckinPage : ContentPage
 
         Title = $"Check-in · {_trip.Title}";
         TripTitleLabel.Text = _trip.Title;
-        TripMetaLabel.Text = $"{_trip.Destination} · {_trip.StartDate:dd/MM/yyyy} al {_trip.EndDate:dd/MM/yyyy}";
+        TripMetaLabel.Text = $"{_trip.Destination} · {_trip.StartDate:dd/MM/yyyy HH:mm} al {_trip.EndDate:dd/MM/yyyy HH:mm}";
 
         RenderAll();
     }
