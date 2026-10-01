@@ -152,7 +152,7 @@
                                 </Border>
                                 <VerticalStackLayout Grid.Column="1" Spacing="1">
                                     <Label Text="Cómo cancelar" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
-                                    <Label Text="Las cancelaciones son gestionadas por la agencia o el administrador; puedes solicitarla contactando a la agencia y se procesará en la medida en que lo permita el viaje."
+                                    <Label Text="Puedes cancelar tu reserva desde Mis Viajes. Dentro del plazo mínimo de días que indica el viaje, el reembolso es del 100% de lo abonado; si cancelas fuera de ese plazo, se aplica una multa del 30% sobre el total pagado y se devuelve el 70% restante."
                                            FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
                                 </VerticalStackLayout>
                             </Grid>

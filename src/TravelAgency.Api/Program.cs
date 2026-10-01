@@ -426,7 +426,10 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     trip.Capacity = input.Capacity;
     trip.TransportType = input.TransportType;
     trip.IsActive = input.IsActive;
-    trip.CancellationDaysLimit = input.CancellationDaysLimit is >= 0 ? input.CancellationDaysLimit : null;
+    // El limite de cancelacion es obligatorio: si no llega, se aplica el valor por defecto.
+    trip.CancellationDaysLimit = input.CancellationDaysLimit is >= 0
+        ? input.CancellationDaysLimit
+        : BookingRefundPolicy.DefaultCancellationDaysLimit;
     trip.BookingDeadline = input.BookingDeadline?.Date;
     trip.Category = NormalizeCategory(input.Category);
     trip.OriginLatitude = input.OriginLatitude;
@@ -962,22 +965,18 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsP
         return Results.BadRequest("El viaje ya comenzó, no es posible cancelar.");
 
     var limit = trip.CancellationDaysLimit;
-    if (limit is null)
-        return Results.BadRequest("Este viaje no admite cancelación desde la app. Contacta a la agencia.");
-
     var remainingDays = (trip.StartDate.Date - today).Days;
-    if (remainingDays < limit.Value)
-        return Results.BadRequest(
-            $"Solo puedes cancelar con al menos {limit.Value} día(s) de anticipación. Faltan {remainingDays} día(s).");
+    // Dentro del limite del viaje se reembolsa el 100% de lo abonado; fuera, aplica multa del 30%.
+    var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, today, limit);
 
     var completedPayments = booking.Payments
         .Where(p => p.Status == PaymentStatus.Completed)
         .ToList();
     var paid = completedPayments.Sum(p => p.Amount);
 
-    // Multa del 30% por cancelacion: el cliente recupera el 70% de lo abonado.
-    var refund = BookingRefundPolicy.RefundFrom(paid);
-    var penalty = paid - refund;
+    // Multa del 30% solo cuando se cancela fuera del limite de dias del viaje.
+    var refund = BookingRefundPolicy.RefundFrom(paid, withinPolicy);
+    var penalty = BookingRefundPolicy.PenaltyFrom(paid, withinPolicy);
 
     // El reembolso se reparte entre los pagos en proporcion a su monto. El ultimo
     // absorbe el redondeo para que la suma coincida exactamente con el total.
@@ -1002,11 +1001,15 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsP
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
 
+    var policy = withinPolicy
+        ? $"dentro del límite de {limit ?? 0} día(s), sin multa"
+        : $"fuera del límite de {limit} día(s) (faltan {remainingDays}), multa 30%: {penalty:C}";
+
     if (booking.User is not null)
         await SendToStaffAsync(db,
-            $"El cliente {booking.User.Name} canceló su reserva para \"{trip.Title}\". Reembolso {refund:C} (multa 30% por cancelación: {penalty:C}).");
+            $"El cliente {booking.User.Name} canceló su reserva para \"{trip.Title}\". Reembolso {refund:C} ({policy}).");
 
-    return Results.Ok(new CancelBookingResult(booking, refund));
+    return Results.Ok(new CancelBookingResult(booking, refund, penalty, withinPolicy));
 }).RequireAuthorization();
 
 app.MapGet("/api/favorites", async (AppDbContext db, ClaimsPrincipal principal) =>
@@ -2149,6 +2152,12 @@ static async Task EnsureCancellationPolicyColumnAsync(AppDbContext db, string pr
             ? "ALTER TABLE \"Trips\" ADD COLUMN \"CancellationDaysLimit\" INTEGER NULL;"
             : "ALTER TABLE \"Trips\" ADD COLUMN \"CancellationDaysLimit\" integer NULL;");
     }
+
+    // Todo viaje necesita limite de cancelacion para que el cliente siempre pueda
+    // cancelar; los que quedaron sin valor reciben el limite por defecto.
+    await TryExecAsync(db, provider == "sqlite"
+        ? $"UPDATE \"Trips\" SET \"CancellationDaysLimit\" = {BookingRefundPolicy.DefaultCancellationDaysLimit} WHERE \"CancellationDaysLimit\" IS NULL;"
+        : $"UPDATE \"Trips\" SET \"CancellationDaysLimit\" = {BookingRefundPolicy.DefaultCancellationDaysLimit} WHERE \"CancellationDaysLimit\" IS NULL;");
 }
 
 /// Registra quien cancelo una reserva, para poder distinguir la cancelacion

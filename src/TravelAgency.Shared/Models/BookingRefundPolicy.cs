@@ -1,7 +1,8 @@
 namespace TravelAgency.Shared.Models;
 
 /// Politica de reembolso por cancelacion.
-/// Multa del 30% por cada boleto reservado: el cliente recupera el 70% de lo abonado.
+/// Dentro del limite de dias del viaje (CancellationDaysLimit) el reembolso es del 100% de lo abonado.
+/// Fuera del limite se aplica una multa del 30% sobre lo abonado y se devuelve el 70%.
 /// El boleto se prorratea sobre el total de la reserva.
 /// La multa se calcula sobre lo efectivamente pagado, no sobre el total pendiente:
 /// si solo se abono un anticipo, la penalizacion aplica solo a ese anticipo.
@@ -9,6 +10,14 @@ namespace TravelAgency.Shared.Models;
 public static class BookingRefundPolicy
 {
     public const decimal PenaltyRate = 0.30m;
+
+    /// Dias por defecto cuando el viaje no tiene limite configurado.
+    public const int DefaultCancellationDaysLimit = 3;
+
+    /// Dias que faltan para la salida segun el limite de cancelacion del viaje.
+    /// Sin limite configurado no hay anticipacion minima: siempre dentro de politica.
+    public static bool IsWithinPolicy(DateTime startDate, DateTime today, int? cancellationDaysLimit)
+        => cancellationDaysLimit is not int limit || (startDate.Date - today.Date).Days >= limit;
 
     /// Precio de un boleto = total de la reserva / asientos reservados.
     public static decimal TicketPrice(Booking booking)
@@ -20,17 +29,18 @@ public static class BookingRefundPolicy
     public static decimal PaidTicketPrice(Booking booking, decimal paid)
         => booking.NumberOfSeats > 0 ? paid / booking.NumberOfSeats : paid;
 
-    /// Multa total sobre lo abonado. Si solo hay anticipo, la multa es sobre el anticipo.
-    public static decimal PenaltyFrom(decimal paid)
-        => Math.Round(paid * PenaltyRate, 2);
+    /// Multa total sobre lo abonado. Dentro de la politica no hay multa.
+    public static decimal PenaltyFrom(decimal paid, bool withinPolicy)
+        => withinPolicy ? 0m : Math.Round(paid * PenaltyRate, 2);
 
-    /// A devolver al cliente: lo abonado menos la multa, nunca negativo.
-    public static decimal RefundFrom(decimal paid)
-        => Math.Round(paid - PenaltyFrom(paid), 2);
+    /// A devolver al cliente: dentro de la politica el 100% de lo abonado,
+    /// fuera de la politica lo abonado menos la multa, nunca negativo.
+    public static decimal RefundFrom(decimal paid, bool withinPolicy)
+        => Math.Round(paid - PenaltyFrom(paid, withinPolicy), 2);
 
-    public static decimal PenaltyFor(Booking booking, decimal paid)
-        => PenaltyFrom(paid);
+    public static decimal PenaltyFor(Booking booking, decimal paid, bool withinPolicy)
+        => PenaltyFrom(paid, withinPolicy);
 
-    public static decimal RefundFor(Booking booking, decimal paid)
-        => RefundFrom(paid);
+    public static decimal RefundFor(Booking booking, decimal paid, bool withinPolicy)
+        => RefundFrom(paid, withinPolicy);
 }

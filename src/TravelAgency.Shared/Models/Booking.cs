@@ -34,4 +34,4 @@ public enum BookingStatus
     Cancelled = 2
 }
 
-public record CancelBookingResult(Booking Booking, decimal RefundAmount);
+public record CancelBookingResult(Booking Booking, decimal RefundAmount, decimal PenaltyAmount, bool WithinPolicy);

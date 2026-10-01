@@ -16,6 +16,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
     private decimal _cancelRefund;
     private decimal _cancelPenalty;
     private decimal _paidTotal;
+    private bool _withinPolicy = true;
     private bool _mapLayersReady;
 
     public string BookingId { get; set; } = string.Empty;
@@ -148,50 +149,63 @@ public partial class ClientMyBookingDetailPage : ContentPage
             && booking.Status != BookingStatus.Cancelled
             && !trip.DepartureCompleted
             && !trip.Finalized
-            && trip.StartDate.Date > DateTime.Today
-            && trip.CancellationDaysLimit.HasValue;
+            && trip.StartDate.Date > DateTime.Today;
 
         CancelSection.IsVisible = canCancel;
         if (!canCancel) return;
 
-        var limit = trip!.CancellationDaysLimit!.Value;
+        var limit = trip!.CancellationDaysLimit ?? BookingRefundPolicy.DefaultCancellationDaysLimit;
         var remainingDays = (trip.StartDate.Date - DateTime.Today).Days;
-        var withinPolicy = remainingDays >= limit;
+        var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, DateTime.Today, limit);
 
         CancelPolicyLabel.Text = withinPolicy
-            ? $"Puedes cancelar con al menos {limit} día(s) antes de la salida. Quedan {remainingDays} día(s)."
-            : $"Política del viaje: cancelar con al menos {limit} día(s) de anticipación. Quedan {remainingDays} día(s); ya no se puede cancelar desde la app.";
+            ? $"Dentro del límite: cancelas con {limit} día(s) o más antes de la salida. Quedan {remainingDays} día(s)."
+            : $"Fuera del límite: este viaje exige {limit} día(s) de anticipación y quedan {remainingDays}. Puedes cancelar, pero aplica una multa del 30% sobre lo abonado.";
 
-        // Multa del 30% por cancelacion: el cliente recupera el 70% de lo abonado.
+        // Dentro del limite el reembolso es del 100% de lo abonado; fuera, del 70%.
         _paidTotal = paid;
-        _cancelPenalty = BookingRefundPolicy.PenaltyFrom(paid);
-        _cancelRefund = BookingRefundPolicy.RefundFrom(paid);
+        _withinPolicy = withinPolicy;
+        _cancelPenalty = BookingRefundPolicy.PenaltyFrom(paid, withinPolicy);
+        _cancelRefund = BookingRefundPolicy.RefundFrom(paid, withinPolicy);
 
-        CancelRefundLabel.Text = paid > 0
-            ? $"Multa por cancelación 30%: -{_cancelPenalty:C}. Reembolso: {_cancelRefund:C} de {_paidTotal:C} abonados."
-            : "No hay pagos abonados: la cancelación no genera reembolso.";
-        CancelButton.IsVisible = withinPolicy;
+        CancelRefundLabel.Text = paid <= 0
+            ? "No hay pagos abonados: la cancelación no genera reembolso."
+            : withinPolicy
+                ? $"Sin multa: se reembolsa el 100% de {_paidTotal:C} abonados."
+                : $"Multa por cancelación 30%: -{_cancelPenalty:C}. Reembolso: {_cancelRefund:C} de {_paidTotal:C} abonados.";
+        CancelButton.IsVisible = true;
     }
 
     private async void OnCancelClicked(object? sender, EventArgs e)
     {
         if (!int.TryParse(BookingId, out var id) || id <= 0) return;
 
-        var confirmed = await DisplayAlertAsync("Cancelar reserva",
-            _cancelRefund > 0
-                ? $"Al cancelar se aplica una multa del 30%: se retienen {_cancelPenalty:C} de {_paidTotal:C} abonados y se reembolsan {_cancelRefund:C} por tu forma de pago. Esta acción no puede deshacerse."
-                : "Se cancelará tu reserva. Esta acción no puede deshacerse.",
-            "Cancelar reserva", "Seguir en la reserva");
+        string message;
+        if (_paidTotal <= 0)
+        {
+            message = "No hay pagos abonados en esta reserva, así que la cancelación no genera reembolso. ¿Deseas cancelarla?";
+        }
+        else if (_withinPolicy)
+        {
+            message = $"Cancelas dentro del límite de días del viaje, así que no hay multa: se reembolsa el 100% de {_paidTotal:C} por tu forma de pago original. Esta acción no puede deshacerse.";
+        }
+        else
+        {
+            message = $"Cancelas fuera del límite de días del viaje, así que se aplica una multa del 30%: se retienen {_cancelPenalty:C} de {_paidTotal:C} abonados y se reembolsan {_cancelRefund:C} por tu forma de pago original. Esta acción no puede deshacerse.";
+        }
+
+        var confirmed = await DisplayAlertAsync("Cancelar reserva", message, "Cancelar reserva", "Seguir en la reserva");
         if (!confirmed) return;
 
         CancelButton.IsEnabled = false;
         try
         {
             var result = await _api.CancelBookingAsync(id);
-            var message = result is not null && result.RefundAmount > 0
-                ? $"Reserva cancelada. Multa 30% aplicada. Se reembolsarán {result.RefundAmount:C} por tu forma de pago original."
+            var refund = result?.RefundAmount ?? 0;
+            var success = refund > 0
+                ? $"Reserva cancelada. {(result?.WithinPolicy == true ? "Sin multa." : "Multa 30% aplicada.")} Se reembolsarán {refund:C} por tu forma de pago original."
                 : "Reserva cancelada. No había pagos que reembolsar.";
-            await DisplayAlertAsync("Reserva cancelada", message, "OK");
+            await DisplayAlertAsync("Reserva cancelada", success, "OK");
             await LoadBookingAsync(id);
         }
         catch (Exception ex)

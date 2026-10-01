@@ -58,8 +58,8 @@
             <DatePicker x:Name="BookingDeadlinePicker" IsVisible="False" Margin="0,6,0,0" />
 
             <Label Text="Cancelación (política del cliente)" />
-            <Entry x:Name="CancellationDaysLimitEntry" Keyboard="Numeric" />
-            <Label Text="Mínimo de días de anticipación para que el cliente cancele por la app. Vacío = no permitido." FontSize="12" TextColor="Gray" />
+            <Entry x:Name="CancellationDaysLimitEntry" Keyboard="Numeric" Placeholder="Obligatorio, ej: 3" />
+            <Label x:Name="CancellationHintLabel" FontSize="12" TextColor="Gray" />
 
             <Label Text="Categoría del viaje" />
             <Picker x:Name="CategoryPicker" />

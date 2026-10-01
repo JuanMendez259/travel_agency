@@ -70,7 +70,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 IsActive = ActiveSwitch.IsToggled,
                 CancellationDaysLimit = int.TryParse(CancellationDaysLimitEntry.Text, out var cancelDays) && cancelDays >= 0
                     ? cancelDays
-                    : null,
+                    : (int?)null,
                 BookingDeadline = BookingDeadlineSwitch.IsToggled
                     ? BookingDeadlinePicker.Date.GetValueOrDefault().Date
                     : null,
@@ -109,6 +109,14 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             if (trip.ChildPrice < 0)
             {
                 await DisplayAlertAsync("Error", "El precio de niño no puede ser negativo.", "OK");
+                return;
+            }
+
+            if (trip.CancellationDaysLimit is null)
+            {
+                await DisplayAlertAsync("Error",
+                    $"Define los días de cancelación del cliente (por ejemplo {BookingRefundPolicy.DefaultCancellationDaysLimit}). Es obligatorio para que pueda cancelar desde la app.", "OK");
+                CancellationDaysLimitEntry.Focus();
                 return;
             }
 
@@ -185,6 +193,13 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         await ClearFormAsync();
     }
 
+    private void UpdateCancellationHint()
+    {
+        CancellationHintLabel.Text = int.TryParse(CancellationDaysLimitEntry.Text, out var days) && days >= 0
+            ? $"Dentro de {days} día(s) antes de la salida el reembolso es del 100%. Fuera de ese rango se aplica multa del 30%."
+            : $"Obligatorio. Ej: {BookingRefundPolicy.DefaultCancellationDaysLimit} días antes de la salida. Dentro del rango el reembolso es del 100%; fuera, multa del 30%.";
+    }
+
     private void StartEdit(Trip trip)
     {
         _editingTrip = trip;
@@ -200,6 +215,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ChildPriceEntry.Text = trip.ChildPrice?.ToString();
         CapacityEntry.Text = trip.Capacity.ToString();
         CancellationDaysLimitEntry.Text = trip.CancellationDaysLimit?.ToString();
+        UpdateCancellationHint();
         BookingDeadlineSwitch.IsToggled = trip.BookingDeadline.HasValue;
         if (trip.BookingDeadline is { } editDeadline)
             BookingDeadlinePicker.Date = editDeadline;
@@ -234,7 +250,8 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         PriceEntry.Text = string.Empty;
         ChildPriceEntry.Text = string.Empty;
         CapacityEntry.Text = string.Empty;
-        CancellationDaysLimitEntry.Text = string.Empty;
+        CancellationDaysLimitEntry.Text = BookingRefundPolicy.DefaultCancellationDaysLimit.ToString();
+        UpdateCancellationHint();
         BookingDeadlineSwitch.IsToggled = false;
         ApplyBookingDeadlineState();
         StartTimePicker.Time = new TimeSpan(8, 0, 0);
