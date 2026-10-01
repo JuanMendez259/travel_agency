@@ -8,7 +8,26 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="12">
 
-            <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill" />
+            <Grid HeightRequest="200" Margin="-20,-20,-20,0">
+                <Image x:Name="TripImage" Aspect="AspectFill" />
+                <Border Grid.Column="1"
+                        HorizontalOptions="End" VerticalOptions="Start"
+                        Margin="0,12,12,0"
+                        WidthRequest="44" HeightRequest="44"
+                        StrokeThickness="0"
+                        BackgroundColor="#E6FFFFFF"
+                        StrokeShape="RoundRectangle 22">
+                    <Button x:Name="ShareButton"
+                            Text="↗"
+                            FontSize="20"
+                            TextColor="#003B1B"
+                            BackgroundColor="Transparent"
+                            Padding="0"
+                            Clicked="OnShareClicked"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" />
+                </Border>
+            </Grid>
             <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" />
             <Label x:Name="DestinationLabel" FontSize="16" TextColor="Gray" />
             <Label x:Name="DatesLabel" FontSize="15" />
@@ -30,6 +49,33 @@
             <Label x:Name="CategoryLabel" FontSize="13" TextColor="#2B6CB0" IsVisible="False" />
             <Label x:Name="TransportLabel" FontSize="14" />
             <Label x:Name="SeatsLabel" FontSize="14" TextColor="Gray" />
+
+            <!-- ===== HORARIO E ITINERARIO ===== -->
+            <Border Margin="0,8,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F2F3FF, Dark=#2C2C2C}">
+                <VerticalStackLayout Padding="16" Spacing="12">
+                    <Label Text="Horario e itinerario" FontSize="16" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                        <Border WidthRequest="34" HeightRequest="34" StrokeThickness="0" BackgroundColor="#14532D" StrokeShape="RoundRectangle 17">
+                            <Label Text="🚌" FontSize="16" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                            <Label Text="Ida" FontSize="12" FontAttributes="Bold" />
+                            <Label x:Name="ItineraryOutLabel" FontSize="14" />
+                        </VerticalStackLayout>
+                        <Label x:Name="OutTimeLabel" Grid.Column="2" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                        <Border WidthRequest="34" HeightRequest="34" StrokeThickness="0" BackgroundColor="#006C49" StrokeShape="RoundRectangle 17">
+                            <Label Text="↩️" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                            <Label Text="Regreso" FontSize="12" FontAttributes="Bold" />
+                            <Label x:Name="ItineraryBackLabel" FontSize="14" />
+                        </VerticalStackLayout>
+                        <Label x:Name="BackTimeLabel" Grid.Column="2" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
 
             <Border x:Name="BookPanel" Margin="0,20,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
                 <VerticalStackLayout Padding="16" Spacing="8">
@@ -53,6 +99,15 @@
                     <Button x:Name="RequestCapacityButton" Text="Solicitar más cupo" Clicked="OnRequestCapacityClicked" />
                 </VerticalStackLayout>
             </Border>
+
+            <Button Text="Descargar factura / Recibo PDF"
+                    Clicked="OnDownloadReceiptClicked"
+                    Margin="0,20,0,0"
+                    HeightRequest="52"
+                    CornerRadius="12"
+                    BackgroundColor="#14532D"
+                    TextColor="White"
+                    FontAttributes="Bold" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

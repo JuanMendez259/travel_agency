@@ -1,3 +1,4 @@
+using TravelAgency.App.Modules.Client.ViewModels;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
 
@@ -9,6 +10,7 @@ public partial class ClientMyTripsPage : ContentPage
     private readonly SessionService _session;
 
     private List<Booking> _current = new();
+    private List<BookingCardItem> _cards = new();
     private BookingStatus? _statusFilter;
 
     public ClientMyTripsPage(ApiService api, SessionService session)
@@ -40,6 +42,7 @@ public partial class ClientMyTripsPage : ContentPage
         try
         {
             _current = await _api.GetUserBookingsAsync(_session.UserId, SelectedStatus()) ?? new List<Booking>();
+            await BuildCardsAsync();
             ApplySearch();
         }
         catch (Exception ex)
@@ -56,16 +59,26 @@ public partial class ClientMyTripsPage : ContentPage
         }
     }
 
+    private async Task BuildCardsAsync()
+    {
+        _cards = new List<BookingCardItem>();
+        foreach (var booking in _current)
+        {
+            var thumb = await _api.GetTripImageAsync(booking.Trip?.ImageUrl);
+            _cards.Add(new BookingCardItem(booking, thumb));
+        }
+    }
+
     private void ApplySearch()
     {
         var text = SearchEntry.Text?.Trim();
-        IEnumerable<Booking> result = _current;
+        IEnumerable<BookingCardItem> result = _cards;
 
         if (!string.IsNullOrWhiteSpace(text))
         {
-            result = result.Where(b =>
-                (b.Trip?.Title?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (b.Trip?.Destination?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false));
+            result = result.Where(c =>
+                (c.Booking.Trip?.Title?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (c.Booking.Trip?.Destination?.Contains(text, StringComparison.OrdinalIgnoreCase) ?? false));
         }
 
         MyTripsList.ItemsSource = result.ToList();

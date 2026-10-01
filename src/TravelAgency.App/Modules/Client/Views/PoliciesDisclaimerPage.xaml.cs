@@ -93,7 +93,7 @@ public partial class PoliciesDisclaimerPage : ContentPage
         SwipeFill.WidthRequest = 0;
         SwipeLabel.Text = "Acepto las condiciones";
         SwipeLabel.Opacity = 1;
-        SwipeLabel.TextColor = Color.FromArgb("#374151");
+        SwipeLabel.TextColor = Color.FromArgb("#404941");
         FinalConfirmButton.IsEnabled = false;
     }
 

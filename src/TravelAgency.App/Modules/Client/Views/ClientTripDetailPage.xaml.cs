@@ -1,3 +1,4 @@
+using Microsoft.Maui.ApplicationModel.DataTransfer;
 using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
@@ -84,6 +85,11 @@ public partial class ClientTripDetailPage : ContentPage
             : $"Reservas abiertas hasta el {deadline:dd/MM/yyyy}.";
         DeadlineLabel.IsVisible = !bookingClosed;
 
+        ItineraryOutLabel.Text = $"{_trip.Destination} · {_trip.StartDate:dd MMM yyyy}";
+        OutTimeLabel.Text = _trip.StartDate.ToString("HH:mm");
+        ItineraryBackLabel.Text = $"{(_trip.OriginLatitude is null ? "Punto de partida" : "Regreso")} · {_trip.EndDate:dd MMM yyyy}";
+        BackTimeLabel.Text = _trip.EndDate.ToString("HH:mm");
+
         BookPanel.IsVisible = available > 0;
         NoCapacityPanel.IsVisible = available <= 0;
         BookButton.IsEnabled = available > 0 && !bookingClosed;
@@ -116,6 +122,34 @@ public partial class ClientTripDetailPage : ContentPage
         {
             await DisplayAlertAsync("Error", ex.Message, "OK");
         }
+    }
+
+    private async void OnShareClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+
+        try
+        {
+            await Share.Default.RequestAsync(new ShareTextRequest
+            {
+                Title = _trip.Title,
+                Text = $"{_trip.Title} · {_trip.Destination}\n" +
+                       $"Del {_trip.StartDate:dd/MM/yyyy HH:mm} al {_trip.EndDate:dd/MM/yyyy HH:mm}\n" +
+                       $"Precio por persona: {_trip.Price:C}"
+            });
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No se pudo compartir", ex.Message, "OK");
+        }
+    }
+
+    private async void OnDownloadReceiptClicked(object? sender, EventArgs e)
+    {
+        await DisplayAlertAsync(
+            "Próximamente",
+            "La descarga de factura / recibo en PDF estará disponible muy pronto.",
+            "OK");
     }
 
     private async void OnRequestCapacityClicked(object? sender, EventArgs e)
