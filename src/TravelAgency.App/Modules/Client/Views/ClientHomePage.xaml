@@ -238,24 +238,23 @@
                                             </VerticalStackLayout>
                                         </Border>
 
-                                        <!-- Precio + acción -->
-                                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                                            <VerticalStackLayout>
-                                                <Label Text="Precio por persona" FontSize="10" TextColor="{StaticResource ColorOutline}" />
-                                                <Label Text="{Binding Trip.Price, StringFormat='{0:C}'}" FontSize="19" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
-                                            </VerticalStackLayout>
-                                            <Button Grid.Column="1"
-                                                    Text="{Binding BookButtonText}"
-                                                    Clicked="OnBookClicked"
-                                                    CommandParameter="{Binding Trip}"
-                                                    BackgroundColor="{StaticResource ColorPrimaryContainer}"
-                                                    TextColor="White"
-                                                    FontAttributes="Bold"
-                                                    CornerRadius="10"
-                                                    HeightRequest="46"
-                                                    Padding="18,0"
-                                                    VerticalOptions="Center" />
-                                        </Grid>
+                                         <!-- Precio + acción -->
+                                         <VerticalStackLayout Margin="0,6,0,0" Spacing="10">
+                                             <VerticalStackLayout>
+                                                 <Label Text="Precio por persona" FontSize="10" TextColor="{StaticResource ColorOutline}" />
+                                                 <Label Text="{Binding Trip.Price, StringFormat='{0:C}'}" FontSize="19" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                             </VerticalStackLayout>
+                                             <Button Text="Ver Detalles"
+                                                     Clicked="OnBookClicked"
+                                                     CommandParameter="{Binding Trip}"
+                                                     BackgroundColor="{StaticResource ColorPrimaryContainer}"
+                                                     TextColor="White"
+                                                     FontAttributes="Bold"
+                                                     CornerRadius="10"
+                                                     HeightRequest="48"
+                                                     HorizontalOptions="FillAndExpand"
+                                                     VerticalOptions="Center" />
+                                         </VerticalStackLayout>
 
                                     </VerticalStackLayout>
                                 </VerticalStackLayout>
