@@ -68,8 +68,12 @@ public partial class ClientTripDetailPage : ContentPage
         DestinationLabel.Text = _trip.Destination;
         DescriptionShortLabel.Text = _trip.Description;
         AdultPriceLabel.Text = _trip.Price.ToString("C");
-        ChildPriceLabel.Text = _trip.ChildPrice?.ToString("C") ?? string.Empty;
-        ChildrenRow.IsVisible = _trip.ChildPrice.HasValue;
+        var childPrice = _trip.ChildPrice ?? _trip.Price;
+        var hasChildFare = _trip.ChildPrice.HasValue;
+        ChildPriceLabel.Text = childPrice.ToString("C");
+        ChildPriceBadge.IsVisible = hasChildFare;
+        ChildPriceHintLabel.Text = hasChildFare ? "De 0 a 11 años" : "De 0 a 11 años · tarifa de adulto";
+        ChildrenRow.IsVisible = true;
         DescriptionLabel.Text = _trip.Description;
         CategoryLabel.Text = _trip.Category;
         CategoryLabel.IsVisible = !string.IsNullOrWhiteSpace(_trip.Category);
@@ -126,7 +130,9 @@ public partial class ClientTripDetailPage : ContentPage
     {
         var adults = _adults;
         var children = _children;
-        var total = adults * (_trip?.Price ?? 0) + children * (_trip?.ChildPrice ?? 0);
+        var adultPrice = _trip?.Price ?? 0;
+        var childPrice = _trip?.ChildPrice ?? adultPrice;
+        var total = adults * adultPrice + children * childPrice;
         var seats = adults + children;
 
         AdultsCountLabel.Text = adults.ToString();
@@ -134,7 +140,7 @@ public partial class ClientTripDetailPage : ContentPage
 
         var maxSeats = Math.Max(0, _availableSeats);
         AdultsPlusButton.IsEnabled = !_bookingClosed && seats < maxSeats;
-        ChildrenPlusButton.IsEnabled = !_bookingClosed && seats < maxSeats && (_trip?.ChildPrice).HasValue;
+        ChildrenPlusButton.IsEnabled = !_bookingClosed && seats < maxSeats;
         AdultsMinusButton.IsEnabled = adults > 1;
         ChildrenMinusButton.IsEnabled = children > 0;
         BookButton.IsEnabled = !_bookingClosed && seats >= 1 && seats <= maxSeats;

@@ -31,6 +31,15 @@ public partial class AddPassengersPage : ContentPage
         _api = api;
     }
 
+    static string BuildFareHint(decimal adultPrice, decimal? childPrice)
+    {
+        var child = childPrice.HasValue
+            ? $" · Niño (0 a {ChildMaxAge} años): {childPrice.Value:C}"
+            : $" · Niño (0 a {ChildMaxAge} años): {adultPrice:C} (tarifa de adulto)";
+
+        return $"Adulto: {adultPrice.ToString("C")}{child}";
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
@@ -55,8 +64,7 @@ public partial class AddPassengersPage : ContentPage
             {
                 var trip = await _api.GetTripAsync(_tripId);
                 if (trip is not null)
-                    FareHintLabel.Text = "Adulto: " + trip.Price.ToString("C")
-                        + (trip.ChildPrice.HasValue ? $" · Niño (0 a {ChildMaxAge} años): {trip.ChildPrice.Value:C}" : "");
+                    FareHintLabel.Text = BuildFareHint(trip.Price, trip.ChildPrice);
             }
             catch
             {
@@ -74,8 +82,7 @@ public partial class AddPassengersPage : ContentPage
             {
                 var booking = await _api.GetBookingAsync(_bookingId);
                 if (booking?.Trip is not null)
-                    FareHintLabel.Text = "Adulto: " + booking.Trip.Price.ToString("C")
-                        + (booking.Trip.ChildPrice.HasValue ? $" · Niño (0 a {ChildMaxAge} años): {booking.Trip.ChildPrice.Value:C}" : "");
+                    FareHintLabel.Text = BuildFareHint(booking.Trip.Price, booking.Trip.ChildPrice);
             }
             catch
             {

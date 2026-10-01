@@ -259,13 +259,13 @@
                                         <HorizontalStackLayout Spacing="6">
                                             <Label Text="Niños" FontSize="16" FontAttributes="Bold"
                                                    TextColor="{StaticResource ColorPrimary}" />
-                                            <Border StrokeShape="RoundRectangle 8" Stroke="Transparent"
+                                            <Border x:Name="ChildPriceBadge" StrokeShape="RoundRectangle 8" Stroke="Transparent"
                                                     BackgroundColor="#406CF8BB" Padding="7,1">
                                                 <Label Text="Tarifa especial" FontSize="11" FontAttributes="Bold"
                                                        TextColor="{StaticResource ColorSecondary}" />
                                             </Border>
                                         </HorizontalStackLayout>
-                                        <Label Text="De 0 a 11 años" FontSize="12"
+                                        <Label x:Name="ChildPriceHintLabel" Text="De 0 a 11 años" FontSize="12"
                                                TextColor="{StaticResource ColorOnSurfaceVariant}" />
                                         <HorizontalStackLayout Spacing="4" Margin="0,2,0,0">
                                             <Label x:Name="ChildPriceLabel" FontSize="20" FontAttributes="Bold"
