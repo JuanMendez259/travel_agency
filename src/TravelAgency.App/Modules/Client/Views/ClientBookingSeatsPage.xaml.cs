@@ -1,3 +1,4 @@
+using Microsoft.Maui.Controls.Shapes;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
 
@@ -8,10 +9,21 @@ namespace TravelAgency.App.Modules.Client.Views;
 public partial class ClientBookingSeatsPage : ContentPage
 {
     private const int ChildMaxAge = 11;
+    private const int SeatSize = 44;
+    private const int AisleWidth = 30;
 
-    private static readonly Color AvailableColor = Color.FromArgb("#D9D9D9");
-    private static readonly Color SelectedColor = Color.FromArgb("#0A5AAE");
-    private static readonly Color OccupiedColor = Color.FromArgb("#DBB92A");
+    private static readonly Color PrimaryColor = Color.FromArgb("#003B1B");
+    private static readonly Color SecondaryColor = Color.FromArgb("#006C49");
+    private static readonly Color SurfaceLowestColor = Colors.White;
+    private static readonly Color SurfaceLowColor = Color.FromArgb("#F2F3FF");
+    private static readonly Color SurfaceContainerColor = Color.FromArgb("#EAEDFF");
+    private static readonly Color SurfaceHighColor = Color.FromArgb("#E2E7FF");
+    private static readonly Color SurfaceHighestColor = Color.FromArgb("#DAE2FD");
+    private static readonly Color SurfaceDimColor = Color.FromArgb("#D2D9F4");
+    private static readonly Color OnSurfaceColor = Color.FromArgb("#131B2E");
+    private static readonly Color OnSurfaceVariantColor = Color.FromArgb("#404941");
+    private static readonly Color OutlineColor = Color.FromArgb("#717970");
+    private static readonly Color OutlineVariantColor = Color.FromArgb("#C0C9BE");
 
     private readonly ApiService _api;
     private readonly List<SeatSlot> _slots = new();
@@ -36,7 +48,9 @@ public partial class ClientBookingSeatsPage : ContentPage
         public Entry? NameEntry { get; set; }
         public Entry? AgeEntry { get; set; }
         public int? Seat { get; set; }
-        public Label SeatLabel { get; set; } = new();
+        public Border SeatBadge { get; set; } = new();
+        public Label SeatBadgeIcon { get; set; } = new();
+        public Label SeatBadgeText { get; set; } = new();
     }
 
     protected override async void OnAppearing()
@@ -114,16 +128,40 @@ public partial class ClientBookingSeatsPage : ContentPage
 
     private void UpdateSummary()
     {
-        var chosen = _slots.Where(s => s.Seat.HasValue)
-            .Select(s => s.Seat!.Value)
-            .OrderBy(n => n)
+        var assigned = _slots.Count(s => s.Seat.HasValue);
+        var required = _slots.Count;
+        AssignedCountLabel.Text = $"{assigned} / {required} asignados";
+
+        var seatList = _slots
+            .Select(s => s.Seat.HasValue ? $"#{s.Seat.Value}" : "—")
             .ToArray();
+        SelectedSeatsLabel.Text = $"Asientos: {string.Join(", ", seatList)}";
 
-        SelectedSeatsLabel.Text = chosen.Length == 0
-            ? "Ninguno"
-            : $"{chosen.Length} de {_slots.Count} · {string.Join(", ", chosen)}";
-        SelectedSeatsLabel.TextColor = chosen.Length == 0 ? Colors.Gray : SelectedColor;
+        var missing = required - assigned;
+        if (missing > 0)
+        {
+            RemainingLabel.Text = missing == 1
+                ? "Falta asignar 1 asiento"
+                : $"Faltan {missing} asientos";
+            RemainingLabel.TextColor = OutlineColor;
+            ConfirmButton.IsEnabled = false;
+            ConfirmButton.Text = missing == 1
+                ? "Elige 1 asiento más"
+                : $"Elige {missing} asientos más";
+        }
+        else
+        {
+            RemainingLabel.Text = "¡Todos los asientos elegidos!";
+            RemainingLabel.TextColor = SecondaryColor;
+            ConfirmButton.IsEnabled = true;
+            ConfirmButton.Text = $"Confirmar reserva ({required} asientos)";
+        }
 
+        UpdateTotal();
+    }
+
+    private void UpdateTotal()
+    {
         if (_adultPrice <= 0)
         {
             TotalLabel.Text = "No disponible";
@@ -142,8 +180,7 @@ public partial class ClientBookingSeatsPage : ContentPage
             else adults++;
         }
 
-        var total = adults * _adultPrice + children * childFare;
-        TotalLabel.Text = total.ToString("C");
+        TotalLabel.Text = (adults * _adultPrice + children * childFare).ToString("C");
 
         var parts = new List<string> { $"{adults} adulto(s) × {_adultPrice.ToString("C")}" };
         if (children > 0)
@@ -168,58 +205,168 @@ public partial class ClientBookingSeatsPage : ContentPage
         _slots.Clear();
         PassengersLayout.Clear();
 
-        var holder = new SeatSlot { Label = "Titular (tú)" };
-        _slots.Add(holder);
-        PassengersLayout.Add(BuildSlotRow(holder, isHolder: true));
-
-        for (var i = 1; i < seats; i++)
+        for (var i = 0; i < seats; i++)
         {
-            var slot = new SeatSlot { Label = $"Pasajero {i}" };
+            var slot = new SeatSlot { Label = i == 0 ? "Titular (tú)" : $"Pasajero {i + 1}" };
             _slots.Add(slot);
-            PassengersLayout.Add(BuildSlotRow(slot, isHolder: false));
+            PassengersLayout.Add(BuildSlotCard(slot, i, isHolder: i == 0));
         }
     }
 
-    private View BuildSlotRow(SeatSlot slot, bool isHolder)
+    private View BuildSlotCard(SeatSlot slot, int index, bool isHolder)
     {
-        if (!isHolder)
+        var numberCircle = new Border
         {
-            slot.NameEntry = new Entry { Placeholder = "Nombre", ReturnType = ReturnType.Next };
-            slot.AgeEntry = new Entry
+            WidthRequest = 28,
+            HeightRequest = 28,
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(14) },
+            BackgroundColor = isHolder ? PrimaryColor : SurfaceHighColor,
+            Content = new Label
             {
-                Placeholder = "Edad",
-                Keyboard = Keyboard.Numeric,
-                WidthRequest = 90
-            };
+                Text = (index + 1).ToString(),
+                FontSize = 11,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = isHolder ? Colors.White : OnSurfaceColor,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            }
+        };
 
-            slot.AgeEntry.TextChanged += (_, _) => UpdateSummary();
-
-            var nameAge = new Grid
+        var titleBlock = new VerticalStackLayout { Spacing = 0, VerticalOptions = LayoutOptions.Center };
+        titleBlock.Add(new Label
+        {
+            Text = slot.Label,
+            FontSize = 12,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = OnSurfaceColor
+        });
+        if (isHolder)
+        {
+            titleBlock.Add(new Label
             {
-                ColumnDefinitions =
-                {
-                    new ColumnDefinition(new GridLength(1, GridUnitType.Star)),
-                    new ColumnDefinition(GridLength.Auto)
-                },
-                ColumnSpacing = 8
-            };
-            nameAge.Add(slot.NameEntry, 0);
-            nameAge.Add(slot.AgeEntry, 1);
-
-            var container = new VerticalStackLayout { Spacing = 2 };
-            container.Add(new Label { Text = slot.Label, FontSize = 12, TextColor = Colors.DarkGray });
-            container.Add(nameAge);
-            container.Add(slot.SeatLabel = new Label { FontSize = 12, FontAttributes = FontAttributes.Bold });
-
-            slot.SeatLabel.Text = "Sin asiento";
-            return container;
+                Text = "Adulto responsable de reserva",
+                FontSize = 11,
+                TextColor = OnSurfaceVariantColor
+            });
         }
 
-        slot.SeatLabel = new Label { Text = "Sin asiento", FontSize = 13, FontAttributes = FontAttributes.Bold };
-        var holderRow = new HorizontalStackLayout { Spacing = 8 };
-        holderRow.Add(new Label { Text = slot.Label, FontSize = 13, VerticalOptions = LayoutOptions.Center });
-        holderRow.Add(slot.SeatLabel);
-        return holderRow;
+        var identity = new HorizontalStackLayout { Spacing = 8, VerticalOptions = LayoutOptions.Center };
+        identity.Add(numberCircle);
+        identity.Add(titleBlock);
+
+        BuildSeatBadge(slot);
+
+        var header = new Grid { ColumnSpacing = 8 };
+        header.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        header.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        header.Add(identity, 0, 0);
+        var badgeHolder = new HorizontalStackLayout
+        {
+            Padding = new Thickness(10, 4),
+            BackgroundColor = Colors.Transparent,
+            Children = { slot.SeatBadge }
+        };
+        header.Add(badgeHolder, 1, 0);
+
+        var card = new VerticalStackLayout { Spacing = 8 };
+        card.Add(header);
+
+        if (isHolder)
+        {
+            return WrapCard(card);
+        }
+
+        slot.NameEntry = new Entry
+        {
+            Placeholder = "Nombre y apellido",
+            ReturnType = ReturnType.Next,
+            BackgroundColor = Colors.Transparent
+        };
+        slot.AgeEntry = new Entry
+        {
+            Placeholder = "Edad",
+            Keyboard = Keyboard.Numeric,
+            BackgroundColor = Colors.Transparent,
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+        slot.AgeEntry.TextChanged += (_, _) => UpdateTotal();
+
+        var inputs = new Grid { ColumnSpacing = 8 };
+        inputs.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        inputs.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(76, GridUnitType.Absolute)));
+        inputs.Add(WrapInput(slot.NameEntry), 0, 0);
+        inputs.Add(WrapInput(slot.AgeEntry), 1, 0);
+
+        card.Add(inputs);
+        return WrapCard(card);
+    }
+
+    private static View WrapCard(View content)
+    {
+        return new Border
+        {
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(12) },
+            BackgroundColor = SurfaceLowColor,
+            Padding = new Thickness(12),
+            Content = content
+        };
+    }
+
+    private static View WrapInput(Entry entry)
+    {
+        return new Border
+        {
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(10) },
+            BackgroundColor = SurfaceLowestColor,
+            Padding = new Thickness(10, 0),
+            Content = entry
+        };
+    }
+
+    private static void BuildSeatBadge(SeatSlot slot)
+    {
+        slot.SeatBadgeIcon = new Label { FontSize = 12, VerticalOptions = LayoutOptions.Center };
+        slot.SeatBadgeText = new Label
+        {
+            FontSize = 11,
+            FontAttributes = FontAttributes.Bold,
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        var badgeLayout = new HorizontalStackLayout { Spacing = 4 };
+        badgeLayout.Add(slot.SeatBadgeIcon);
+        badgeLayout.Add(slot.SeatBadgeText);
+
+        slot.SeatBadge = new Border
+        {
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(11) },
+            Padding = new Thickness(10, 4),
+            Content = badgeLayout
+        };
+    }
+
+    private static void PaintSeatBadge(SeatSlot slot)
+    {
+        if (slot.Seat.HasValue)
+        {
+            slot.SeatBadge.BackgroundColor = SecondaryColor;
+            slot.SeatBadgeIcon.Text = "💺";
+            slot.SeatBadgeIcon.TextColor = Colors.White;
+            slot.SeatBadgeText.Text = $"Asiento {slot.Seat.Value}";
+            slot.SeatBadgeText.TextColor = Colors.White;
+        }
+        else
+        {
+            slot.SeatBadge.BackgroundColor = SurfaceHighestColor;
+            slot.SeatBadgeIcon.Text = "⏳";
+            slot.SeatBadgeIcon.TextColor = OutlineColor;
+            slot.SeatBadgeText.Text = "Sin asignar";
+            slot.SeatBadgeText.TextColor = OutlineColor;
+        }
     }
 
     private void RenderMap(List<TripSeatRow> rows)
@@ -227,47 +374,85 @@ public partial class ClientBookingSeatsPage : ContentPage
         RowsContainer.Clear();
         foreach (var row in rows)
         {
-            var rowLayout = new HorizontalStackLayout
+            var rowLayout = new Grid { ColumnSpacing = 4 };
+            rowLayout.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+            rowLayout.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(AisleWidth, GridUnitType.Absolute)));
+            rowLayout.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+
+            var left = new HorizontalStackLayout
             {
-                Spacing = 10,
-                HorizontalOptions = LayoutOptions.Center
+                Spacing = 4,
+                HorizontalOptions = LayoutOptions.End,
+                VerticalOptions = LayoutOptions.Center
+            };
+            var right = new HorizontalStackLayout
+            {
+                Spacing = 4,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Center
             };
 
+            var seatCount = 0;
             foreach (var seat in row.Seats)
             {
-                rowLayout.Add(BuildSeat(seat));
+                if (seat.IsAisle) continue;
+                var target = seatCount < 2 ? left : right;
+                target.Add(BuildSeat(seat));
+                seatCount++;
             }
 
+            var aisle = new Label
+            {
+                Text = $"F{row.RowNumber}",
+                FontSize = 10,
+                TextColor = OutlineVariantColor,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            };
+
+            rowLayout.Add(left, 0, 0);
+            rowLayout.Add(aisle, 1, 0);
+            rowLayout.Add(right, 2, 0);
             RowsContainer.Add(rowLayout);
         }
     }
 
     private View BuildSeat(TripSeat seat)
     {
-        if (seat.IsAisle)
+        var numberLabel = new Label
         {
-            return new BoxView
-            {
-                WidthRequest = 18,
-                HeightRequest = 44,
-                Color = Colors.Transparent
-            };
-        }
+            Text = seat.Number.ToString(),
+            FontSize = 11,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = OnSurfaceColor,
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+
+        var statusLabel = new Label
+        {
+            Text = "libre",
+            FontSize = 8,
+            TextColor = OnSurfaceVariantColor,
+            HorizontalTextAlignment = TextAlignment.Center
+        };
+
+        var content = new VerticalStackLayout
+        {
+            Spacing = 0,
+            HorizontalOptions = LayoutOptions.Center,
+            VerticalOptions = LayoutOptions.Center
+        };
+        content.Add(numberLabel);
+        content.Add(statusLabel);
 
         var border = new Border
         {
-            WidthRequest = 44,
-            HeightRequest = 44,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(8) },
-            Stroke = Colors.Transparent,
-            Content = new Label
-            {
-                Text = seat.Number.ToString(),
-                FontSize = 12,
-                FontAttributes = FontAttributes.Bold,
-                HorizontalOptions = LayoutOptions.Center,
-                VerticalOptions = LayoutOptions.Center
-            }
+            WidthRequest = SeatSize,
+            HeightRequest = SeatSize,
+            StrokeThickness = 0,
+            StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(10) },
+            ClassId = seat.Number.ToString(),
+            Content = content
         };
 
         PaintSeat(border, seat.Number);
@@ -277,7 +462,8 @@ public partial class ClientBookingSeatsPage : ContentPage
             border.GestureRecognizers.Add(new TapGestureRecognizer
             {
                 Command = new Command(async () => await PickSlotForSeatAsync(seat.Number))
-            });        }
+            });
+        }
 
         return border;
     }
@@ -285,56 +471,71 @@ public partial class ClientBookingSeatsPage : ContentPage
     private void PaintSeat(Border border, int number)
     {
         var isTaken = _taken.Contains(number);
-        var slot = _slots.FirstOrDefault(s => s.Seat == number);
-        var label = (Label)border.Content;
+        var isSelected = !isTaken && _slots.Any(s => s.Seat == number);
+
+        if (border.Content is not VerticalStackLayout content || content.Children.Count < 2)
+            return;
+
+        var numberLabel = (Label)content.Children[0];
+        var statusLabel = (Label)content.Children[1];
 
         if (isTaken)
         {
-            border.BackgroundColor = OccupiedColor;
-            label.TextColor = Colors.Black;
+            border.BackgroundColor = SurfaceDimColor;
+            border.Opacity = 0.75;
+            border.Scale = 1;
+            numberLabel.TextColor = OutlineColor;
+            statusLabel.Text = "✕";
+            statusLabel.FontSize = 10;
+            statusLabel.TextColor = OutlineColor;
             return;
         }
 
-        if (slot is not null)
+        if (isSelected)
         {
-            border.BackgroundColor = SelectedColor;
-            label.TextColor = Colors.White;
+            border.BackgroundColor = SecondaryColor;
+            border.Opacity = 1;
+            border.Scale = 1.05;
+            numberLabel.TextColor = Colors.White;
+            numberLabel.FontSize = 10;
+            statusLabel.Text = "✓";
+            statusLabel.FontSize = 11;
+            statusLabel.FontAttributes = FontAttributes.Bold;
+            statusLabel.TextColor = Colors.White;
             return;
         }
 
-        border.BackgroundColor = AvailableColor;
-        label.TextColor = Colors.Black;
+        border.BackgroundColor = SurfaceHighestColor;
+        border.Opacity = 1;
+        border.Scale = 1;
+        numberLabel.TextColor = OnSurfaceColor;
+        numberLabel.FontSize = 11;
+        numberLabel.FontAttributes = FontAttributes.Bold;
+        statusLabel.Text = "libre";
+        statusLabel.FontSize = 8;
+        statusLabel.FontAttributes = FontAttributes.None;
+        statusLabel.TextColor = OnSurfaceVariantColor;
     }
 
     private void RefreshSeatVisuals()
     {
         foreach (var child in RowsContainer.Children)
         {
-            if (child is not HorizontalStackLayout row) continue;
-            foreach (var seatView in row.Children)
+            if (child is not Grid grid) continue;
+            foreach (var section in grid.Children)
             {
-                if (seatView is not Border border || border.Content is not Label label) continue;
-                if (!int.TryParse(label.Text, out var number)) continue;
-                PaintSeat(border, number);
+                if (section is not HorizontalStackLayout seats) continue;
+                foreach (var seatView in seats.Children)
+                {
+                    if (seatView is not Border border) continue;
+                    if (!int.TryParse(border.ClassId, out var number)) continue;
+                    PaintSeat(border, number);
+                }
             }
         }
 
         foreach (var slot in _slots)
-        {
-            slot.SeatLabel.Text = slot.Seat.HasValue
-                ? $"Asiento {slot.Seat.Value}"
-                : "Sin asiento";
-            slot.SeatLabel.TextColor = slot.Seat.HasValue ? SelectedColor : Colors.Gray;
-        }
-
-        var missing = _slots.Count(s => !s.Seat.HasValue);
-        var complete = missing == 0;
-        ConfirmButton.IsEnabled = complete;
-        ConfirmButton.Text = complete
-            ? "Confirmar Reserva"
-            : missing == 1
-                ? "Elige 1 asiento más"
-                : $"Elige {missing} asientos más";
+            PaintSeatBadge(slot);
 
         UpdateSummary();
     }

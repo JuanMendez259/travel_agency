@@ -7,89 +7,285 @@
 
     <ContentPage.Resources>
         <ResourceDictionary>
-            <Color x:Key="ColorSelected">#0A5AAE</Color>
-            <Color x:Key="ColorOnDark">#1A2433</Color>
-            <Color x:Key="ColorGray">#5F6B7A</Color>
+            <Color x:Key="ColorPrimary">#003B1B</Color>
+            <Color x:Key="ColorSecondary">#006C49</Color>
+            <Color x:Key="ColorPrimaryFixedDim">#96D5A3</Color>
+            <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
+            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
+            <Color x:Key="ColorSurfaceContainer">#EAEDFF</Color>
+            <Color x:Key="ColorSurfaceContainerHigh">#E2E7FF</Color>
+            <Color x:Key="ColorSurfaceContainerHighest">#DAE2FD</Color>
+            <Color x:Key="ColorSurfaceDim">#D2D9F4</Color>
+            <Color x:Key="ColorOnSurface">#131B2E</Color>
+            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
+            <Color x:Key="ColorOutline">#717970</Color>
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Padding="12">
-        <VerticalStackLayout Grid.Row="0" Spacing="2">
-            <Label x:Name="TripLabel" FontSize="17" FontAttributes="Bold" HorizontalOptions="Center" />
-            <Label x:Name="SummaryLabel" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
-        </VerticalStackLayout>
+    <Grid RowDefinitions="Auto,*,Auto">
 
-        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,8,0,0">
-            <Label Text="Pasajeros" FontSize="14" FontAttributes="Bold" />
-            <VerticalStackLayout x:Name="PassengersLayout" Spacing="6" />
-            <Label Text="Toca un asiento libre y elige a quién asignarlo."
-                   FontSize="12" TextColor="Gray" />
-            <HorizontalStackLayout Spacing="14" Margin="0,4,0,0">
-                <HorizontalStackLayout Spacing="4">
-                    <BoxView CornerRadius="4" WidthRequest="14" HeightRequest="14" Color="#D9D9D9" />
-                    <Label Text="Libre" FontSize="11" />
+        <!-- ============ TARJETA DEL VIAJE ============ -->
+        <Border Grid.Row="0"
+                StrokeThickness="0"
+                StrokeShape="RoundRectangle 16"
+                BackgroundColor="{StaticResource ColorPrimary}"
+                Padding="16"
+                Margin="20,12,20,0">
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.16" Radius="12" Offset="0,4" />
+            </Border.Shadow>
+            <VerticalStackLayout Spacing="4">
+                <Label x:Name="TripLabel"
+                       FontSize="18" FontAttributes="Bold"
+                       TextColor="White" />
+                <HorizontalStackLayout Spacing="6">
+                    <Label Text="💺" FontSize="13" VerticalOptions="Center" />
+                    <Label x:Name="SummaryLabel"
+                           FontSize="12"
+                           TextColor="{StaticResource ColorPrimaryFixedDim}"
+                           VerticalOptions="Center" />
                 </HorizontalStackLayout>
-                <HorizontalStackLayout Spacing="4">
-                    <BoxView CornerRadius="4" WidthRequest="14" HeightRequest="14" Color="#0A5AAE" />
-                    <Label Text="Elegido" FontSize="11" />
-                </HorizontalStackLayout>
-                <HorizontalStackLayout Spacing="4">
-                    <BoxView CornerRadius="4" WidthRequest="14" HeightRequest="14" Color="#DBB92A" />
-                    <Label Text="Ocupado" FontSize="11" />
-                </HorizontalStackLayout>
-            </HorizontalStackLayout>
-        </VerticalStackLayout>
+            </VerticalStackLayout>
+        </Border>
 
-        <ScrollView Grid.Row="2" Margin="0,8,0,0">
-            <VerticalStackLayout Spacing="12">
-                <Border Stroke="#CCCCCC" StrokeShape="RoundRectangle 16" Padding="16">
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Spacing="0">
+
+                <!-- ============ PASAJEROS Y BOLETOS ============ -->
+                <Border StrokeThickness="0"
+                        StrokeShape="RoundRectangle 16"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                        Padding="16"
+                        Margin="20,12,20,0">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.05" Radius="10" Offset="0,2" />
+                    </Border.Shadow>
                     <VerticalStackLayout Spacing="12">
-                        <Label Text="🚌" FontSize="22" HorizontalOptions="End" Margin="0,0,4,0" />
-                        <VerticalStackLayout x:Name="RowsContainer" Spacing="10" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                                <Label Text="👥" FontSize="18" VerticalOptions="Center" />
+                                <Label Text="Pasajeros y Boletos"
+                                       FontSize="16" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnSurface}"
+                                       VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <Border Grid.Column="1"
+                                    StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 10"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerHigh}"
+                                    Padding="9,3"
+                                    VerticalOptions="Center">
+                                <Label x:Name="AssignedCountLabel"
+                                       Text="0 / 0 asignados"
+                                       FontSize="11" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                            </Border>
+                        </Grid>
+
+                        <Label Text="Toca un asiento libre en el mapa y asígnalo a cada viajero."
+                               FontSize="12"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+
+                        <VerticalStackLayout x:Name="PassengersLayout" Spacing="12" />
+
+                        <!-- Leyenda -->
+                        <Border StrokeThickness="0"
+                                StrokeShape="RoundRectangle 12"
+                                BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                                Padding="12,10">
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6">
+                                <HorizontalStackLayout Spacing="6">
+                                    <Border WidthRequest="20" HeightRequest="20"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 6"
+                                            BackgroundColor="{StaticResource ColorSurfaceContainerHighest}">
+                                        <Label Text="1" FontSize="10"
+                                               HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+                                    <Label Text="Libre" FontSize="11" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Grid.Column="1" Spacing="6">
+                                    <Border WidthRequest="20" HeightRequest="20"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 6"
+                                            BackgroundColor="{StaticResource ColorSecondary}">
+                                        <Label Text="✓" FontSize="12" TextColor="White"
+                                               HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+                                    <Label Text="Tu elección" FontSize="11" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorSecondary}"
+                                           VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Grid.Column="2" Spacing="6">
+                                    <Border WidthRequest="20" HeightRequest="20"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 6"
+                                            Opacity="0.75"
+                                            BackgroundColor="{StaticResource ColorSurfaceDim}">
+                                        <Label Text="✕" FontSize="10"
+                                               TextColor="{StaticResource ColorOutline}"
+                                               HorizontalOptions="Center" VerticalOptions="Center" />
+                                    </Border>
+                                    <Label Text="Ocupado" FontSize="11"
+                                           TextColor="{StaticResource ColorOutline}"
+                                           VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- ============ MAPA DE ASIENTOS ============ -->
+                <Border StrokeThickness="0"
+                        StrokeShape="RoundRectangle 16"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                        Padding="16"
+                        Margin="20,12,20,16">
+                    <Border.Shadow>
+                        <Shadow Brush="Black" Opacity="0.05" Radius="10" Offset="0,2" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                                <Label Text="🚌" FontSize="18" VerticalOptions="Center" />
+                                <Label Text="Distribución de Asientos"
+                                       FontSize="16" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnSurface}"
+                                       VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <Label Grid.Column="1"
+                                   Text="Planta única"
+                                   FontSize="11" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}"
+                                   VerticalOptions="Center" />
+                        </Grid>
+
+                        <!-- Silueta del autobús -->
+                        <Border StrokeThickness="0"
+                                StrokeShape="RoundRectangle 26"
+                                BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                                Padding="12"
+                                HorizontalOptions="Center"
+                                WidthRequest="360">
+                            <VerticalStackLayout Spacing="10">
+
+                                <!-- Cabina -->
+                                <Border StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 18"
+                                        BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                                        Padding="12">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Border StrokeThickness="0"
+                                                StrokeShape="RoundRectangle 14"
+                                                BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                                Padding="10,4"
+                                                HorizontalOptions="Start">
+                                            <HorizontalStackLayout Spacing="6">
+                                                <Label Text="🏎️" FontSize="15" VerticalOptions="Center" />
+                                                <Label Text="Cabina Conductor"
+                                                       FontSize="11" FontAttributes="Bold"
+                                                       TextColor="{StaticResource ColorOnSurface}"
+                                                       VerticalOptions="Center" />
+                                            </HorizontalStackLayout>
+                                        </Border>
+                                        <HorizontalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                                            <Label Text="Puerta frontal" FontSize="11" FontAttributes="Bold"
+                                                   TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                                   VerticalOptions="Center" />
+                                            <Label Text="🔒" FontSize="13" VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Indicador de pasillo -->
+                                <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="6">
+                                    <Label Text="Fila Izq." FontSize="10" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorOutline}"
+                                           HorizontalTextAlignment="End" />
+                                    <Label Grid.Column="1" Text="Pasillo" FontSize="10" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorSecondary}" />
+                                    <Label Grid.Column="2" Text="Fila Der." FontSize="10" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorOutline}" />
+                                </Grid>
+
+                                <VerticalStackLayout x:Name="RowsContainer" Spacing="10" />
+
+                                <!-- Parte trasera -->
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,2,4,0">
+                                    <HorizontalStackLayout Spacing="6">
+                                        <Label Text="🧳" FontSize="14" VerticalOptions="Center" />
+                                        <Label Text="Maletero bajo piso" FontSize="11"
+                                               TextColor="{StaticResource ColorOutline}"
+                                               VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                    <HorizontalStackLayout Grid.Column="1" Spacing="6">
+                                        <Label Text="🚻" FontSize="14" VerticalOptions="Center" />
+                                        <Label Text="Sanitario" FontSize="11"
+                                               TextColor="{StaticResource ColorOutline}"
+                                               VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                </Grid>
+                            </VerticalStackLayout>
+                        </Border>
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>
         </ScrollView>
 
-        <Border Grid.Row="3"
+        <!-- ============ BARRA DE RESERVA ============ -->
+        <Border Grid.Row="2"
                 StrokeThickness="0"
-                StrokeShape="RoundRectangle 14"
-                BackgroundColor="#F1F5FB"
-                Padding="14"
-                Margin="0,10,0,0">
-            <VerticalStackLayout Spacing="6">
+                StrokeShape="RoundRectangle 16"
+                BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                Padding="16"
+                Margin="20,0,20,12">
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.14" Radius="16" Offset="0,-3" />
+            </Border.Shadow>
+            <VerticalStackLayout Spacing="10">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <VerticalStackLayout Grid.Column="0" Spacing="2">
-                        <Label Text="TOTAL A PAGAR" FontSize="11" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorGray}" />
-                        <Label x:Name="TotalLabel" Text="—"
-                               FontSize="24" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorSelected}" />
+                    <VerticalStackLayout Spacing="1">
+                        <Label Text="Total" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        <HorizontalStackLayout Spacing="4">
+                            <Label x:Name="TotalLabel" Text="—"
+                                   FontSize="22" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}" />
+                            <Label Text="MXN" FontSize="12"
+                                   TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                   VerticalOptions="End" />
+                        </HorizontalStackLayout>
                     </VerticalStackLayout>
-                    <VerticalStackLayout Grid.Column="1" Spacing="2"
+                    <VerticalStackLayout Grid.Column="1" Spacing="1"
                                          HorizontalOptions="End" VerticalOptions="Center">
-                        <Label Text="ASIENTOS ELEGIDOS" FontSize="11" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorGray}"
-                               HorizontalTextAlignment="End" />
-                        <Label x:Name="SelectedSeatsLabel" Text="Ninguno"
-                               FontSize="14" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorOnDark}"
+                        <Label x:Name="SelectedSeatsLabel"
+                               Text="Asientos: —"
+                               FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorSecondary}"
                                HorizontalTextAlignment="End"
                                MaxLines="2" LineBreakMode="TailTruncation" />
+                        <Label x:Name="RemainingLabel"
+                               Text="Falta asignar 1 asiento"
+                               FontSize="12"
+                               TextColor="{StaticResource ColorOutline}"
+                               HorizontalTextAlignment="End" />
                     </VerticalStackLayout>
                 </Grid>
+
                 <Label x:Name="FareBreakdownLabel" Text="—"
-                       FontSize="11" TextColor="{StaticResource ColorGray}" />
+                       FontSize="11"
+                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+
+                <Button x:Name="ConfirmButton"
+                        Text="Elige los asientos"
+                        Clicked="OnConfirmClicked"
+                        IsEnabled="False"
+                        HeightRequest="52"
+                        FontAttributes="Bold"
+                        CornerRadius="12"
+                        BackgroundColor="{StaticResource ColorPrimary}"
+                        TextColor="White" />
             </VerticalStackLayout>
         </Border>
-
-        <Button x:Name="ConfirmButton"
-                Grid.Row="4"
-                Text="Confirmar reserva"
-                Clicked="OnConfirmClicked"
-                IsEnabled="False"
-                Margin="0,10,0,0"
-                BackgroundColor="#2B6CB0"
-                TextColor="White" />
     </Grid>
 </ContentPage>
