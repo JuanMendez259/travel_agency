@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using TravelAgency.App.Modules.Client.ViewModels;
 using TravelAgency.App.Services;
 
@@ -27,10 +28,18 @@ public partial class ClientNotificationsPage : ContentPage
 
         try
         {
-            var notifications = await _api.GetNotificationsAsync(_session.UserId);
-            MessagesList.ItemsSource = notifications?
+            var notifications = (await _api.GetNotificationsAsync(_session.UserId))?
+                .OrderBy(n => n.CreatedAt)
                 .Select(n => new NotificationItem(n))
                 .ToList();
+
+            var grouped = notifications?
+                .GroupBy(n => n.DateHeaderText)
+                .Select(g => new ObservableGroupCollection<string, NotificationItem>(g.Key, g))
+                .ToList();
+
+            MessagesList.IsGrouped = true;
+            MessagesList.ItemsSource = grouped;
         }
         catch (Exception ex)
         {
@@ -52,7 +61,5 @@ public partial class ClientNotificationsPage : ContentPage
 
     private async void OnLogoutClicked(object? sender, EventArgs e)
     {
-        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de tu cuenta?", "Sí", "No");
-        if (confirm) App.GoToLogin();
     }
 }

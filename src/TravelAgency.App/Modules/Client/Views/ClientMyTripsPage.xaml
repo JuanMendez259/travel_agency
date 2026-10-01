@@ -42,7 +42,6 @@
     </ContentPage.Resources>
 
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
     <Grid RowDefinitions="Auto,Auto,Auto,*" BackgroundColor="{StaticResource ColorSurface}">

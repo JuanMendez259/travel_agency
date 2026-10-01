@@ -33,8 +33,6 @@
     </ContentPage.Resources>
 
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="★ Favoritos" Clicked="OnFavoritesClicked" />
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
     <Grid RowDefinitions="Auto,*" BackgroundColor="{StaticResource ColorSurface}">
@@ -51,8 +49,12 @@
                     <Label Text="¿A dónde nos escapamos este fin de semana?" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
                 </VerticalStackLayout>
                 <Border Grid.Column="1" StrokeShape="RoundRectangle 22" WidthRequest="44" HeightRequest="44"
-                        BackgroundColor="#4D6FFBBE" Padding="0" VerticalOptions="Start">
-                    <Label Text="🌳" FontSize="18" HorizontalOptions="Center" VerticalOptions="Center" />
+                        BackgroundColor="White" Padding="0" VerticalOptions="Start">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnFavoritesClicked" />
+                    </Border.GestureRecognizers>
+                    <Label Text="★" FontSize="20" TextColor="#FFD54F"
+                           HorizontalOptions="Center" VerticalOptions="Center" />
                 </Border>
             </Grid>
 

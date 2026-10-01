@@ -127,7 +127,5 @@ public partial class ClientMyTripsPage : ContentPage
 
     private async void OnLogoutClicked(object? sender, EventArgs e)
     {
-        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de tu cuenta?", "Sí", "No");
-        if (confirm) App.GoToLogin();
     }
 }

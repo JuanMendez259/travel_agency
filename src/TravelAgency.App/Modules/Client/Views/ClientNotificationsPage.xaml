@@ -5,34 +5,57 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:viewmodels="clr-namespace:TravelAgency.App.Modules.Client.ViewModels"
     Title="Avisos"
-    BackgroundColor="{AppThemeBinding Light=#EDEDED, Dark=#111B21}">
+    BackgroundColor="{StaticResource ColorSurface}">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="ColorPrimary">#003B1B</Color>
+            <Color x:Key="ColorPrimaryContainer">#14532D</Color>
+            <Color x:Key="ColorSecondary">#006C49</Color>
+            <Color x:Key="ColorSecondaryContainer">#6CF8BB</Color>
+            <Color x:Key="ColorSecondaryFixed">#6FFBBE</Color>
+            <Color x:Key="ColorSurface">#FAF8FF</Color>
+            <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
+            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
+            <Color x:Key="ColorSurfaceContainer">#EAEDFF</Color>
+            <Color x:Key="ColorSurfaceContainerHigh">#E2E7FF</Color>
+            <Color x:Key="ColorOnSurface">#131B2E</Color>
+            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
+            <Color x:Key="ColorTertiaryFixed">#D8E6DC</Color>
+            <Color x:Key="ColorOnTertiaryFixed">#121E18</Color>
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
     <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
     </ContentPage.ToolbarItems>
 
     <Grid RowDefinitions="Auto,*">
-
         <Border Grid.Row="0"
                 StrokeThickness="0"
-                Padding="12"
-                BackgroundColor="{AppThemeBinding Light=#128C7E, Dark=#075E54}">
-            <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
-                <Border StrokeThickness="2" Stroke="White" BackgroundColor="White"
+                Padding="16,10"
+                BackgroundColor="{StaticResource ColorSurfaceContainerLow}">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                <Border Grid.Column="0"
+                        StrokeThickness="0"
+                        BackgroundColor="{StaticResource ColorSecondaryContainer}"
                         StrokeShape="RoundRectangle 22"
                         WidthRequest="44" HeightRequest="44">
-                    <Image Source="logo.jpg" Aspect="AspectFit" Margin="2" />
+                    <Image Source="logo.jpg" Aspect="AspectFit" Margin="4" />
                 </Border>
-                <VerticalStackLayout Spacing="0" VerticalOptions="Center">
-                    <Label Text="TravelAgency"
-                           TextColor="White"
-                           FontSize="17"
-                           FontAttributes="Bold" />
-                    <Label Text="en línea"
-                           TextColor="#C8E9E2"
-                           FontSize="12" />
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
+                    <Label Text="RutaVerde" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                    <Label Text="Canal de avisos en tiempo real" FontSize="12" TextColor="{StaticResource ColorSecondary}" />
                 </VerticalStackLayout>
-            </HorizontalStackLayout>
+                <Label Grid.Column="2"
+                       Text="Oficial"
+                       FontSize="11"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource ColorPrimary}"
+                       BackgroundColor="#1A003B1B"
+                       Padding="8,2"
+                       VerticalOptions="Center"
+                       HorizontalOptions="End" />
+            </Grid>
         </Border>
 
         <RefreshView x:Name="MessagesRefresh"
@@ -40,35 +63,79 @@
                      Refreshing="OnRefreshing">
             <CollectionView x:Name="MessagesList"
                             SelectionMode="None"
-                            Footer=" "
-                            EmptyView="No hay avisos todavía. Cuando la agencia te escriba, aparecerá aquí.">
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="viewmodels:NotificationItem">
-                    <Grid Padding="10,3">
-                        <VerticalStackLayout HorizontalOptions="Start" MaximumWidthRequest="340">
-                            <Border StrokeThickness="0" Padding="0"
-                                    BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#262D31}">
+                            EmptyView="No hay avisos todavía. Cuando la agencia te escriba, aparecerán aquí.">
+                <CollectionView.GroupHeaderTemplate>
+                    <DataTemplate>
+                        <VerticalStackLayout Padding="16,12,16,4">
+                            <Label Text="{Binding Key.DateHeaderText}"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                   HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </CollectionView.GroupHeaderTemplate>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:NotificationItem">
+                        <Grid Padding="16,4" ColumnDefinitions="Auto,*">
+                            <Border Grid.Column="0"
+                                    StrokeThickness="0"
+                                    WidthRequest="36" HeightRequest="36"
+                                    BackgroundColor="{Binding IconBackgroundColor}"
+                                    VerticalOptions="Start"
+                                    Margin="0,2,0,0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="18" />
+                                </Border.StrokeShape>
+                                <Label Text="{Binding Icon}"
+                                       FontSize="16"
+                                       TextColor="{Binding IconTextColor}"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+
+                            <Border Grid.Column="1"
+                                    StrokeThickness="0"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                    Margin="10,0,0,0">
                                 <Border.StrokeShape>
                                     <RoundRectangle CornerRadius="2,12,12,12" />
                                 </Border.StrokeShape>
-                                <VerticalStackLayout Padding="12,8" Spacing="2">
-                                    <Label Text="TravelAgency · Agencia"
-                                           TextColor="#128C7E"
-                                           FontSize="12"
-                                           FontAttributes="Bold" />
-                                    <Label Text="{Binding Message}" FontSize="14" />
-                                    <HorizontalStackLayout Spacing="5" HorizontalOptions="End">
-                                        <Label Text="{Binding TimeText}" FontSize="11" TextColor="Gray" />
-                                        <Label Text="✓✓" FontSize="11" TextColor="#53BDEB" />
+                                <Border.Shadow>
+                                    <Shadow Brush="Black" Opacity="0.05" Radius="8" Offset="0,2" />
+                                </Border.Shadow>
+                                <VerticalStackLayout Padding="14,10" Spacing="6">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                        <Label Grid.Column="0"
+                                               Text="{Binding TagText}"
+                                               FontSize="11"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondary}"
+                                               LineBreakMode="TailTruncation" />
+                                        <Label Grid.Column="1"
+                                               Text="{Binding TimeText}"
+                                               FontSize="11"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                    </Grid>
+                                    <Label Text="{Binding Message}"
+                                           FontSize="14"
+                                           TextColor="{StaticResource ColorOnSurface}"
+                                           LineBreakMode="WordWrap" />
+                                    <HorizontalStackLayout Spacing="4" HorizontalOptions="End">
+                                        <Label Text="Leído"
+                                               FontSize="11"
+                                               TextColor="{StaticResource ColorSecondary}" />
+                                        <Label Text="✓✓"
+                                               FontSize="11"
+                                               TextColor="{StaticResource ColorSecondary}" />
                                     </HorizontalStackLayout>
                                 </VerticalStackLayout>
                             </Border>
-                        </VerticalStackLayout>
-                    </Grid>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
         </RefreshView>
-
     </Grid>
 </ContentPage>
