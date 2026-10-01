@@ -7,9 +7,12 @@ namespace TravelAgency.App.Modules.Client.Views;
 
 public partial class ClientProfilePage : ContentPage
 {
+    const string NotificationsPrefKey = "profile_notifications_enabled";
+
     private readonly ApiService _api;
     private readonly SessionService _session;
     private byte[]? _qrBytes;
+    private bool _notificationsEnabled = true;
 
     public ClientProfilePage(ApiService api, SessionService session)
     {
@@ -21,6 +24,7 @@ public partial class ClientProfilePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        VersionLabel.Text = $"v{AppInfo.Version} (Build {AppInfo.BuildString}) • RutaVerde México";
         try
         {
             await LoadProfileAsync();
@@ -37,7 +41,6 @@ public partial class ClientProfilePage : ContentPage
             ?? new User { Name = _session.UserName, Email = null, QrToken = null };
 
         NameLabel.Text = user.Name ?? _session.UserName ?? "Usuario";
-        EmailLabel.Text = user.Email ?? "Correo no disponible";
 
         if (NameLabel.Text is { Length: > 0 })
         {
@@ -47,15 +50,20 @@ public partial class ClientProfilePage : ContentPage
         }
 
         ProfileNameValueLabel.Text = user.Name ?? "No registrado";
-        ProfileEmailValueLabel.Text = user.Email ?? "No registrado";
+        ProfileEmailValueLabel.Text = string.IsNullOrWhiteSpace(user.Email) ? "No registrado" : user.Email;
         ProfilePhoneValueLabel.Text = string.IsNullOrWhiteSpace(user.Phone) ? "No registrado" : user.Phone;
         ProfileEmergencyValueLabel.Text = string.IsNullOrWhiteSpace(user.EmergencyContact) ? "No registrado" : user.EmergencyContact;
+
+        EmailVerifiedBadge.IsVisible = !string.IsNullOrWhiteSpace(user.Email);
+        PhoneVerifiedBadge.IsVisible = !string.IsNullOrWhiteSpace(user.Phone);
 
         _qrBytes = QrCodeService.PngBytes(user.QrToken);
         QrImage.Source = _qrBytes is null ? null : ImageSource.FromStream(() => new MemoryStream(_qrBytes));
         QrImage.IsVisible = _qrBytes is not null;
         SavePassButton.IsEnabled = _qrBytes is not null;
         SharePassButton.IsEnabled = _qrBytes is not null;
+        LoadPassIdentity(user);
+        LoadNotificationsPreference();
 
         try
         {
@@ -67,6 +75,46 @@ public partial class ClientProfilePage : ContentPage
         {
             // Los contadores se quedan en 0 si el endpoint falla.
         }
+    }
+
+    void LoadPassIdentity(User user)
+    {
+        var fullName = user.Name ?? _session.UserName;
+        QrNameLabel.Text = fullName ?? "Viajero";
+
+        var token = user.QrToken;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            QrIdLabel.Text = "ID: —";
+            return;
+        }
+
+        var code = new string(token.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+        QrIdLabel.Text = $"ID: RV-MX-{(code.Length > 6 ? code[..6] : code)}";
+    }
+
+    void LoadNotificationsPreference()
+    {
+        _notificationsEnabled = Preferences.Default.Get(NotificationsPrefKey, true);
+        NotificationsSwitch.IsToggled = _notificationsEnabled;
+    }
+
+    void OnNotificationsToggled(object? sender, ToggledEventArgs e)
+    {
+        _notificationsEnabled = e.Value;
+        Preferences.Default.Set(NotificationsPrefKey, e.Value);
+    }
+
+    async void OnComingSoonTapped(object? sender, TappedEventArgs e)
+    {
+        var feature = (sender as Element)?.ClassId;
+        if (string.IsNullOrWhiteSpace(feature))
+        {
+            feature = "Esta opción";
+        }
+
+        await DisplayAlertAsync("Próximamente",
+            $"{feature} estará disponible pronto. Por ahora esta función aún no está activa.", "OK");
     }
 
     private async void OnSavePassClicked(object? sender, EventArgs e)
