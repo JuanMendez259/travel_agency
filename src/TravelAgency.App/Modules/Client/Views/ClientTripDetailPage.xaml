@@ -3,15 +3,54 @@
     x:Class="TravelAgency.App.Modules.Client.Views.ClientTripDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Detalle del Viaje">
+    Title="Detalle del Viaje"
+    BackgroundColor="{StaticResource ColorSurface}">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="ColorPrimary">#003B1B</Color>
+            <Color x:Key="ColorPrimaryContainer">#14532D</Color>
+            <Color x:Key="ColorSecondary">#006C49</Color>
+            <Color x:Key="ColorSecondaryContainer">#6CF8BB</Color>
+            <Color x:Key="ColorSurface">#FAF8FF</Color>
+            <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
+            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
+            <Color x:Key="ColorSurfaceContainer">#EAEDFF</Color>
+            <Color x:Key="ColorSurfaceContainerHigh">#E2E7FF</Color>
+            <Color x:Key="ColorOnSurface">#131B2E</Color>
+            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
+            <Color x:Key="ColorOutline">#717970</Color>
+            <Color x:Key="ColorError">#BA1A1A</Color>
+        </ResourceDictionary>
+    </ContentPage.Resources>
 
     <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="12">
+        <VerticalStackLayout Padding="0,0,0,24" Spacing="0">
 
-            <Grid HeightRequest="200" Margin="-20,-20,-20,0">
-                <Image x:Name="TripImage" Aspect="AspectFill" />
-                <Border Grid.Column="1"
-                        HorizontalOptions="End" VerticalOptions="Start"
+            <!-- ============ HERO ============ -->
+            <Grid HeightRequest="230">
+                <Image x:Name="TripImage" Aspect="AspectFill" HeightRequest="230" WidthRequest="400" />
+
+                <!-- Favorito (esquina superior izquierda) -->
+                <Border HorizontalOptions="Start" VerticalOptions="Start"
+                        Margin="12,12,0,0"
+                        WidthRequest="44" HeightRequest="44"
+                        StrokeThickness="0"
+                        BackgroundColor="#E6FFFFFF"
+                        StrokeShape="RoundRectangle 22">
+                    <Button x:Name="FavoriteButton"
+                            Text="♡"
+                            FontSize="22"
+                            Padding="0"
+                            TextColor="#003B1B"
+                            BackgroundColor="Transparent"
+                            Clicked="OnFavoriteClicked"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center" />
+                </Border>
+
+                <!-- Compartir (esquina superior derecha) -->
+                <Border HorizontalOptions="End" VerticalOptions="Start"
                         Margin="0,12,12,0"
                         WidthRequest="44" HeightRequest="44"
                         StrokeThickness="0"
@@ -20,94 +59,324 @@
                     <Button x:Name="ShareButton"
                             Text="↗"
                             FontSize="20"
+                            Padding="0"
                             TextColor="#003B1B"
                             BackgroundColor="Transparent"
-                            Padding="0"
                             Clicked="OnShareClicked"
                             HorizontalOptions="Center"
                             VerticalOptions="Center" />
                 </Border>
+
+                <!-- Estado de reserva -->
+                <Border HorizontalOptions="Start" VerticalOptions="End"
+                        Margin="16,0,0,16"
+                        StrokeThickness="0"
+                        Padding="9,4"
+                        BackgroundColor="#E614532D"
+                        StrokeShape="RoundRectangle 16"
+                        IsVisible="False">
+                    <Label x:Name="DeadlineLabel"
+                           FontSize="11" FontAttributes="Bold" TextColor="White" />
+                </Border>
             </Grid>
-            <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" />
-            <Label x:Name="DestinationLabel" FontSize="16" TextColor="Gray" />
-            <Label x:Name="DatesLabel" FontSize="15" />
-            <Label x:Name="DeadlineLabel" FontSize="13" TextColor="#C53030" IsVisible="False" />
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <Label x:Name="PriceLabel" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
-                <Button x:Name="FavoriteButton"
-                        Grid.Column="1"
-                        Text="♡"
-                        TextColor="Gray"
-                        FontSize="28"
-                        Padding="8"
-                        BackgroundColor="Transparent"
-                        Clicked="OnFavoriteClicked"
-                        VerticalOptions="Center" />
-            </Grid>
-            <Label x:Name="ChildPriceLabel" FontSize="14" TextColor="Gray" IsVisible="False" />
-            <Label x:Name="DescriptionLabel" FontSize="14" />
-            <Label x:Name="CategoryLabel" FontSize="13" TextColor="#2B6CB0" IsVisible="False" />
-            <Label x:Name="TransportLabel" FontSize="14" />
-            <Label x:Name="SeatsLabel" FontSize="14" TextColor="Gray" />
 
-            <!-- ===== HORARIO E ITINERARIO ===== -->
-            <Border Margin="0,8,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F2F3FF, Dark=#2C2C2C}">
-                <VerticalStackLayout Padding="16" Spacing="12">
-                    <Label Text="Horario e itinerario" FontSize="16" FontAttributes="Bold" />
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                        <Border WidthRequest="34" HeightRequest="34" StrokeThickness="0" BackgroundColor="#14532D" StrokeShape="RoundRectangle 17">
-                            <Label Text="🚌" FontSize="16" TextColor="White" HorizontalOptions="Center" VerticalOptions="Center" />
+            <!-- ============ TÍTULO / SUBTÍTULO ============ -->
+            <VerticalStackLayout Padding="20,12,20,0" Spacing="3">
+                <HorizontalStackLayout Spacing="4">
+                    <Label Text="📍" FontSize="12" VerticalOptions="Center" />
+                    <Label x:Name="DestinationLabel" FontSize="12" FontAttributes="Bold"
+                           TextColor="{StaticResource ColorSecondary}" />
+                </HorizontalStackLayout>
+                <Label x:Name="TitleLabel" FontSize="26" FontAttributes="Bold"
+                       TextColor="{StaticResource ColorPrimary}" />
+                <Label x:Name="DescriptionShortLabel" FontSize="12"
+                       TextColor="{StaticResource ColorOnSurfaceVariant}" MaxLines="3" />
+                <Border StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                        BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                        Padding="9,3" HorizontalOptions="Start"
+                        Margin="0,4,0,0"
+                        IsVisible="False">
+                    <Label x:Name="CategoryLabel" FontSize="11" FontAttributes="Bold"
+                           TextColor="{StaticResource ColorSecondary}" />
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- ============ ACERCA DE ESTE VIAJE ============ -->
+            <Border Margin="20,16,20,0" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="14" Offset="0,4" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="6">
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="🌿" FontSize="15" VerticalOptions="Center" />
+                        <Label Text="Acerca de este viaje" FontSize="18" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                    <Label x:Name="DescriptionLabel" FontSize="14"
+                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                    <HorizontalStackLayout Spacing="16" Margin="0,6,0,0">
+                        <HorizontalStackLayout Spacing="4">
+                            <Label Text="🚌" FontSize="13" />
+                            <Label x:Name="TransportLabel" FontSize="12" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}" />
+                        </HorizontalStackLayout>
+                    </HorizontalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- ============ HORARIOS E ITINERARIO ============ -->
+            <Border Margin="20,16,20,0" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="14" Offset="0,4" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                            <Label Text="📅" FontSize="18" VerticalOptions="Center" />
+                            <Label Text="Horarios e Itinerario" FontSize="16" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Border Grid.Column="1" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                                Padding="9,3" VerticalOptions="Center">
+                            <Label x:Name="DurationLabel" FontSize="11" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}" />
                         </Border>
-                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
-                            <Label Text="Ida" FontSize="12" FontAttributes="Bold" />
-                            <Label x:Name="ItineraryOutLabel" FontSize="14" />
-                        </VerticalStackLayout>
-                        <Label x:Name="OutTimeLabel" Grid.Column="2" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
                     </Grid>
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                        <Border WidthRequest="34" HeightRequest="34" StrokeThickness="0" BackgroundColor="#006C49" StrokeShape="RoundRectangle 17">
-                            <Label Text="↩️" FontSize="16" HorizontalOptions="Center" VerticalOptions="Center" />
+
+                    <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0"
+                                    BackgroundColor="{StaticResource ColorPrimary}"
+                                    StrokeShape="RoundRectangle 16">
+                                <Label Text="🛫" FontSize="15"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="SALIDA / IDA" FontSize="11" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorSecondary}" />
+                                <Label x:Name="ItineraryOutLabel" FontSize="16" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnSurface}" />
+                                <Label x:Name="OutMeetingLabel" FontSize="12"
+                                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0"
+                                    BackgroundColor="{StaticResource ColorSecondary}"
+                                    StrokeShape="RoundRectangle 16">
+                                <Label Text="🛬" FontSize="15"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="REGRESO / RETORNO" FontSize="11" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorSecondary}" />
+                                <Label x:Name="ItineraryBackLabel" FontSize="16" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnSurface}" />
+                                <Label x:Name="BackMeetingLabel" FontSize="12"
+                                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- ============ SELECCIÓN DE ASIENTOS ============ -->
+            <Border Margin="20,16,20,0" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="14" Offset="0,4" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="12">
+
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                        <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                            <Label Text="💺" FontSize="18" VerticalOptions="Center" />
+                            <Label Text="Selección de Asientos" FontSize="16" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Border Grid.Column="1" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                BackgroundColor="#306CF8BB" Padding="9,3" VerticalOptions="Center">
+                            <Label Text="Viaje Seguro" FontSize="11" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}" />
                         </Border>
-                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="1">
-                            <Label Text="Regreso" FontSize="12" FontAttributes="Bold" />
-                            <Label x:Name="ItineraryBackLabel" FontSize="14" />
-                        </VerticalStackLayout>
-                        <Label x:Name="BackTimeLabel" Grid.Column="2" FontSize="14" FontAttributes="Bold" VerticalOptions="Center" />
                     </Grid>
+
+                    <!-- Selección de pasajeros -->
+                    <Border x:Name="BookPanel" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                        <VerticalStackLayout Spacing="10">
+
+                            <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="1">
+                                        <Label Text="Adultos" FontSize="16" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorPrimary}" />
+                                        <Label Text="Mayor de 12 años" FontSize="12"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                        <HorizontalStackLayout Spacing="4" Margin="0,2,0,0">
+                                            <Label x:Name="AdultPriceLabel" FontSize="20" FontAttributes="Bold"
+                                                   TextColor="{StaticResource ColorPrimary}" />
+                                            <Label Text="MXN / persona" FontSize="11"
+                                                   TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                                   VerticalOptions="End" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                    <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="6"
+                                          VerticalOptions="Center">
+                                        <Button x:Name="AdultsMinusButton" Text="−" FontSize="18" FontAttributes="Bold"
+                                                WidthRequest="34" HeightRequest="34" Padding="0" CornerRadius="17"
+                                                BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                                TextColor="{StaticResource ColorPrimary}"
+                                                BorderColor="{StaticResource ColorSurfaceContainerHigh}" BorderWidth="1"
+                                                Clicked="OnAdultsMinusClicked" />
+                                        <Label x:Name="AdultsCountLabel" Grid.Column="1" Text="1"
+                                               FontSize="16" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorPrimary}"
+                                               WidthRequest="26" HorizontalTextAlignment="Center"
+                                               VerticalOptions="Center" />
+                                        <Button x:Name="AdultsPlusButton" Grid.Column="2" Text="+" FontSize="18" FontAttributes="Bold"
+                                                WidthRequest="34" HeightRequest="34" Padding="0" CornerRadius="17"
+                                                BackgroundColor="{StaticResource ColorPrimary}" TextColor="White"
+                                                Clicked="OnAdultsPlusClicked" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <Border x:Name="ChildrenRow" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12"
+                                    IsVisible="False">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Grid.Column="0" Spacing="1">
+                                        <HorizontalStackLayout Spacing="6">
+                                            <Label Text="Niños" FontSize="16" FontAttributes="Bold"
+                                                   TextColor="{StaticResource ColorPrimary}" />
+                                            <Border StrokeShape="RoundRectangle 8" Stroke="Transparent"
+                                                    BackgroundColor="#406CF8BB" Padding="7,1">
+                                                <Label Text="Tarifa especial" FontSize="11" FontAttributes="Bold"
+                                                       TextColor="{StaticResource ColorSecondary}" />
+                                            </Border>
+                                        </HorizontalStackLayout>
+                                        <Label Text="De 0 a 11 años" FontSize="12"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                        <HorizontalStackLayout Spacing="4" Margin="0,2,0,0">
+                                            <Label x:Name="ChildPriceLabel" FontSize="20" FontAttributes="Bold"
+                                                   TextColor="{StaticResource ColorSecondary}" />
+                                            <Label Text="MXN / niño" FontSize="11"
+                                                   TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                                   VerticalOptions="End" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                    <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="6"
+                                          VerticalOptions="Center">
+                                        <Button x:Name="ChildrenMinusButton" Text="−" FontSize="18" FontAttributes="Bold"
+                                                WidthRequest="34" HeightRequest="34" Padding="0" CornerRadius="17"
+                                                BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                                TextColor="{StaticResource ColorPrimary}"
+                                                BorderColor="{StaticResource ColorSurfaceContainerHigh}" BorderWidth="1"
+                                                Clicked="OnChildrenMinusClicked" />
+                                        <Label x:Name="ChildrenCountLabel" Grid.Column="1" Text="0"
+                                               FontSize="16" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorPrimary}"
+                                               WidthRequest="26" HorizontalTextAlignment="Center"
+                                               VerticalOptions="Center" />
+                                        <Button x:Name="ChildrenPlusButton" Grid.Column="2" Text="+" FontSize="18" FontAttributes="Bold"
+                                                WidthRequest="34" HeightRequest="34" Padding="0" CornerRadius="17"
+                                                BackgroundColor="{StaticResource ColorPrimary}" TextColor="White"
+                                                Clicked="OnChildrenPlusClicked" />
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <!-- Barra de capacidad -->
+                            <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainer}" Padding="12">
+                                <VerticalStackLayout Spacing="6">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <HorizontalStackLayout Grid.Column="0" Spacing="4">
+                                            <Label Text="🚐" FontSize="13" />
+                                            <Label x:Name="CapacityTitleLabel" FontSize="12" FontAttributes="Bold"
+                                                   TextColor="{StaticResource ColorPrimary}" />
+                                        </HorizontalStackLayout>
+                                        <Label x:Name="SeatsLeftLabel" Grid.Column="1" FontSize="11" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondary}" />
+                                    </Grid>
+                                    <ProgressBar x:Name="CapacityBar" Progress="0" HeightRequest="10"
+                                                 ProgressColor="{StaticResource ColorSecondary}" />
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Label x:Name="SeatsLabel" Grid.Column="0" FontSize="11"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                        <Label x:Name="UrgentLabel" Grid.Column="1" FontSize="11" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorError}" IsVisible="False" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <Label x:Name="BookClosedLabel" FontSize="12" TextColor="{StaticResource ColorError}"
+                                   IsVisible="False" />
+
+                            <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainer}" />
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <VerticalStackLayout Grid.Column="0" Spacing="1">
+                                    <Label Text="Total a Pagar" FontSize="11"
+                                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                    <Label x:Name="SeatsSelectionHintLabel" FontSize="11" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorSecondary}" />
+                                </VerticalStackLayout>
+                                <HorizontalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                    <Label x:Name="TotalLabel" FontSize="22" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorPrimary}" />
+                                    <Label Text="MXN" FontSize="13" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorOnSurfaceVariant}" VerticalOptions="End" />
+                                </HorizontalStackLayout>
+                            </Grid>
+
+                            <Button x:Name="BookButton"
+                                    Text="Reservar Asientos"
+                                    Clicked="OnBookClicked"
+                                    BackgroundColor="{StaticResource ColorPrimary}"
+                                    TextColor="White"
+                                    FontAttributes="Bold"
+                                    CornerRadius="12"
+                                    HeightRequest="52" />
+
+                            <Label x:Name="MultiSeatHint"
+                                   Text="En el siguiente paso elegirás el número de asiento de cada pasajero."
+                                   FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Sin cupo -->
+                    <Border x:Name="NoCapacityPanel" IsVisible="False"
+                            StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="Sin cupo disponible" FontSize="16" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorOnSurface}" />
+                            <Label Text="Puedes pedirle al administrador que amplíe la capacidad de este viaje."
+                                   FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                            <Label Text="¿Cuántos asientos necesitas?" FontSize="13" />
+                            <Entry x:Name="RequestedSeatsEntry" Keyboard="Numeric" Text="1" />
+                            <Label Text="Mensaje (opcional)" FontSize="13" />
+                            <Editor x:Name="RequestMessageEditor" HeightRequest="70" />
+                            <Button x:Name="RequestCapacityButton" Text="Solicitar más cupo"
+                                    Clicked="OnRequestCapacityClicked"
+                                    BackgroundColor="{StaticResource ColorPrimary}"
+                                    TextColor="White" FontAttributes="Bold" CornerRadius="10" />
+                        </VerticalStackLayout>
+                    </Border>
                 </VerticalStackLayout>
             </Border>
 
-            <Border x:Name="BookPanel" Margin="0,20,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
-                <VerticalStackLayout Padding="16" Spacing="8">
-                    <Label Text="Reservar viaje" FontSize="16" FontAttributes="Bold" />
-                    <Label x:Name="BookClosedLabel" FontSize="13" TextColor="#C53030" IsVisible="False" />
-                    <Label Text="Número de asientos" FontSize="14" />
-                    <Entry x:Name="SeatsEntry" Keyboard="Numeric" Text="1" />
-                    <Label x:Name="MultiSeatHint" Text="Con más de un asiento registrarás el nombre y la edad de cada acompañante." FontSize="13" TextColor="Gray" />
-                    <Button x:Name="BookButton" Text="Confirmar reserva" Clicked="OnBookClicked" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Border x:Name="NoCapacityPanel" IsVisible="False" Margin="0,20,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
-                <VerticalStackLayout Padding="16" Spacing="8">
-                    <Label Text="Sin cupo disponible" FontSize="16" FontAttributes="Bold" />
-                    <Label Text="Puedes pedirle al administrador que amplíe la capacidad de este viaje." FontSize="14" />
-                    <Label Text="¿Cuántos asientos necesitas?" FontSize="14" />
-                    <Entry x:Name="RequestedSeatsEntry" Keyboard="Numeric" Text="1" />
-                    <Label Text="Mensaje (opcional)" FontSize="14" />
-                    <Editor x:Name="RequestMessageEditor" HeightRequest="80" />
-                    <Button x:Name="RequestCapacityButton" Text="Solicitar más cupo" Clicked="OnRequestCapacityClicked" />
-                </VerticalStackLayout>
-            </Border>
-
-            <Button Text="Descargar factura / Recibo PDF"
-                    Clicked="OnDownloadReceiptClicked"
-                    Margin="0,20,0,0"
-                    HeightRequest="52"
-                    CornerRadius="12"
-                    BackgroundColor="#14532D"
-                    TextColor="White"
-                    FontAttributes="Bold" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
