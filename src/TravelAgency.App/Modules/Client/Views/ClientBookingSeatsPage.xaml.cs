@@ -18,6 +18,8 @@ public partial class ClientBookingSeatsPage : ContentPage
     private readonly HashSet<int> _taken = new();
     private int _capacity;
     private bool _built;
+    private decimal _adultPrice;
+    private decimal? _childPrice;
 
     public string TripId { get; set; } = string.Empty;
     public string Seats { get; set; } = string.Empty;
@@ -83,12 +85,82 @@ public partial class ClientBookingSeatsPage : ContentPage
 
             BuildSlots(seats);
             RenderMap(availability.Rows);
+            await LoadFaresAsync(tripId);
+            RefreshSeatVisuals();
         }
         catch (Exception ex)
         {
             await DisplayAlertAsync("Error", $"No se pudo cargar el mapa de asientos: {ex.Message}", "OK");
             await Shell.Current.GoToAsync("..");
         }
+    }
+
+    private async Task LoadFaresAsync(int tripId)
+    {
+        try
+        {
+            var trip = await _api.GetTripAsync(tripId);
+            if (trip is not null)
+            {
+                _adultPrice = trip.Price;
+                _childPrice = trip.ChildPrice;
+            }
+        }
+        catch
+        {
+            // sin precios, el total se muestra como no disponible
+        }
+    }
+
+    private void UpdateSummary()
+    {
+        var chosen = _slots.Where(s => s.Seat.HasValue)
+            .Select(s => s.Seat!.Value)
+            .OrderBy(n => n)
+            .ToArray();
+
+        SelectedSeatsLabel.Text = chosen.Length == 0
+            ? "Ninguno"
+            : $"{chosen.Length} de {_slots.Count} · {string.Join(", ", chosen)}";
+        SelectedSeatsLabel.TextColor = chosen.Length == 0 ? Colors.Gray : SelectedColor;
+
+        if (_adultPrice <= 0)
+        {
+            TotalLabel.Text = "No disponible";
+            FareBreakdownLabel.Text = "No pudimos consultar las tarifas del viaje.";
+            return;
+        }
+
+        var childFare = _childPrice ?? _adultPrice;
+        var adults = 1;
+        var children = 0;
+
+        for (var i = 1; i < _slots.Count; i++)
+        {
+            var age = ReadAge(_slots[i]);
+            if (age <= ChildMaxAge) children++;
+            else adults++;
+        }
+
+        var total = adults * _adultPrice + children * childFare;
+        TotalLabel.Text = total.ToString("C");
+
+        var parts = new List<string> { $"{adults} adulto(s) × {_adultPrice.ToString("C")}" };
+        if (children > 0)
+        {
+            parts.Add(_childPrice.HasValue
+                ? $"{children} niño(s) × {childFare.ToString("C")}"
+                : $"{children} niño(s) × {_adultPrice.ToString("C")} (tarifa de adulto)");
+        }
+        FareBreakdownLabel.Text = string.Join("  ·  ", parts);
+    }
+
+    private static int ReadAge(SeatSlot slot)
+    {
+        if (slot.AgeEntry?.Text is { Length: > 0 } text && int.TryParse(text, out var age))
+            return Math.Clamp(age, 0, 110);
+
+        return ChildMaxAge;
     }
 
     private void BuildSlots(int seats)
@@ -119,6 +191,8 @@ public partial class ClientBookingSeatsPage : ContentPage
                 Keyboard = Keyboard.Numeric,
                 WidthRequest = 90
             };
+
+            slot.AgeEntry.TextChanged += (_, _) => UpdateSummary();
 
             var nameAge = new Grid
             {
@@ -253,11 +327,16 @@ public partial class ClientBookingSeatsPage : ContentPage
             slot.SeatLabel.TextColor = slot.Seat.HasValue ? SelectedColor : Colors.Gray;
         }
 
-        var complete = _slots.All(s => s.Seat.HasValue);
+        var missing = _slots.Count(s => !s.Seat.HasValue);
+        var complete = missing == 0;
         ConfirmButton.IsEnabled = complete;
         ConfirmButton.Text = complete
-            ? $"Confirmar reserva ({_slots.Count} asiento(s))"
-            : "Elige los asientos";
+            ? "Confirmar Reserva"
+            : missing == 1
+                ? "Elige 1 asiento más"
+                : $"Elige {missing} asientos más";
+
+        UpdateSummary();
     }
 
     private async Task PickSlotForSeatAsync(int seatNumber)

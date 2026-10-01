@@ -5,7 +5,15 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     Title="Elige tus asientos">
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="12">
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="ColorSelected">#0A5AAE</Color>
+            <Color x:Key="ColorOnDark">#1A2433</Color>
+            <Color x:Key="ColorGray">#5F6B7A</Color>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Padding="12">
         <VerticalStackLayout Grid.Row="0" Spacing="2">
             <Label x:Name="TripLabel" FontSize="17" FontAttributes="Bold" HorizontalOptions="Center" />
             <Label x:Name="SummaryLabel" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
@@ -43,8 +51,40 @@
             </VerticalStackLayout>
         </ScrollView>
 
+        <Border Grid.Row="3"
+                StrokeThickness="0"
+                StrokeShape="RoundRectangle 14"
+                BackgroundColor="#F1F5FB"
+                Padding="14"
+                Margin="0,10,0,0">
+            <VerticalStackLayout Spacing="6">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <VerticalStackLayout Grid.Column="0" Spacing="2">
+                        <Label Text="TOTAL A PAGAR" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorGray}" />
+                        <Label x:Name="TotalLabel" Text="—"
+                               FontSize="24" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorSelected}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" Spacing="2"
+                                         HorizontalOptions="End" VerticalOptions="Center">
+                        <Label Text="ASIENTOS ELEGIDOS" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorGray}"
+                               HorizontalTextAlignment="End" />
+                        <Label x:Name="SelectedSeatsLabel" Text="Ninguno"
+                               FontSize="14" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnDark}"
+                               HorizontalTextAlignment="End"
+                               MaxLines="2" LineBreakMode="TailTruncation" />
+                    </VerticalStackLayout>
+                </Grid>
+                <Label x:Name="FareBreakdownLabel" Text="—"
+                       FontSize="11" TextColor="{StaticResource ColorGray}" />
+            </VerticalStackLayout>
+        </Border>
+
         <Button x:Name="ConfirmButton"
-                Grid.Row="3"
+                Grid.Row="4"
                 Text="Confirmar reserva"
                 Clicked="OnConfirmClicked"
                 IsEnabled="False"
