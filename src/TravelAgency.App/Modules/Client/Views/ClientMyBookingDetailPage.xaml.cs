@@ -25,7 +25,6 @@ public partial class ClientMyBookingDetailPage : ContentPage
     {
         InitializeComponent();
         _api = api;
-        TripMapView.Map ??= new Mapsui.Map();
     }
 
     protected override async void OnAppearing()
@@ -80,9 +79,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 ItineraryHeader.IsVisible = true;
                 BindableLayout.SetItemsSource(ItineraryLayout, pois);
             }
-
-            await LoadTripMapAsync(trip);
-        }
+                    }
 
         StatusLabel.Text = $"Estado: {booking.Status}";
 
@@ -262,38 +259,29 @@ public partial class ClientMyBookingDetailPage : ContentPage
             await Shell.Current.GoToAsync($"addpassengers?bookingId={id}&count={_remainingSlots}");
     }
 
-    private async Task LoadTripMapAsync(Trip? trip)
+    private async void OnMapRouteClicked(object? sender, EventArgs e)
     {
-        if (trip is null || TripMapView.Map is not { } map) return;
-
-        var markers = new List<MapMarkerInfo>();
-
-        if (trip.OriginLatitude is double olat && trip.OriginLongitude is double olng)
-            markers.Add(new MapMarkerInfo(MapMarkerKinds.Origin, 0, olat, olng));
-
-        foreach (var poi in trip.PointsOfInterest.OrderBy(p => p.Order))
-            markers.Add(new MapMarkerInfo(MapMarkerKinds.Poi, poi.Id, poi.Latitude, poi.Longitude));
-
-        if (trip.DestinationLatitude is double dlat && trip.DestinationLongitude is double dlng)
-            markers.Add(new MapMarkerInfo(MapMarkerKinds.Dest, 0, dlat, dlng));
-
-        if (markers.Count == 0) return;
-
-        if (!_mapLayersReady)
+        try
         {
-            _mapLayersReady = true;
-            TripMapRenderer.AddTileLayer(map);
+            if (_tripId is not int tripId || tripId <= 0) return;
+            await Shell.Current.GoToAsync($"clienttripmap?tripId={tripId}");
         }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
 
-        map.Layers.Remove(layer => layer is MemoryLayer &&
-                                   (layer.Name == "ruta" || layer.Name == "marcadores"));
-        map.Layers.Add(TripMapRenderer.BuildRouteLayer(markers), 1);
-        map.Layers.Add(TripMapRenderer.BuildMarkersLayer(markers), 2);
-        map.Refresh(ChangeType.Discrete);
-
-        TripMapRenderer.FitToMarkers(map, markers);
-
-        MapHeader.IsVisible = true;
-        TripMapView.IsVisible = true;
+    private async void OnForceMapClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var tripId = _tripId ?? 8;
+            await Shell.Current.GoToAsync($"clienttripmap?tripId={tripId}");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
     }
 }

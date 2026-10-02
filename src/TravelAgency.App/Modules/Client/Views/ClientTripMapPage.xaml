@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Client.Views.ClientTripMapPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:mapsui="clr-namespace:Mapsui.UI.Maui;assembly=Mapsui.UI.Maui"
+    Title="Mapa e itinerario">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="8" RowSpacing="6">
+        <Label x:Name="TripLabel"
+               Grid.Row="0"
+               FontSize="16"
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               VerticalOptions="Center" />
+
+        <mapsui:MapControl x:Name="TripMap" Grid.Row="1" />
+
+        <Border Grid.Row="2"
+                StrokeThickness="0"
+                StrokeShape="RoundRectangle 14"
+                BackgroundColor="#FFFFFF"
+                Padding="12"
+                Margin="4,0,4,4">
+            <Border.Shadow>
+                <Shadow Brush="Black" Opacity="0.08" Radius="10" Offset="0,-2" />
+            </Border.Shadow>
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Itinerario" FontSize="16" FontAttributes="Bold" TextColor="#131B2E" />
+                <VerticalStackLayout x:Name="ItineraryLayout" Spacing="6" />
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>
