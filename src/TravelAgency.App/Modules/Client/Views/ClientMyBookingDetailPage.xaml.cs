@@ -1,6 +1,4 @@
 using Microsoft.Maui.Controls;
-using Mapsui;
-using Mapsui.Layers;
 using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
@@ -17,7 +15,6 @@ public partial class ClientMyBookingDetailPage : ContentPage
     private decimal _cancelPenalty;
     private decimal _paidTotal;
     private bool _withinPolicy = true;
-    private bool _mapLayersReady;
 
     public string BookingId { get; set; } = string.Empty;
 
@@ -25,7 +22,6 @@ public partial class ClientMyBookingDetailPage : ContentPage
     {
         InitializeComponent();
         _api = api;
-        TripMapView.Map ??= new Mapsui.Map();
     }
 
     protected override async void OnAppearing()
@@ -81,7 +77,8 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 BindableLayout.SetItemsSource(ItineraryLayout, pois);
             }
 
-            await LoadTripMapAsync(trip);
+            MapRouteButtonStandalone.IsVisible = trip is not null && HasRouteData(trip);
+            TestMapButton.IsVisible = false;
         }
 
         StatusLabel.Text = $"Estado: {booking.Status}";
@@ -262,38 +259,36 @@ public partial class ClientMyBookingDetailPage : ContentPage
             await Shell.Current.GoToAsync($"addpassengers?bookingId={id}&count={_remainingSlots}");
     }
 
-    private async Task LoadTripMapAsync(Trip? trip)
+    /// El mapa se abre en pantalla completa, asi que solo se ofrece cuando hay
+    /// coordenadas de origen, destino o puntos de interes publicados.
+    private static bool HasRouteData(Trip trip)
+        => trip.OriginLatitude is not null && trip.OriginLongitude is not null
+            || trip.DestinationLatitude is not null && trip.DestinationLongitude is not null
+            || trip.PointsOfInterest?.Count > 0;
+
+    private async void OnTestMapClicked(object? sender, EventArgs e)
     {
-        if (trip is null || TripMapView.Map is not { } map) return;
-
-        var markers = new List<MapMarkerInfo>();
-
-        if (trip.OriginLatitude is double olat && trip.OriginLongitude is double olng)
-            markers.Add(new MapMarkerInfo(MapMarkerKinds.Origin, 0, olat, olng));
-
-        foreach (var poi in trip.PointsOfInterest.OrderBy(p => p.Order))
-            markers.Add(new MapMarkerInfo(MapMarkerKinds.Poi, poi.Id, poi.Latitude, poi.Longitude));
-
-        if (trip.DestinationLatitude is double dlat && trip.DestinationLongitude is double dlng)
-            markers.Add(new MapMarkerInfo(MapMarkerKinds.Dest, 0, dlat, dlng));
-
-        if (markers.Count == 0) return;
-
-        if (!_mapLayersReady)
+        try
         {
-            _mapLayersReady = true;
-            TripMapRenderer.AddTileLayer(map);
+            var tripId = _tripId ?? 8; // fallback Zacatlán si no está cargado
+            await Shell.Current.GoToAsync($"clienttripmap?tripId={tripId}");
         }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
 
-        map.Layers.Remove(layer => layer is MemoryLayer &&
-                                   (layer.Name == "ruta" || layer.Name == "marcadores"));
-        map.Layers.Add(TripMapRenderer.BuildRouteLayer(markers), 1);
-        map.Layers.Add(TripMapRenderer.BuildMarkersLayer(markers), 2);
-        map.Refresh(ChangeType.Discrete);
-
-        TripMapRenderer.FitToMarkers(map, markers);
-
-        MapHeader.IsVisible = true;
-        TripMapView.IsVisible = true;
+    private async void OnMapRouteClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_tripId is not int tripId || tripId <= 0) return;
+            await Shell.Current.GoToAsync($"clienttripmap?tripId={tripId}");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
     }
 }
