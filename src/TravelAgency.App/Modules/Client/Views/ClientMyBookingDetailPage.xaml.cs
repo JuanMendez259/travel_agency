@@ -60,6 +60,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
         DatesLabel.Text = trip is null
             ? ""
             : $"{trip.StartDate:dd/MM/yyyy HH:mm} al {trip.EndDate:dd/MM/yyyy HH:mm}";
+        if (SalidaLabel is not null && trip is not null)
+            SalidaLabel.Text = $"{trip.StartDate:dddd dd/MM/yyyy HH:mm}";
+        if (RegresoLabel is not null && trip is not null)
+            RegresoLabel.Text = $"{trip.EndDate:dddd dd/MM/yyyy HH:mm}";
+
         PriceLabel.Text = trip is null ? "" : $"{trip.Price:C} por asiento";
         DescriptionLabel.Text = trip?.Description;
 
@@ -88,6 +93,15 @@ public partial class ClientMyBookingDetailPage : ContentPage
         var total = booking.TotalAmount;
         var remaining = total - paid;
 
+
+        if (ReservaCupoLabel is not null && booking is not null)
+            ReservaCupoLabel.Text = $"{booking.NumberOfSeats} lugar(es)";
+        if (ReservaTotalLabel is not null && booking is not null)
+            ReservaTotalLabel.Text = $"{booking.TotalAmount:C}";
+        if (ReservaIncluyeLabel1 is not null)
+            ReservaIncluyeLabel1.Text = "Próximamente";
+        if (ReservaIncluyeLabel2 is not null)
+            ReservaIncluyeLabel2.IsVisible = false;
         BalanceLabel.Text = booking.Status == BookingStatus.Cancelled
             ? refunded > 0
                 ? $"Reserva cancelada · Reembolsado {refunded:C}"
@@ -98,6 +112,25 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         RenderCancellationSection(booking, trip, paid);
 
+
+        if (PagoSaldoLabel is not null && booking is not null)
+        {
+            var paid = booking.PaidTotal();
+            var remaining = booking.TotalAmount - paid;
+            PagoSaldoLabel.Text = remaining > 0 ? $"Saldo Pendiente: {remaining:C}" : "Saldo Pendiente: $0.00 MXN";
+        }
+        if (PagoAbono1Label is not null && booking?.Payments is not null)
+        {
+            if (booking.Payments.Count > 0)
+                PagoAbono1Label.Text = $"{booking.Payments[0].Date:dd MMM} - {booking.Payments[0].Amount:C}";
+            else
+                PagoAbono1Label.Text = "Próximamente";
+        }
+        if (PagoAbono2Label is not null && booking?.Payments is not null && booking.Payments.Count > 1)
+        {
+            PagoAbono2Label.IsVisible = true;
+            PagoAbono2Label.Text = $"{booking.Payments[1].Date:dd MMM} - {booking.Payments[1].Amount:C}";
+        }
         PaymentsList.ItemsSource = booking.Payments;
 
         var qrImage = QrCodeService.FromToken(booking.QrToken);

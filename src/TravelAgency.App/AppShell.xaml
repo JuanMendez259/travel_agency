@@ -5,8 +5,16 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:client="clr-namespace:TravelAgency.App.Modules.Client.Views"
     xmlns:admin="clr-namespace:TravelAgency.App.Modules.Admin.Views"
-    Shell.BackgroundColor="{StaticResource White}"
-    Shell.ForegroundColor="{StaticResource Gray900}"
+    Shell.BackgroundColor="#FAF8FF"
+    Shell.ForegroundColor="#003B1B"
+    Shell.TitleColor="#003B1B"
+    Shell.DisabledColor="#B9C2C0"
+    Shell.UnselectedColor="#717970"
+    Shell.TabBarBackgroundColor="#FFFFFF"
+    Shell.TabBarForegroundColor="#003B1B"
+    Shell.TabBarTitleColor="#003B1B"
+    Shell.TabBarUnselectedColor="#717970"
+    Shell.TabBarDisabledColor="#B9C2C0"
     Title="TravelAgency">
 
     <TabBar>
