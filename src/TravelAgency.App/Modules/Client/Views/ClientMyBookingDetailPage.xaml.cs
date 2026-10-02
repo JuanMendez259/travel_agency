@@ -60,6 +60,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
         DatesLabel.Text = trip is null
             ? ""
             : $"{trip.StartDate:dd/MM/yyyy HH:mm} al {trip.EndDate:dd/MM/yyyy HH:mm}";
+        if (FindByName("SalidaLabel") is Label sl && trip is not null)
+            sl.Text = $"{trip.StartDate:dddd dd/MM/yyyy HH:mm}";
+        if (FindByName("RegresoLabel") is Label rl && trip is not null)
+            rl.Text = $"{trip.EndDate:dddd dd/MM/yyyy HH:mm}";
+
         if (SalidaLabel is not null && trip is not null)
             SalidaLabel.Text = $"{trip.StartDate:dddd dd/MM/yyyy HH:mm}";
         if (RegresoLabel is not null && trip is not null)
@@ -111,6 +116,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 : $"Pagado {paid:C} de {total:C} · Saldo pendiente {remaining:C}";
 
         RenderCancellationSection(booking, trip, paid);
+        if (FindByName("ReservaCupoLabel") is Label rcl && booking is not null)
+            rcl.Text = $"Cupo reservado: {booking.NumberOfSeats} lugar(es)";
+        if (FindByName("ReservaTotalLabel") is Label rtl && booking is not null)
+            rtl.Text = $"Monto Total: {booking.TotalAmount:C}";
+
 
 
         if (PagoSaldoLabel is not null && booking is not null)
@@ -130,6 +140,25 @@ public partial class ClientMyBookingDetailPage : ContentPage
         {
             PagoAbono2Label.IsVisible = true;
             PagoAbono2Label.Text = $"{booking.Payments[1].Date:dd MMM} - {booking.Payments[1].Amount:C}";
+        }
+
+        if (FindByName("PagoSaldoLabel") is Label psl && booking is not null)
+        {
+            var paid = booking.PaidTotal();
+            var remaining = booking.TotalAmount - paid;
+            psl.Text = remaining > 0 ? $"Saldo Pendiente: {remaining:C}" : "Saldo Pendiente: $0.00 MXN";
+        }
+        if (FindByName("PagoAbono1Label") is Label pa1 && booking?.Payments is not null)
+        {
+            if (booking.Payments.Count > 0)
+                pa1.Text = $"{booking.Payments[0].Date:dd MMM} - {booking.Payments[0].Amount:C}";
+            else
+                pa1.Text = "Próximamente";
+        }
+        if (FindByName("PagoAbono2Label") is Label pa2 && booking?.Payments is not null && booking.Payments.Count > 1)
+        {
+            pa2.IsVisible = true;
+            pa2.Text = $"{booking.Payments[1].Date:dd MMM} - {booking.Payments[1].Amount:C}";
         }
         PaymentsList.ItemsSource = booking.Payments;
 
