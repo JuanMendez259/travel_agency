@@ -17,7 +17,6 @@ public partial class ClientMyBookingDetailPage : ContentPage
     private decimal _cancelPenalty;
     private decimal _paidTotal;
     private bool _withinPolicy = true;
-    private bool _mapLayersReady;
 
     public string BookingId { get; set; } = string.Empty;
 
@@ -52,7 +51,8 @@ public partial class ClientMyBookingDetailPage : ContentPage
             return;
         }
 
-        var trip = booking.Trip;
+        var currentBooking = booking ?? throw new InvalidOperationException("No se encontró la reserva.");
+        var trip = currentBooking.Trip;
 
         Title = trip?.Title;
         TitleLabel.Text = trip?.Title;
@@ -91,23 +91,24 @@ public partial class ClientMyBookingDetailPage : ContentPage
             }
                     }
 
-        StatusLabel.Text = $"Estado: {booking.Status}";
+        StatusLabel.Text = $"Estado: {currentBooking.Status}";
 
-        var paid = booking.PaidTotal();
-        var refunded = booking.RefundedTotal();
-        var total = booking.TotalAmount;
+        var paid = currentBooking.PaidTotal();
+        var refunded = currentBooking.RefundedTotal();
+        var total = currentBooking.TotalAmount;
         var remaining = total - paid;
-        var payments = booking.Payments?.OrderBy(p => p.PaymentDate).ToList() ?? new List<Payment>();
+        var payments = currentBooking.Payments?.OrderBy(p => p.PaymentDate).ToList() ?? new List<Payment>();
+        var passengers = currentBooking.Passengers?.ToList() ?? new List<TripPassenger>();
 
-        if (ReservaCupoLabel is not null && booking is not null)
-            ReservaCupoLabel.Text = $"{booking.NumberOfSeats} lugar(es)";
-        if (ReservaTotalLabel is not null && booking is not null)
-            ReservaTotalLabel.Text = $"{booking.TotalAmount:C}";
+        if (ReservaCupoLabel is not null)
+            ReservaCupoLabel.Text = $"{currentBooking.NumberOfSeats} lugar(es)";
+        if (ReservaTotalLabel is not null)
+            ReservaTotalLabel.Text = $"{currentBooking.TotalAmount:C}";
         if (ReservaIncluyeLabel1 is not null)
             ReservaIncluyeLabel1.Text = "Próximamente";
         if (ReservaIncluyeLabel2 is not null)
             ReservaIncluyeLabel2.IsVisible = false;
-        BalanceLabel.Text = booking.Status == BookingStatus.Cancelled
+        BalanceLabel!.Text = currentBooking.Status == BookingStatus.Cancelled
             ? refunded > 0
                 ? $"Reserva cancelada · Reembolsado {refunded:C}"
                 : "Reserva cancelada"
@@ -115,15 +116,15 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 ? "Liquidado · ¡Reserva confirmada!"
                 : $"Pagado {paid:C} de {total:C} · Saldo pendiente {remaining:C}";
 
-        RenderCancellationSection(booking, trip, paid);
-        if (FindByName("ReservaCupoLabel") is Label rcl && booking is not null)
-            rcl.Text = $"Cupo reservado: {booking.NumberOfSeats} lugar(es)";
-        if (FindByName("ReservaTotalLabel") is Label rtl && booking is not null)
-            rtl.Text = $"Monto Total: {booking.TotalAmount:C}";
+        RenderCancellationSection(currentBooking, trip, paid);
+        if (FindByName("ReservaCupoLabel") is Label rcl)
+            rcl.Text = $"Cupo reservado: {currentBooking.NumberOfSeats} lugar(es)";
+        if (FindByName("ReservaTotalLabel") is Label rtl)
+            rtl.Text = $"Monto Total: {currentBooking.TotalAmount:C}";
 
-        var saldoPendiente = booking.TotalAmount - paid;
-        if (PagoSaldoLabel is not null && booking is not null)
-            PagoSaldoLabel.Text = saldoPendiente > 0 ? $"Saldo Pendiente: {saldoPendiente:C}" : "Saldo Pendiente: $0.00 MXN";
+        var saldoPendiente = currentBooking.TotalAmount - paid;
+        if (PagoSaldoLabel is not null)
+            PagoSaldoLabel!.Text = saldoPendiente > 0 ? $"Saldo Pendiente: {saldoPendiente:C}" : "Saldo Pendiente: $0.00 MXN";
         if (PagoAbono1Label is not null)
         {
             if (payments.Count > 0)
@@ -144,9 +145,9 @@ public partial class ClientMyBookingDetailPage : ContentPage
             }
         }
 
-        if (FindByName("PagoSaldoLabel") is Label psl && booking is not null)
+        if (FindByName("PagoSaldoLabel") is Label psl)
         {
-            var saldoPendienteFind = booking.TotalAmount - paid;
+            var saldoPendienteFind = currentBooking.TotalAmount - paid;
             psl.Text = saldoPendienteFind > 0 ? $"Saldo Pendiente: {saldoPendienteFind:C}" : "Saldo Pendiente: $0.00 MXN";
         }
         if (FindByName("PagoAbono1Label") is Label pa1)
@@ -170,23 +171,23 @@ public partial class ClientMyBookingDetailPage : ContentPage
         }
         PaymentsList.ItemsSource = payments;
 
-        var qrImage = QrCodeService.FromToken(booking.QrToken);
-        QrImage.Source = qrImage;
-        QrSection.IsVisible = qrImage is not null && booking.Status != BookingStatus.Cancelled;
+        var qrImage = QrCodeService.FromToken(currentBooking.QrToken);
+        QrImage!.Source = qrImage;
+        QrSection!.IsVisible = qrImage is not null && currentBooking.Status != BookingStatus.Cancelled;
 
-        var hasPassengers = booking.Passengers is { Count: > 0 };
-        PassengersQrButton.IsVisible = hasPassengers && booking.Status != BookingStatus.Cancelled;
+        var hasPassengers = passengers.Count > 0;
+        PassengersQrButton.IsVisible = hasPassengers && currentBooking.Status != BookingStatus.Cancelled;
         if (hasPassengers)
-            PassengersQrButton.Text = $"Ver QR de acompañantes ({booking.Passengers!.Count})";
+            PassengersQrButton.Text = $"Ver QR de acompañantes ({passengers.Count})";
 
-        var passengerCount = hasPassengers ? booking.Passengers!.Count : 0;
+        var passengerCount = passengers.Count;
         _remainingSlots = Math.Max(0, booking.NumberOfSeats - 1 - passengerCount);
 
         if (booking.Status != BookingStatus.Cancelled && booking.NumberOfSeats > 1)
         {
             PassengersListLabel.IsVisible = true;
             PassengersListLabel.Text = hasPassengers
-                ? $"Acompañantes: {string.Join(" · ", booking.Passengers!.Select(p => p.Name + (p.IsChild ? " (Niño)" : " (Adulto)")))}"
+                ? $"Acompañantes: {string.Join(" · ", passengers.Select(p => p.Name + (p.IsChild ? " (Niño)" : " (Adulto)")))}"
                 : $"Aún no registras acompañantes ({booking.NumberOfSeats - 1} asiento(s) adicionales).";
             AddPassengersButton.IsVisible = _remainingSlots > 0;
             AddPassengersButton.Text = _remainingSlots == 1
@@ -199,10 +200,10 @@ public partial class ClientMyBookingDetailPage : ContentPage
             AddPassengersButton.IsVisible = false;
         }
 
-        PaymentsTotalLabel.Text = booking.Payments is { Count: > 0 }
+        PaymentsTotalLabel.Text = payments.Count > 0
             ? $"Total abonado: {paid:C}"
             : "";
-        PaymentsTotalLabel.IsVisible = booking.Payments is { Count: > 0 };
+        PaymentsTotalLabel.IsVisible = payments.Count > 0;
 
         await RenderRatingUiAsync(booking, trip);
 
