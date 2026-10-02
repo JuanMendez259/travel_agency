@@ -97,7 +97,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
         var refunded = booking.RefundedTotal();
         var total = booking.TotalAmount;
         var remaining = total - paid;
-
+        var payments = booking.Payments?.OrderBy(p => p.PaymentDate).ToList() ?? new List<Payment>();
 
         if (ReservaCupoLabel is not null && booking is not null)
             ReservaCupoLabel.Text = $"{booking.NumberOfSeats} lugar(es)";
@@ -121,46 +121,54 @@ public partial class ClientMyBookingDetailPage : ContentPage
         if (FindByName("ReservaTotalLabel") is Label rtl && booking is not null)
             rtl.Text = $"Monto Total: {booking.TotalAmount:C}";
 
-
-
+        var saldoPendiente = booking.TotalAmount - paid;
         if (PagoSaldoLabel is not null && booking is not null)
+            PagoSaldoLabel.Text = saldoPendiente > 0 ? $"Saldo Pendiente: {saldoPendiente:C}" : "Saldo Pendiente: $0.00 MXN";
+        if (PagoAbono1Label is not null)
         {
-            var paid = booking.PaidTotal();
-            var remaining = booking.TotalAmount - paid;
-            PagoSaldoLabel.Text = remaining > 0 ? $"Saldo Pendiente: {remaining:C}" : "Saldo Pendiente: $0.00 MXN";
-        }
-        if (PagoAbono1Label is not null && booking?.Payments is not null)
-        {
-            if (booking.Payments.Count > 0)
-                PagoAbono1Label.Text = $"{booking.Payments[0].Date:dd MMM} - {booking.Payments[0].Amount:C}";
+            if (payments.Count > 0)
+                PagoAbono1Label.Text = $"{payments[0].PaymentDate:dd MMM} - {payments[0].Amount:C}";
             else
                 PagoAbono1Label.Text = "Próximamente";
         }
-        if (PagoAbono2Label is not null && booking?.Payments is not null && booking.Payments.Count > 1)
+        if (PagoAbono2Label is not null)
         {
-            PagoAbono2Label.IsVisible = true;
-            PagoAbono2Label.Text = $"{booking.Payments[1].Date:dd MMM} - {booking.Payments[1].Amount:C}";
+            if (payments.Count > 1)
+            {
+                PagoAbono2Label.IsVisible = true;
+                PagoAbono2Label.Text = $"{payments[1].PaymentDate:dd MMM} - {payments[1].Amount:C}";
+            }
+            else
+            {
+                PagoAbono2Label.IsVisible = false;
+            }
         }
 
         if (FindByName("PagoSaldoLabel") is Label psl && booking is not null)
         {
-            var paid = booking.PaidTotal();
-            var remaining = booking.TotalAmount - paid;
-            psl.Text = remaining > 0 ? $"Saldo Pendiente: {remaining:C}" : "Saldo Pendiente: $0.00 MXN";
+            var saldoPendienteFind = booking.TotalAmount - paid;
+            psl.Text = saldoPendienteFind > 0 ? $"Saldo Pendiente: {saldoPendienteFind:C}" : "Saldo Pendiente: $0.00 MXN";
         }
-        if (FindByName("PagoAbono1Label") is Label pa1 && booking?.Payments is not null)
+        if (FindByName("PagoAbono1Label") is Label pa1)
         {
-            if (booking.Payments.Count > 0)
-                pa1.Text = $"{booking.Payments[0].Date:dd MMM} - {booking.Payments[0].Amount:C}";
+            if (payments.Count > 0)
+                pa1.Text = $"{payments[0].PaymentDate:dd MMM} - {payments[0].Amount:C}";
             else
                 pa1.Text = "Próximamente";
         }
-        if (FindByName("PagoAbono2Label") is Label pa2 && booking?.Payments is not null && booking.Payments.Count > 1)
+        if (FindByName("PagoAbono2Label") is Label pa2)
         {
-            pa2.IsVisible = true;
-            pa2.Text = $"{booking.Payments[1].Date:dd MMM} - {booking.Payments[1].Amount:C}";
+            if (payments.Count > 1)
+            {
+                pa2.IsVisible = true;
+                pa2.Text = $"{payments[1].PaymentDate:dd MMM} - {payments[1].Amount:C}";
+            }
+            else
+            {
+                pa2.IsVisible = false;
+            }
         }
-        PaymentsList.ItemsSource = booking.Payments;
+        PaymentsList.ItemsSource = payments;
 
         var qrImage = QrCodeService.FromToken(booking.QrToken);
         QrImage.Source = qrImage;

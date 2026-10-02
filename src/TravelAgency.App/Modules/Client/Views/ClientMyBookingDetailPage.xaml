@@ -184,7 +184,17 @@
                     </HorizontalStackLayout>
                     <Label Text="Consulta el trazado completo de la ruta y los puntos de interés en el mapa interactivo."
                            FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                    <Button x:Name="
+                    <Button x:Name="ForceMapButton"
+                            Text="Ver ruta en mapa interactivo"
+                            Clicked="OnForceMapClicked"
+                            BackgroundColor="{StaticResource ColorPrimary}"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            CornerRadius="12"
+                            HeightRequest="48" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- ============ RESERVA Y COSTO ============ -->
             <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
                 <VerticalStackLayout Spacing="8">
@@ -217,16 +227,6 @@
                         <Label x:Name="PagoSaldoLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
                     </VerticalStackLayout>
                     <Button x:Name="DownloadReceiptButton" Text="Descargar Recibo Digital (PDF)" IsVisible="False" />
-                </VerticalStackLayout>
-            </Border>
-ForceMapButton"
-                            Text="Ver ruta en mapa interactivo"
-                            Clicked="OnForceMapClicked"
-                            BackgroundColor="{StaticResource ColorPrimary}"
-                            TextColor="White"
-                            FontAttributes="Bold"
-                            CornerRadius="12"
-                            HeightRequest="48" />
                 </VerticalStackLayout>
             </Border>
 
