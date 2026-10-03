@@ -31,6 +31,10 @@
             ContentTemplate="{DataTemplate client:ClientProfilePage}"
             Route="profile" />
         <ShellContent
+            Title="Nosotros"
+            ContentTemplate="{DataTemplate client:ClientCompanyPage}"
+            Route="company" />
+        <ShellContent
             Title="Mis Viajes"
             ContentTemplate="{DataTemplate admin:AdminTripsPage}"
             Route="admintrips" />

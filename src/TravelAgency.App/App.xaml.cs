@@ -74,7 +74,7 @@ public partial class App : Application
         else
         {
             foreach (var item in tabs)
-                item.IsVisible = item.Route is "home" or "mytrips" or "profile" or "notifications";
+                item.IsVisible = item.Route is "home" or "mytrips" or "profile" or "company" or "notifications";
         }
 
         Application.Current!.Windows[0].Page = shell;
