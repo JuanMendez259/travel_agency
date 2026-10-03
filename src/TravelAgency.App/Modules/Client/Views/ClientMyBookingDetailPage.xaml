@@ -114,43 +114,66 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Horarios e Itinerario -->
-            <Border StrokeThickness="0" BackgroundColor="#FFFFFF" Padding="14" Margin="0,8,0,0">
-                <VerticalStackLayout Spacing="6">
-                    <Label Text="Horarios e Itinerario" FontSize="15" FontAttributes="Bold" />
-                    <Label x:Name="SalidaLabel" FontSize="14" FontAttributes="Bold" />
-                    <Label x:Name="RegresoLabel" FontSize="14" FontAttributes="Bold" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- ============ FECHAS, PRECIO Y TRANSPORTE ============ -->
-            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
+            <!-- ============ HORARIOS E ITINERARIO ============ -->
+            <Border Margin="20,16,20,0" StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
-                <VerticalStackLayout Spacing="8">
-                    <HorizontalStackLayout Spacing="6">
-                        <Label Text="📅" FontSize="15" />
-                        <Label Text="Fechas y Detalles" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
-                    </HorizontalStackLayout>
-
-                    <Label x:Name="DatesLabel" FontSize="13" TextColor="{StaticResource ColorOnSurface}" IsVisible="False" />
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <VerticalStackLayout Grid.Column="0">
-                            <Label Text="Salida" FontSize="11" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                            <Label x:Name="SalidaLabel" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
-                        </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="1">
-                            <Label Text="Regreso" FontSize="11" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                            <Label x:Name="RegresoLabel" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
-                        </VerticalStackLayout>
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                            <Label Text="📅" FontSize="18" VerticalOptions="Center" />
+                            <Label Text="Horarios e Itinerario" FontSize="16" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Border Grid.Column="1" StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                                Padding="9,3" VerticalOptions="Center">
+                            <Label x:Name="DurationLabel" FontSize="11" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}" />
+                        </Border>
                     </Grid>
-                    <Label x:Name="PriceLabel" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
 
-                    <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainer}" />
+                    <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0"
+                                    BackgroundColor="{StaticResource ColorPrimary}"
+                                    StrokeShape="RoundRectangle 16">
+                                <Label Text="🛫" FontSize="15"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="SALIDA / IDA" FontSize="11" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorSecondary}" />
+                                <Label x:Name="ItineraryOutLabel" FontSize="16" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnSurface}" />
+                                <Label x:Name="OutMeetingLabel" FontSize="12"
+                                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
 
-                    <Label x:Name="TransportLabel" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                    <Label x:Name="AvailabilityLabel" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                    <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0"
+                                    BackgroundColor="{StaticResource ColorSecondary}"
+                                    StrokeShape="RoundRectangle 16">
+                                <Label Text="🛬" FontSize="15"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2">
+                                <Label Text="REGRESO / RETORNO" FontSize="11" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorSecondary}" />
+                                <Label x:Name="ItineraryBackLabel" FontSize="16" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnSurface}" />
+                                <Label x:Name="BackMeetingLabel" FontSize="12"
+                                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
                 </VerticalStackLayout>
             </Border>
 

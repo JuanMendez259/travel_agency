@@ -57,30 +57,29 @@ public partial class ClientMyBookingDetailPage : ContentPage
         Title = trip?.Title;
         TitleLabel.Text = trip?.Title;
         DestinationLabel.Text = trip?.Destination;
-        DatesLabel.Text = trip is null
-            ? ""
-            : $"{trip.StartDate:dd/MM/yyyy HH:mm} al {trip.EndDate:dd/MM/yyyy HH:mm}";
         if (FindByName("SalidaLabel") is Label sl && trip is not null)
             sl.Text = $"{trip.StartDate:dddd dd/MM/yyyy HH:mm}";
         if (FindByName("RegresoLabel") is Label rl && trip is not null)
             rl.Text = $"{trip.EndDate:dddd dd/MM/yyyy HH:mm}";
 
-        if (SalidaLabel is not null && trip is not null)
-            SalidaLabel.Text = $"{trip.StartDate:dddd dd/MM/yyyy HH:mm}";
-        if (RegresoLabel is not null && trip is not null)
-            RegresoLabel.Text = $"{trip.EndDate:dddd dd/MM/yyyy HH:mm}";
 
-        PriceLabel.Text = trip is null ? "" : $"{trip.Price:C} por asiento";
+        if (DurationLabel is not null && trip is not null)
+        {
+            var days = (trip.EndDate.Date - trip.StartDate.Date).TotalDays;
+            var nights = Math.Max(0, days - 1);
+            DurationLabel.Text = $"{days} {(days == 1 ? "Día" : "Días")} / {nights} {(nights == 1 ? "Noche" : "Noches")}";
+        }
+        if (ItineraryOutLabel is not null && trip is not null)
+            ItineraryOutLabel.Text = $"{trip.StartDate:dddd dd/MM/yyyy HH:mm}";
+        if (ItineraryBackLabel is not null && trip is not null)
+            ItineraryBackLabel.Text = $"{trip.EndDate:dddd dd/MM/yyyy HH:mm}";
+        OutMeetingLabel.Text = "Punto de salida: por confirmar";
+        BackMeetingLabel.Text = "Punto de regreso: por confirmar";
+
+
         DescriptionLabel.Text = trip?.Description;
 
-        if (trip is not null)
-        {
-            TransportLabel.Text = $"Transporte: {TransportTypeConverter.ToDisplay(trip.TransportType)}";
-            AvailabilityLabel.Text = trip.AvailableSeats > 0
-                ? $"Disponibles: {Math.Max(0, trip.AvailableSeats)} de {trip.Capacity} asientos"
-                : $"Sin cupo disponible (capacidad {trip.Capacity})";
-
-            var pois = trip.PointsOfInterest?
+            var pois = trip?.PointsOfInterest?
                 .OrderBy(p => p.Order)
                 .Cast<object>()
                 .ToList() ?? new List<object>();
@@ -89,7 +88,6 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 ItineraryHeader.IsVisible = true;
                 BindableLayout.SetItemsSource(ItineraryLayout, pois);
             }
-                    }
 
         StatusLabel.Text = $"Estado: {currentBooking.Status}";
 
