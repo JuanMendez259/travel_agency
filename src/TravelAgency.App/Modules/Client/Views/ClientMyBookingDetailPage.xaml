@@ -114,6 +114,15 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- Horarios e Itinerario -->
+            <Border StrokeThickness="0" BackgroundColor="#FFFFFF" Padding="14" Margin="0,8,0,0">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="Horarios e Itinerario" FontSize="15" FontAttributes="Bold" />
+                    <Label x:Name="SalidaLabel" FontSize="14" FontAttributes="Bold" />
+                    <Label x:Name="RegresoLabel" FontSize="14" FontAttributes="Bold" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- ============ FECHAS, PRECIO Y TRANSPORTE ============ -->
             <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
