@@ -452,3 +452,8 @@ MapConfigSecrets.cs
 
 # Salida de herramientas locales
 graphify-out/
+
+# Config local de opencode (MCP, etc.)
+opencode.json
+opencode.jsonc
+.opencode/
