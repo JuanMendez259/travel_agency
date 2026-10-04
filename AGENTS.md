@@ -83,3 +83,6 @@ API base URL: `https://travelagency-production-f6cf.up.railway.app`
 - Fotos: revisa permisos en `Info.plist` / `AndroidManifest.xml` antes de usarlas.
 - `ScrollView` con contenido de altura indefinida (mapas, listas largas) necesita
   `HeightRequest` o得 un contenedor con tamaño definido.
+
+- Siempre que generes o edites interfaces visuales (vistas XAML, ContentPage, ContentView, o estilos en C#), debes leer obligatoriamente `@DESIGN.md` para aplicar los nombres de los diccionarios de recursos y tokens correctos de .NET MAUI. Jamás mezcles sintaxis Web (HTML/CSS) en este repositorio.
+  

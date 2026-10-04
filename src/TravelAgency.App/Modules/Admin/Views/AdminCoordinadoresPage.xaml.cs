@@ -1,12 +1,11 @@
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
+using System.Security.Cryptography;
 
 namespace TravelAgency.App.Modules.Admin.Views;
 
 public partial class AdminCoordinadoresPage : ContentPage
 {
-    private const string PasswordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-
     private readonly ApiService _api;
 
     public AdminCoordinadoresPage(ApiService api)
@@ -18,35 +17,48 @@ public partial class AdminCoordinadoresPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await LoadCoordinatorsAsync();
-    }
-
-    private async Task LoadCoordinatorsAsync()
-    {
-        LoadingIndicator.IsRunning = true;
         try
         {
-            var users = await _api.GetUsersAsync();
-            var coordinators = (users ?? new List<User>())
-                .Where(u => u.Role == UserRole.Coordinador)
-                .OrderBy(u => u.Name, StringComparer.CurrentCultureIgnoreCase)
-                .ToList();
-
-            CountLabel.Text = coordinators.Count == 1
-                ? "1 coordinador con acceso al sistema"
-                : $"{coordinators.Count} coordinadores con acceso al sistema";
-
-            EmptyLabel.IsVisible = coordinators.Count == 0;
-            CoordinatorsLayout.Clear();
-
-            foreach (var coordinator in coordinators)
-            {
-                CoordinatorsLayout.Add(BuildCoordinatorRow(coordinator));
-            }
+            await LoadCoordinatorsAsync();
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("Error", ex.Message, "OK");
+            await DisplayAlertAsync("Error", $"No se pudieron cargar los coordinadores: {ex.Message}", "OK");
+        }
+    }
+
+    private async Task LoadCoordinatorsAsync(bool showLoading = true)
+    {
+        if (showLoading)
+        {
+            LoadingIndicator.IsRunning = true;
+        }
+
+        try
+        {
+            var users = await _api.GetUsersAsync();
+            var list = (users ?? new List<User>())
+                .Where(u => u.Role == UserRole.Coordinador)
+                .OrderBy(u => u.Name)
+                .ToList();
+
+            CoordinatorsLayout.Children.Clear();
+
+            if (list.Count == 0)
+            {
+                EmptyLabel.IsVisible = true;
+                CountLabel.Text = "0 coordinadores";
+            }
+            else
+            {
+                EmptyLabel.IsVisible = false;
+                CountLabel.Text = $"{list.Count} coordinador(es)";
+
+                foreach (var user in list)
+                {
+                    CoordinatorsLayout.Children.Add(BuildCoordinatorRow(user));
+                }
+            }
         }
         finally
         {
@@ -54,124 +66,160 @@ public partial class AdminCoordinadoresPage : ContentPage
         }
     }
 
-    private static View BuildCoordinatorRow(User coordinator)
+    private View BuildCoordinatorRow(User user)
     {
-        var phone = string.IsNullOrWhiteSpace(coordinator.Phone) ? "Sin teléfono" : coordinator.Phone;
+        var name = string.IsNullOrWhiteSpace(user.Name) ? "Sin nombre" : user.Name;
+        var email = string.IsNullOrWhiteSpace(user.Email) ? "Sin correo" : user.Email;
 
-        return new Border
+        var border = new Border
         {
-            Padding = 12,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(10) },
-            BackgroundColor = Color.FromArgb("#F7FAFC"),
-            Content = new VerticalStackLayout
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+            BackgroundColor = Color.FromArgb("#F2F3FF"),
+            Stroke = Color.FromArgb("#E2E7FF"),
+            StrokeThickness = 1,
+            Padding = new Thickness(14, 10),
+            Margin = new Thickness(0, 4)
+        };
+
+        var grid = new Grid
+        {
+            ColumnDefinitions =
             {
-                Spacing = 2,
-                Children =
-                {
-                    new Label
-                    {
-                        Text = coordinator.Name ?? "(sin nombre)",
-                        FontSize = 16,
-                        FontAttributes = FontAttributes.Bold
-                    },
-                    new Label { Text = coordinator.Email ?? string.Empty, FontSize = 13 },
-                    new Label
-                    {
-                        Text = $"{phone} · Alta {coordinator.CreatedAt.ToLocalTime():dd/MM/yyyy}",
-                        FontSize = 12,
-                        TextColor = Colors.Gray
-                    }
-                }
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            RowDefinitions =
+            {
+                new RowDefinition(GridLength.Auto),
+                new RowDefinition(GridLength.Auto)
             }
         };
+
+        var nameLabel = new Label
+        {
+            Text = name,
+            FontSize = 14,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#131B2E")
+        };
+
+        var emailLabel = new Label
+        {
+            Text = email,
+            FontSize = 12,
+            TextColor = Color.FromArgb("#404941")
+        };
+
+        var roleLabel = new Label
+        {
+            Text = "Coordinador",
+            FontSize = 11,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#006C49")
+        };
+
+        Grid.SetRow(emailLabel, 1);
+        Grid.SetRowSpan(roleLabel, 2);
+        Grid.SetColumn(roleLabel, 1);
+        Grid.SetRow(roleLabel, 0);
+
+        grid.Add(nameLabel);
+        grid.Add(emailLabel);
+        grid.Add(roleLabel);
+
+        border.Content = grid;
+        return border;
     }
 
-    private async void OnGeneratePasswordClicked(object? sender, EventArgs e)
+    private void OnGeneratePasswordClicked(object? sender, EventArgs e)
     {
-        PasswordEntry.Text = GeneratePassword();
-        await DisplayAlertAsync("Contraseña generada",
-            "Se generó una contraseña temporal. Puedes copiarla o escribir otra.", "OK");
+        PasswordEntry.Text = GenerateRandomPassword();
+    }
+
+    private static string GenerateRandomPassword()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+        var random = RandomNumberGenerator.Create();
+        var buffer = new byte[10];
+        random.GetBytes(buffer);
+
+        var result = new System.Text.StringBuilder(10);
+        for (int i = 0; i < 10; i++)
+        {
+            result.Append(chars[buffer[i] % chars.Length]);
+        }
+
+        return result.ToString();
     }
 
     private async void OnRegisterClicked(object? sender, EventArgs e)
     {
-        var name = NameEntry.Text?.Trim();
-        var email = EmailEntry.Text?.Trim();
-        var phone = PhoneEntry.Text?.Trim();
-        var password = PasswordEntry.Text?.Trim();
+        var name = NameEntry.Text?.Trim() ?? string.Empty;
+        var email = EmailEntry.Text?.Trim().ToLowerInvariant() ?? string.Empty;
+        var phone = PhoneEntry.Text?.Trim() ?? string.Empty;
+        var password = PasswordEntry.Text?.Trim() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            await ShowFeedback("Escribe el nombre del coordinador.", isError: true);
+            await DisplayAlertAsync("Datos incompletos", "Indica el nombre completo del coordinador.", "OK");
             return;
         }
 
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
         {
-            await ShowFeedback("Escribe un correo válido.", isError: true);
+            await DisplayAlertAsync("Datos incompletos", "Indica un correo electrónico válido.", "OK");
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(password) && password.Length < 6)
+        if (string.IsNullOrWhiteSpace(password))
         {
-            await ShowFeedback("La contraseña debe tener al menos 6 caracteres.", isError: true);
+            password = GenerateRandomPassword();
+            PasswordEntry.Text = password;
+        }
+        else if (password.Length < 6)
+        {
+            await DisplayAlertAsync("Datos incompletos", "La contraseña temporal debe tener al menos 6 caracteres.", "OK");
             return;
         }
 
         RegisterButton.IsEnabled = false;
-        LoadingIndicator.IsRunning = true;
+        FeedbackLabel.IsVisible = true;
+        FeedbackLabel.Text = "Registrando coordinador...";
+        FeedbackLabel.TextColor = Color.FromArgb("#404941");
+
         try
         {
-            var created = await _api.CreateCoordinatorAsync(name, email, phone,
-                string.IsNullOrWhiteSpace(password) ? null : password);
-
-            ClearForm();
-
-            await LoadCoordinatorsAsync();
-
-            if (created is not null)
+            var user = await _api.CreateCoordinatorAsync(name, email, phone, password);
+            if (user is null)
             {
-                await DisplayAlertAsync("Coordinador registrado",
-                    $"{created.Name} ({created.Email})\n\n"
-                    + $"Contraseña temporal: {created.TemporaryPassword}\n\n"
-                    + "Anótala y compártela por un canal seguro. No se vuelve a mostrar.",
-                    "Entendido");
+                FeedbackLabel.Text = "No fue posible registrar al coordinador.";
+                FeedbackLabel.TextColor = Color.FromArgb("#BA1A1A");
+                return;
             }
+
+            FeedbackLabel.Text = $"Coordinador registrado: {user.Email}. Contraseña temporal: {password}";
+            FeedbackLabel.TextColor = Color.FromArgb("#006C49");
+
+            NameEntry.Text = string.Empty;
+            EmailEntry.Text = string.Empty;
+            PhoneEntry.Text = string.Empty;
+            PasswordEntry.Text = string.Empty;
+
+            await LoadCoordinatorsAsync(showLoading: false);
+
+            await DisplayAlertAsync("Coordinador registrado",
+                $"Se registró {user.Name} ({user.Email}) con rol Coordinador. La contraseña temporal es {password}. Compártela por un canal seguro.",
+                "OK");
         }
         catch (Exception ex)
         {
-            await ShowFeedback(ex.Message, isError: true);
+            FeedbackLabel.Text = ex.Message;
+            FeedbackLabel.TextColor = Color.FromArgb("#BA1A1A");
         }
         finally
         {
             RegisterButton.IsEnabled = true;
-            LoadingIndicator.IsRunning = false;
         }
-    }
-
-    private async Task ShowFeedback(string message, bool isError)
-    {
-        FeedbackLabel.Text = message;
-        FeedbackLabel.TextColor = isError ? Color.FromArgb("#C53030") : Color.FromArgb("#2F855A");
-        FeedbackLabel.IsVisible = true;
-        await Task.CompletedTask;
-    }
-
-    private void ClearForm()
-    {
-        NameEntry.Text = string.Empty;
-        EmailEntry.Text = string.Empty;
-        PhoneEntry.Text = string.Empty;
-        PasswordEntry.Text = string.Empty;
-        FeedbackLabel.IsVisible = false;
-    }
-
-    private static string GeneratePassword()
-    {
-        var chars = new char[10];
-        for (var i = 0; i < chars.Length; i++)
-            chars[i] = PasswordAlphabet[Random.Shared.Next(PasswordAlphabet.Length)];
-        return new string(chars);
     }
 
     private async void OnLogoutClicked(object? sender, EventArgs e)

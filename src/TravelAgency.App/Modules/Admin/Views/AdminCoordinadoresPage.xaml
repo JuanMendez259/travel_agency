@@ -15,7 +15,7 @@
             <Label Text="Registrar coordinador" FontSize="20" FontAttributes="Bold" />
             <Label Text="Crea la cuenta con rol Coordinador. Al iniciar sesión verá la pestaña de viajes, las solicitudes de cupo y el control de salida."
                    FontSize="13"
-                   TextColor="Gray" />
+                   TextColor="{StaticResource OnSurfaceVariant}" />
 
             <Label Text="Nombre completo" />
             <Entry x:Name="NameEntry" Placeholder="Ej. María Ramírez" />
@@ -30,35 +30,35 @@
             <Entry x:Name="PasswordEntry" Placeholder="Mínimo 6 caracteres" IsPassword="True" />
             <Label Text="Déjala vacía y se generará una automáticamente. Compártela con el coordinador por un canal seguro: no se vuelve a mostrar."
                    FontSize="12"
-                   TextColor="Gray" />
+                   TextColor="{StaticResource OnSurfaceVariant}" />
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
                 <Button Text="Generar contraseña"
                         Clicked="OnGeneratePasswordClicked"
-                        BackgroundColor="#E2E8F0"
-                        TextColor="#1A202C" />
+                         BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                                                 TextColor="{StaticResource OnSurface}" />
                 <Button x:Name="RegisterButton"
                         Grid.Column="1"
                         Text="Registrar coordinador"
                         Clicked="OnRegisterClicked"
-                        BackgroundColor="#2B6CB0" />
+                                                 BackgroundColor="{StaticResource Primary}" />
             </Grid>
 
             <Label x:Name="FeedbackLabel"
                    FontSize="13"
                    IsVisible="False" />
 
-            <BoxView HeightRequest="1" Color="#DDDDDD" Margin="0,20,0,10" />
+            <BoxView HeightRequest="1" Color="{StaticResource OutlineVariant}" Margin="0,20,0,10" />
 
             <Label Text="Coordinadores registrados" FontSize="20" FontAttributes="Bold" />
-            <Label x:Name="CountLabel" FontSize="13" TextColor="Gray" />
+            <Label x:Name="CountLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
 
             <VerticalStackLayout x:Name="CoordinatorsLayout" Spacing="8" Margin="0,6,0,0" />
 
             <Label x:Name="EmptyLabel"
                    Text="Todavía no hay coordinadores registrados."
                    FontSize="13"
-                   TextColor="Gray"
+                   TextColor="{StaticResource OnSurfaceVariant}"
                    IsVisible="False" />
 
             <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" />
