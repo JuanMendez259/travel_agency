@@ -3,6 +3,7 @@
     x:Class="TravelAgency.App.Modules.Client.Views.ClientCompanyPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Shell.NavBarIsVisible="False"
     Title="Nosotros">
 
     <ContentPage.Resources>
@@ -10,7 +11,10 @@
             <Color x:Key="ColorPrimary">#003B1B</Color>
             <Color x:Key="ColorPrimaryContainer">#14532D</Color>
             <Color x:Key="ColorSecondary">#006C49</Color>
-            <Color x:Key="ColorSecondaryFixed">#6CF8BB</Color>
+            <Color x:Key="ColorSecondaryContainer">#6CF8BB</Color>
+            <Color x:Key="ColorSecondaryFixed">#6FFBBE</Color>
+            <Color x:Key="ColorOnSecondaryFixed">#002113</Color>
+            <Color x:Key="ColorOnPrimaryContainer">#87C695</Color>
             <Color x:Key="ColorSurface">#FAF8FF</Color>
             <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
             <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
@@ -23,239 +27,547 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <ScrollView BackgroundColor="{StaticResource ColorSurface}">
-        <VerticalStackLayout Padding="20,16,20,28" Spacing="18">
+    <Grid RowDefinitions="Auto,*" BackgroundColor="{StaticResource ColorSurface}">
 
-            <!-- ============ MARCA ============ -->
-            <Border StrokeShape="RoundRectangle 22" Padding="20">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="{StaticResource ColorPrimary}" Offset="0" />
-                        <GradientStop Color="{StaticResource ColorPrimaryContainer}" Offset="0.55" />
-                        <GradientStop Color="{StaticResource ColorSecondary}" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-                <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.18" Radius="16" Offset="0,6" />
-                </Border.Shadow>
-                <VerticalStackLayout Spacing="8">
-                    <Border WidthRequest="56" HeightRequest="56"
-                            StrokeThickness="0"
-                            BackgroundColor="#33FFFFFF"
-                            StrokeShape="RoundRectangle 18"
-                            HorizontalOptions="Start">
-                        <Label Text="🌿" FontSize="28"
+        <!-- ============ ENCABEZADO ============ -->
+        <Grid Grid.Row="0" Padding="20,12,20,8" ColumnDefinitions="*,Auto">
+            <HorizontalStackLayout Grid.Column="0" Spacing="8" VerticalOptions="Center">
+                <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0"
+                        BackgroundColor="#666CF8BB" StrokeShape="RoundRectangle 16">
+                    <Label Text="🌲" FontSize="16"
+                           HorizontalOptions="Center" VerticalOptions="Center" />
+                </Border>
+                <Label Text="Nosotros" FontSize="22" FontAttributes="Bold"
+                       TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+            </HorizontalStackLayout>
+
+            <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                <Button Text="📤" FontSize="18" Padding="0"
+                        WidthRequest="40" HeightRequest="40" CornerRadius="20"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                        TextColor="{StaticResource ColorOnSurfaceVariant}"
+                        Clicked="OnShareClicked" />
+                <Button Text="🌿" FontSize="18" Padding="0"
+                        WidthRequest="40" HeightRequest="40" CornerRadius="20"
+                        BackgroundColor="#4D6CF8BB"
+                        TextColor="{StaticResource ColorSecondary}"
+                        Clicked="OnPledgeClicked" />
+            </HorizontalStackLayout>
+        </Grid>
+
+        <!-- ============ CONTENIDO ============ -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="0,0,0,28">
+
+                <!-- Hero / galería -->
+                <Border Margin="20,4,20,8" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 24"
+                        BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                        HeightRequest="210">
+                    <Border.Shadow>
+                        <Shadow Brush="#14532D" Opacity="0.12" Radius="24" Offset="0,6" />
+                    </Border.Shadow>
+                    <Grid>
+                        <Grid.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="{StaticResource ColorPrimaryContainer}" Offset="0" />
+                                <GradientStop Color="{StaticResource ColorSecondary}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Grid.Background>
+                        <Label Text="🛶" FontSize="72" Opacity="0.85"
                                HorizontalOptions="Center" VerticalOptions="Center" />
-                    </Border>
-                    <Label Text="RutaVerde"
-                           FontSize="26" FontAttributes="Bold"
-                           TextColor="White" />
-                    <Label Text="Turismo sustentable y seguro"
-                           FontSize="14"
-                           TextColor="#CCFFFFFF" />
-                </VerticalStackLayout>
-            </Border>
+                        <Grid Padding="12" VerticalOptions="End" ColumnDefinitions="*,Auto">
+                            <Border Grid.Column="0" StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 14"
+                                    BackgroundColor="#CC003B1B" Padding="10,4"
+                                    HorizontalOptions="Start">
+                                <HorizontalStackLayout Spacing="4">
+                                    <Label Text="🛶" FontSize="12" />
+                                    <Label Text="Pozas de Agua Azul" FontSize="11" FontAttributes="Bold"
+                                           TextColor="White" VerticalOptions="Center" />
+                                </HorizontalStackLayout>
+                            </Border>
+                            <Label Grid.Column="1" Text="Santuario Fluvial" FontSize="11"
+                                   TextColor="#E6FFFFFF" VerticalOptions="Center" />
+                        </Grid>
+                    </Grid>
+                </Border>
 
-            <!-- ============ QUIÉNES SOMOS ============ -->
-            <Border StrokeShape="RoundRectangle 16"
-                    Stroke="{StaticResource ColorSurfaceContainerHigh}"
-                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
-                    Padding="16">
-                <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
-                </Border.Shadow>
-                <VerticalStackLayout Spacing="10">
-                    <HorizontalStackLayout Spacing="8">
-                        <Label Text="🛡️" FontSize="18" VerticalOptions="Center" />
-                        <Label Text="Quiénes somos"
-                               FontSize="18" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorPrimary}"
-                               VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-                    <Label Text="Operamos con guías certificados y logística responsable. Tu conformidad garantiza salidas puntuales."
-                           FontSize="14"
-                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                    <Label Text="Personalizamos salidas para familias, amigos o empresas desde 10 viajeros."
-                           FontSize="14"
-                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- ============ LO QUE NOS DISTINGUE ============ -->
-            <VerticalStackLayout Spacing="8">
-                <Label Text="Lo que nos distingue"
-                       FontSize="16" FontAttributes="Bold"
-                       TextColor="{StaticResource ColorPrimary}" />
-
-                <Border StrokeShape="RoundRectangle 16"
-                        Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                <!-- Manifiesto -->
+                <Border Margin="20,8,20,16" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 24"
                         BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
                         Padding="16">
                     <Border.Shadow>
-                        <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                        <Shadow Brush="#0F172A" Opacity="0.05" Radius="16" Offset="0,4" />
                     </Border.Shadow>
-                    <VerticalStackLayout Spacing="12">
+                    <VerticalStackLayout Spacing="8">
+                        <HorizontalStackLayout Spacing="4">
+                            <Label Text="🌿" FontSize="14" VerticalOptions="Center" />
+                            <Label Text="MANIFIESTO VERDE" FontSize="11" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Label Text="Conectando personas con la naturaleza de forma responsable"
+                               FontSize="18" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorPrimary}" />
+                        <Label FontSize="14" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                               Text="RutaVerde nació en los senderos de la Huasteca y la Selva Maya con una convicción clara: viajar no debe consumir los lugares que amamos, sino regenerarlos." />
+                        <Label FontSize="14" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                               Text="Diseñamos expediciones en grupos reducidos de máximo 12 exploradores, acompañados por biólogos y guías nativos certificados. Cada itinerario distribuye riqueza justa a cooperativas ejidales y apoya la conservación biológica local." />
 
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                            <Border WidthRequest="40" HeightRequest="40"
-                                    StrokeThickness="0"
-                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
-                                    StrokeShape="RoundRectangle 12">
-                                <Label Text="🧭" FontSize="18"
-                                       HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Guías certificados" FontSize="14" FontAttributes="Bold"
-                                       TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Acompañamiento experto en cada salida."
-                                       FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                            </VerticalStackLayout>
-                        </Grid>
-                        <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainer}" />
-
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                            <Border WidthRequest="40" HeightRequest="40"
-                                    StrokeThickness="0"
-                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
-                                    StrokeShape="RoundRectangle 12">
-                                <Label Text="🌱" FontSize="18"
-                                       HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Turismo sustentable" FontSize="14" FontAttributes="Bold"
-                                       TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Viajes responsables con el entorno local."
-                                       FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                            </VerticalStackLayout>
-                        </Grid>
-                        <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainer}" />
-
-                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                            <Border WidthRequest="40" HeightRequest="40"
-                                    StrokeThickness="0"
-                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
-                                    StrokeShape="RoundRectangle 12">
-                                <Label Text="🚌" FontSize="18"
-                                       HorizontalOptions="Center" VerticalOptions="Center" />
-                            </Border>
-                            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Logística responsable" FontSize="14" FontAttributes="Bold"
-                                       TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Salidas puntuales y transporte seguro."
-                                       FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                            </VerticalStackLayout>
-                        </Grid>
-
+                        <Border StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="8"
+                                Margin="0,4,0,0">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Grid.Column="0" Text="❝" FontSize="20"
+                                       TextColor="{StaticResource ColorSecondary}"
+                                       VerticalOptions="Start" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="1">
+                                    <Label FontSize="12" FontAttributes="Italic"
+                                           TextColor="{StaticResource ColorPrimary}"
+                                           Text="“No dejamos más huella que la de nuestros pasos, ni nos llevamos más que memorias transformadoras.”" />
+                                    <Label Text="Equipo Fundador • RutaVerde México" FontSize="11"
+                                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Border>
                     </VerticalStackLayout>
                 </Border>
-            </VerticalStackLayout>
 
-            <!-- ============ CONTACTO ============ -->
-            <VerticalStackLayout Spacing="8">
-                <Label Text="Contacto"
-                       FontSize="16" FontAttributes="Bold"
-                       TextColor="{StaticResource ColorPrimary}" />
+                <!-- Pilares -->
+                <VerticalStackLayout Padding="20,0,20,24" Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Grid.Column="0" Text="Nuestros 4 Pilares" FontSize="18" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurface}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="Criterios Globales" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorSecondary}" VerticalOptions="Center" />
+                    </Grid>
 
-                <Border StrokeShape="RoundRectangle 16"
-                        Stroke="{StaticResource ColorSurfaceContainerHigh}"
-                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
-                        Padding="16,16,16,6">
+                    <!-- Pilar 1 -->
+                    <Border StrokeThickness="0" StrokeShape="RoundRectangle 24"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#14532D" Opacity="0.04" Radius="12" Offset="0,2" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                            <Border Grid.Column="0" WidthRequest="48" HeightRequest="48"
+                                    StrokeThickness="0" BackgroundColor="#666CF8BB"
+                                    StrokeShape="RoundRectangle 16" VerticalOptions="Start">
+                                <Label Text="🍃" FontSize="22"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Grid.Column="0" Text="Turismo Cero Huella" FontSize="16" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                                    <Border Grid.Column="1" StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="8,2">
+                                        <Label Text="100% Neutro" FontSize="11" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondary}" />
+                                    </Border>
+                                </Grid>
+                                <Label FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                       Text="Cero plásticos de un solo uso, reforestación activa de 3 árboles nativos por cada viajero inscrito y protocolos Leave No Trace." />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- Pilar 2 -->
+                    <Border StrokeThickness="0" StrokeShape="RoundRectangle 24"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#14532D" Opacity="0.04" Radius="12" Offset="0,2" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                            <Border Grid.Column="0" WidthRequest="48" HeightRequest="48"
+                                    StrokeThickness="0" BackgroundColor="{StaticResource ColorPrimaryContainer}"
+                                    StrokeShape="RoundRectangle 16" VerticalOptions="Start">
+                                <Label Text="🛡️" FontSize="22"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Grid.Column="0" Text="Guías WFR &amp; Biólogos" FontSize="16" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                                    <Border Grid.Column="1" StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="8,2">
+                                        <Label Text="Certificados" FontSize="11" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondary}" />
+                                    </Border>
+                                </Grid>
+                                <Label FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                       Text="Expertos en primeros auxilios en áreas silvestres remotas (Wilderness First Responder) y residentes de las comunidades anfitrionas." />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- Pilar 3 -->
+                    <Border StrokeThickness="0" StrokeShape="RoundRectangle 24"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#14532D" Opacity="0.04" Radius="12" Offset="0,2" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                            <Border Grid.Column="0" WidthRequest="48" HeightRequest="48"
+                                    StrokeThickness="0" BackgroundColor="{StaticResource ColorSurfaceContainerHigh}"
+                                    StrokeShape="RoundRectangle 16" VerticalOptions="Start">
+                                <Label Text="⛑️" FontSize="22"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Grid.Column="0" Text="Seguridad &amp; Pequeños Grupos" FontSize="16" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                                    <Border Grid.Column="1" StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="8,2">
+                                        <Label Text="Máx. 12 pax" FontSize="11" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                    </Border>
+                                </Grid>
+                                <Label FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                       Text="Póliza de gastos médicos mayores en expedición, transportes sanitizados de alta montaña y equipamiento técnico homologado." />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+
+                    <!-- Pilar 4 -->
+                    <Border StrokeThickness="0" StrokeShape="RoundRectangle 24"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
+                        <Border.Shadow>
+                            <Shadow Brush="#14532D" Opacity="0.04" Radius="12" Offset="0,2" />
+                        </Border.Shadow>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                            <Border Grid.Column="0" WidthRequest="48" HeightRequest="48"
+                                    StrokeThickness="0" BackgroundColor="#806FFBBE"
+                                    StrokeShape="RoundRectangle 16" VerticalOptions="Start">
+                                <Label Text="🤝" FontSize="22"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Grid.Column="0" Text="Impacto Comunitario" FontSize="16" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                                    <Border Grid.Column="1" StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="8,2">
+                                        <Label Text="Comercio Justo" FontSize="11" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondary}" />
+                                    </Border>
+                                </Grid>
+                                <Label FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                       Text="El 68% del costo de tu reserva entra en la economía de cooperativas familiares, comedores rurales y ejidos protectores de flora." />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Estadísticas de impacto -->
+                <Border Margin="20,0,20,24" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 24"
+                        BackgroundColor="{StaticResource ColorPrimary}" Padding="16">
                     <Border.Shadow>
-                        <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                        <Shadow Brush="#003B1B" Opacity="0.18" Radius="24" Offset="0,8" />
                     </Border.Shadow>
-                    <VerticalStackLayout Spacing="4">
+                    <Grid>
+                        <Ellipse WidthRequest="144" HeightRequest="144" Fill="#33006C49"
+                                 HorizontalOptions="End" VerticalOptions="End"
+                                 TranslationX="40" TranslationY="40" />
+                        <VerticalStackLayout Spacing="8">
+                            <HorizontalStackLayout Spacing="4">
+                                <Label Text="📈" FontSize="14" VerticalOptions="Center" />
+                                <Label Text="NUESTRA HUELLA POSITIVA" FontSize="11" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorSecondaryContainer}" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <Label Text="Resultados comprobables" FontSize="18" FontAttributes="Bold"
+                                   TextColor="White" />
 
-                        <Border ClassId="Teléfono de contacto" StrokeThickness="0"
-                                BackgroundColor="Transparent" Padding="8,10">
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Tapped="OnComingSoonTapped" />
-                            </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                <Border WidthRequest="38" HeightRequest="38"
-                                        StrokeThickness="0"
-                                        BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
-                                        StrokeShape="RoundRectangle 10">
-                                    <Label Text="📞" FontSize="18"
-                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,4,0,0">
+                                <Border Grid.Column="0" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                        BackgroundColor="#1AFFFFFF" Padding="8">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="+5,200" FontSize="20" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondaryContainer}"
+                                               HorizontalOptions="Center" />
+                                        <Label Text="Exploradores" FontSize="12" TextColor="#CCEEF0FF"
+                                               HorizontalOptions="Center" />
+                                    </VerticalStackLayout>
                                 </Border>
-                                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                    <Label Text="Teléfono" FontSize="15" FontAttributes="Bold"
-                                           TextColor="{StaticResource ColorOnSurface}" />
-                                    <Label Text="Próximamente" FontSize="11"
-                                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                                </VerticalStackLayout>
-                                <Label Grid.Column="2" Text="›" FontSize="20"
-                                       TextColor="{StaticResource ColorOutline}"
-                                       VerticalOptions="Center" />
-                            </Grid>
-                        </Border>
-
-                        <Border ClassId="Correo de contacto" StrokeThickness="0"
-                                BackgroundColor="Transparent" Padding="8,10">
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Tapped="OnComingSoonTapped" />
-                            </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                <Border WidthRequest="38" HeightRequest="38"
-                                        StrokeThickness="0"
-                                        BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
-                                        StrokeShape="RoundRectangle 10">
-                                    <Label Text="✉️" FontSize="18"
-                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Border Grid.Column="1" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                        BackgroundColor="#1AFFFFFF" Padding="8">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="148" FontSize="20" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondaryContainer}"
+                                               HorizontalOptions="Center" />
+                                        <Label Text="Rutas Guiadas" FontSize="12" TextColor="#CCEEF0FF"
+                                               HorizontalOptions="Center" />
+                                    </VerticalStackLayout>
                                 </Border>
-                                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                    <Label Text="Correo electrónico" FontSize="15" FontAttributes="Bold"
-                                           TextColor="{StaticResource ColorOnSurface}" />
-                                    <Label Text="Próximamente" FontSize="11"
-                                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                                </VerticalStackLayout>
-                                <Label Grid.Column="2" Text="›" FontSize="20"
-                                       TextColor="{StaticResource ColorOutline}"
-                                       VerticalOptions="Center" />
-                            </Grid>
-                        </Border>
-
-                        <Border ClassId="WhatsApp de contacto" StrokeThickness="0"
-                                BackgroundColor="Transparent" Padding="8,10,8,14">
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Tapped="OnComingSoonTapped" />
-                            </Border.GestureRecognizers>
-                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                                <Border WidthRequest="38" HeightRequest="38"
-                                        StrokeThickness="0"
-                                        BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
-                                        StrokeShape="RoundRectangle 10">
-                                    <Label Text="💬" FontSize="18"
-                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                <Border Grid.Column="2" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                        BackgroundColor="#1AFFFFFF" Padding="8">
+                                    <VerticalStackLayout Spacing="2">
+                                        <Label Text="100%" FontSize="20" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondaryContainer}"
+                                               HorizontalOptions="Center" />
+                                        <Label Text="CO₂ Neutral" FontSize="12" TextColor="#CCEEF0FF"
+                                               HorizontalOptions="Center" />
+                                    </VerticalStackLayout>
                                 </Border>
-                                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                    <Label Text="WhatsApp" FontSize="15" FontAttributes="Bold"
-                                           TextColor="{StaticResource ColorOnSurface}" />
-                                    <Label Text="Próximamente" FontSize="11"
-                                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                                </VerticalStackLayout>
-                                <Label Grid.Column="2" Text="›" FontSize="20"
-                                       TextColor="{StaticResource ColorOutline}"
-                                       VerticalOptions="Center" />
                             </Grid>
-                        </Border>
 
+                            <VerticalStackLayout Spacing="6" Margin="0,8,0,0">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Grid.Column="0" Text="Meta de Reforestación 2024" FontSize="11"
+                                           TextColor="#CCEEF0FF" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="15,800 / 20,000 árboles" FontSize="11" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorSecondaryFixed}" VerticalOptions="Center" />
+                                </Grid>
+                                <ProgressBar Progress="0.79" HeightRequest="8"
+                                             ProgressColor="{StaticResource ColorSecondaryFixed}"
+                                             BackgroundColor="#33FFFFFF" />
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <!-- Acreditaciones y respaldos -->
+                <Border Margin="20,0,20,24" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 24"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="16">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="ACREDITACIONES &amp; RESPALDOS" FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorSecondary}" />
+                        <Label FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                               Text="Operamos bajo normativas oficiales mexicanas de turismo de aventura (NOM-09-TUR-2002) y compromisos de neutralidad ambiental." />
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="4" RowSpacing="4">
+                            <Border Grid.Row="0" Grid.Column="0" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="8">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <Label Grid.Column="0" Text="🪪" FontSize="18" VerticalOptions="Center" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="0">
+                                        <Label Text="Guía NOM-09" FontSize="12" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorPrimary}" />
+                                        <Label Text="SECTUR México" FontSize="11"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+                            <Border Grid.Row="0" Grid.Column="1" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="8">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <Label Grid.Column="0" Text="🌲" FontSize="18" VerticalOptions="Center" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="0">
+                                        <Label Text="Leave No Trace" FontSize="12" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorPrimary}" />
+                                        <Label Text="Miembro Oficial" FontSize="11"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="0" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="8">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <Label Grid.Column="0" Text="💊" FontSize="18" VerticalOptions="Center" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="0">
+                                        <Label Text="WFR Cert" FontSize="12" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorPrimary}" />
+                                        <Label Text="Wilderness Medical" FontSize="11"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+                            <Border Grid.Row="1" Grid.Column="1" StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="8">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                    <Label Grid.Column="0" Text="🤝" FontSize="18" VerticalOptions="Center" />
+                                    <VerticalStackLayout Grid.Column="1" Spacing="0">
+                                        <Label Text="Comercio Justo" FontSize="12" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorPrimary}" />
+                                        <Label Text="Red Ejidal" FontSize="11"
+                                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Border>
+                        </Grid>
                     </VerticalStackLayout>
                 </Border>
-            </VerticalStackLayout>
 
-            <!-- ============ PIE ============ -->
-            <VerticalStackLayout Spacing="2" Margin="0,2,0,0">
-                <Label x:Name="VersionLabel"
-                       FontSize="11" FontAttributes="Bold"
-                       TextColor="{StaticResource ColorOutline}"
-                       HorizontalOptions="Center" />
-                <Label Text="RutaVerde México"
-                       FontSize="11"
-                       TextColor="{StaticResource ColorOnSurfaceVariant}"
-                       HorizontalOptions="Center" />
-            </VerticalStackLayout>
+                <!-- Contacto -->
+                <Border Margin="20,0,20,24" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 24"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
+                    <Border.Shadow>
+                        <Shadow Brush="#0F172A" Opacity="0.05" Radius="16" Offset="0,4" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="¿Tienes dudas o buscas una ruta a la medida?"
+                               FontSize="18" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorPrimary}" />
+                        <Label FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}"
+                               Text="Nuestros anfitriones y biólogos atienden de forma personalizada para grupos privados o recomendaciones de viaje seguro." />
 
-        </VerticalStackLayout>
-    </ScrollView>
+                        <VerticalStackLayout Spacing="4" Margin="0,4,0,0">
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnEmailTapped" />
+                                </Border.GestureRecognizers>
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                    <Label Grid.Column="0" Text="✉️" FontSize="18"
+                                           TextColor="{StaticResource ColorSecondary}" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="hola@rutaverde.travel" FontSize="12" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                                    <Label Grid.Column="2" Text="›" FontSize="18"
+                                           TextColor="{StaticResource ColorOnSurfaceVariant}" VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+
+                            <Border StrokeThickness="0" StrokeShape="RoundRectangle 12"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                    <Label Grid.Column="0" Text="🕗" FontSize="18"
+                                           TextColor="{StaticResource ColorSecondary}" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="Lun - Sáb: 8:00 AM - 7:00 PM" FontSize="12" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                                    <Border Grid.Column="2" StrokeThickness="0" StrokeShape="RoundRectangle 10"
+                                            BackgroundColor="#666CF8BB" Padding="8,2" VerticalOptions="Center">
+                                        <Label Text="Activo" FontSize="11" FontAttributes="Bold"
+                                               TextColor="{StaticResource ColorSecondary}" />
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- CTA -->
+                <Border Margin="20,0,20,16" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 24" Padding="24">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="{StaticResource ColorPrimaryContainer}" Offset="0" />
+                            <GradientStop Color="{StaticResource ColorPrimary}" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Shadow>
+                        <Shadow Brush="#14532D" Opacity="0.22" Radius="30" Offset="0,8" />
+                    </Border.Shadow>
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="🏔️" FontSize="34"
+                               TextColor="{StaticResource ColorSecondaryFixed}"
+                               HorizontalOptions="Center" />
+                        <Label Text="Tu próxima aventura comienza aquí" FontSize="22" FontAttributes="Bold"
+                               TextColor="White" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                        <Label FontSize="14" TextColor="#E6EEF0FF"
+                               HorizontalTextAlignment="Center"
+                               Text="Descubre ríos de color esmeralda, senderos en la niebla y cascadas escondidas con la mayor tranquilidad." />
+                        <Button Text="🧭  Explorar próximas expediciones"
+                                Clicked="OnExploreClicked"
+                                BackgroundColor="{StaticResource ColorSecondaryContainer}"
+                                TextColor="{StaticResource ColorOnSecondaryFixed}"
+                                FontAttributes="Bold" FontSize="14"
+                                CornerRadius="16" HeightRequest="52"
+                                Margin="0,8,0,0" />
+                        <HorizontalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="🔒" FontSize="12" VerticalOptions="Center" />
+                            <Label Text="Reserva protegida • Grupos reducidos garantizados" FontSize="11"
+                                   TextColor="{StaticResource ColorOnPrimaryContainer}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Pie -->
+                <VerticalStackLayout Spacing="2" Margin="0,4,0,0">
+                    <Label x:Name="VersionLabel"
+                           FontSize="11" FontAttributes="Bold"
+                           TextColor="{StaticResource ColorOutline}"
+                           HorizontalOptions="Center" />
+                    <Label Text="RutaVerde México" FontSize="11"
+                           TextColor="{StaticResource ColorOnSurfaceVariant}"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- ============ MODAL COMPROMISO VERDE ============ -->
+        <Grid Grid.RowSpan="2" x:Name="PledgeOverlay" IsVisible="False"
+              BackgroundColor="#80000000">
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnPledgeBackdropTapped" />
+            </Grid.GestureRecognizers>
+
+            <Border x:Name="PledgeCard"
+                    StrokeThickness="0" StrokeShape="RoundRectangle 24"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                    Padding="24" VerticalOptions="End">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.25" Radius="30" Offset="0,-8" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <HorizontalStackLayout Grid.Column="0" Spacing="8" VerticalOptions="Center">
+                            <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0"
+                                    BackgroundColor="#666CF8BB" StrokeShape="RoundRectangle 16">
+                                <Label Text="🌿" FontSize="16"
+                                       HorizontalOptions="Center" VerticalOptions="Center" />
+                            </Border>
+                            <Label Text="Compromiso RutaVerde" FontSize="18" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Button Grid.Column="1" Text="✕" FontSize="16" Padding="0"
+                                WidthRequest="32" HeightRequest="32" CornerRadius="16"
+                                BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                                TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                Clicked="OnClosePledgeClicked" />
+                    </Grid>
+
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Label Grid.Column="0" Text="✅" FontSize="18"
+                                   TextColor="{StaticResource ColorSecondary}" VerticalOptions="Start" />
+                            <Label Grid.Column="1" FontSize="14" TextColor="{StaticResource ColorOnSurfaceVariant}">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="Biodiversidad Protegida: " FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                        <Span Text="No extraemos minerales, flora silvestre ni alteramos los hábitats de fauna nativa." />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Label Grid.Column="0" Text="✅" FontSize="18"
+                                   TextColor="{StaticResource ColorSecondary}" VerticalOptions="Start" />
+                            <Label Grid.Column="1" FontSize="14" TextColor="{StaticResource ColorOnSurfaceVariant}">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="Reforestación Activa: " FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                        <Span Text="Plantamos especies nativas en zonas degradadas por cada boleto emitido." />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                            <Label Grid.Column="0" Text="✅" FontSize="18"
+                                   TextColor="{StaticResource ColorSecondary}" VerticalOptions="Start" />
+                            <Label Grid.Column="1" FontSize="14" TextColor="{StaticResource ColorOnSurfaceVariant}">
+                                <Label.FormattedText>
+                                    <FormattedString>
+                                        <Span Text="Economía Local Ética: " FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                                        <Span Text="Pagamos tarifas justas y superiores a los tabuladores promedio a guías locales." />
+                                    </FormattedString>
+                                </Label.FormattedText>
+                            </Label>
+                        </Grid>
+                    </VerticalStackLayout>
+
+                    <Button Text="Entendido y Comprometido"
+                            Clicked="OnClosePledgeClicked"
+                            BackgroundColor="{StaticResource ColorPrimary}"
+                            TextColor="White" FontAttributes="Bold" FontSize="14"
+                            CornerRadius="12" HeightRequest="48" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+    </Grid>
 </ContentPage>
