@@ -25,6 +25,11 @@ public class Booking
     public Trip? Trip { get; set; }
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();
     public ICollection<TripPassenger> Passengers { get; set; } = new List<TripPassenger>();
+
+    public ICollection<BookingItem> Items { get; set; } = new List<BookingItem>();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool HasOptionItems => Items.Count > 0;
 }
 
 public enum BookingStatus

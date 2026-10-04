@@ -37,6 +37,15 @@ public class Trip
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     public ICollection<CapacityRequest> CapacityRequests { get; set; } = new List<CapacityRequest>();
     public ICollection<TripPointOfInterest> PointsOfInterest { get; set; } = new List<TripPointOfInterest>();
+
+    public bool HasOptions { get; set; }
+
+    public ICollection<TripOption> Options { get; set; } = new List<TripOption>();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public decimal? FromPrice => HasOptions && Options.Count > 0
+        ? Options.Where(o => o.IsActive).Min(o => (decimal?)o.PriceAdult) ?? null
+        : null;
 }
 
 public enum TransportType
