@@ -132,10 +132,14 @@ using (var scope = app.Services.CreateScope())
     await EnsureChildPriceColumnAsync(db, provider);
     await EnsureBookingDeadlineColumnAsync(db, provider);
     await EnsureTripCategoryColumnAsync(db, provider);
+    await EnsureTripHasOptionsColumnAsync(db, provider);
+    await EnsureTripOptionsTableAsync(db, provider);
+    await EnsureBookingItemsTableAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
     await EnsureFavoriteTripsTableAsync(db, provider);
     await EnsureAuditLogTableAsync(db, provider);
+    await EnsureDefaultTripOptionsBackfillAsync(db, provider);
     await EnsureSeedUsersAsync(db);
 }
 
@@ -1784,6 +1788,182 @@ static string GenerateToken(User user, SymmetricSecurityKey key, string issuer, 
         signingCredentials: credentials);
 
     return new JwtSecurityTokenHandler().WriteToken(token);
+}
+
+
+static async Task EnsureDefaultTripOptionsBackfillAsync(AppDbContext db, string provider)
+{
+    await using var conn = db.Database.GetDbConnection();
+    await conn.OpenAsync();
+    var now = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+    if (provider == "sqlite")
+    {
+        // find trips without options and create General option
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"SELECT t.Id, t.Price, t.ChildPrice, t.Capacity, t.AvailableSeats FROM Trips t 
+                            WHERE t.HasOptions = 0 
+                              AND NOT EXISTS (SELECT 1 FROM TripOptions to2 WHERE to2.TripId = t.Id)";
+        await using var reader = await cmd.ExecuteReaderAsync();
+        var trips = new List<(int Id, decimal Price, decimal? ChildPrice, int Capacity, int AvailableSeats)>();
+        while (await reader.ReadAsync())
+        {
+            trips.Add(((int)reader["Id"], (decimal)(reader["Price"] is decimal d ? d : Convert.ToDecimal(reader["Price"])), 
+                      reader["ChildPrice"] == DBNull.Value ? null : (decimal?)Convert.ToDecimal(reader["ChildPrice"]),
+                      (int)reader["Capacity"], (int)reader["AvailableSeats"]));
+        }
+        await reader.CloseAsync();
+        foreach (var t in trips)
+        {
+            await using var ins = conn.CreateCommand();
+            ins.CommandText = @"INSERT INTO TripOptions (TripId, Name, Description, PriceAdult, PriceChild, Capacity, AvailableSeats, Benefits, IsActive, ""Order"", CapacityMode, CreatedAt)
+                                VALUES (@TripId, 'General', NULL, @PriceAdult, @PriceChild, @Capacity, @AvailableSeats, NULL, 1, 1, 0, @Now)";
+            ins.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("@TripId", t.Id));
+            ins.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("@PriceAdult", t.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
+            if (t.ChildPrice.HasValue)
+                ins.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("@PriceChild", t.ChildPrice.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)));
+            else
+                ins.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("@PriceChild", DBNull.Value));
+            ins.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("@Capacity", t.Capacity));
+            ins.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("@AvailableSeats", t.AvailableSeats));
+            ins.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("@Now", now));
+            await ins.ExecuteNonQueryAsync();
+            await using var upd = conn.CreateCommand();
+            upd.CommandText = "UPDATE Trips SET HasOptions = 1 WHERE Id = @Id";
+            upd.Parameters.Add(new Microsoft.Data.Sqlite.SqliteParameter("@Id", t.Id));
+            await upd.ExecuteNonQueryAsync();
+        }
+        return;
+    }
+
+    // postgres
+    await using var cmd2 = conn.CreateCommand();
+    cmd2.CommandText = @"SELECT t.""Id"", t.""Price"", t.""ChildPrice"", t.""Capacity"", t.""AvailableSeats"" FROM ""Trips"" t 
+                         WHERE t.""HasOptions"" = false 
+                           AND NOT EXISTS (SELECT 1 FROM ""TripOptions"" to2 WHERE to2.""TripId"" = t.""Id"")";
+    await using var reader2 = await cmd2.ExecuteReaderAsync();
+    var tripsPg = new List<(int Id, decimal Price, decimal? ChildPrice, int Capacity, int AvailableSeats)>();
+    while (await reader2.ReadAsync())
+    {
+        tripsPg.Add(((int)reader2["Id"], (decimal)reader2["Price"],
+                     reader2["ChildPrice"] == DBNull.Value ? null : (decimal?)reader2["ChildPrice"],
+                     (int)reader2["Capacity"], (int)reader2["AvailableSeats"]));
+    }
+    await reader2.CloseAsync();
+    foreach (var t in tripsPg)
+    {
+        await using var ins = conn.CreateCommand();
+        ins.CommandText = @"INSERT INTO ""TripOptions"" (""TripId"", ""Name"", ""PriceAdult"", ""PriceChild"", ""Capacity"", ""AvailableSeats"", ""IsActive"", ""Order"", ""CapacityMode"", ""CreatedAt"")
+                            VALUES (@TripId, 'General', @PriceAdult, @PriceChild, @Capacity, @AvailableSeats, true, 1, 0, @Now)";
+        ins.Parameters.Add(new Npgsql.NpgsqlParameter("@TripId", t.Id));
+        ins.Parameters.Add(new Npgsql.NpgsqlParameter("@PriceAdult", t.Price));
+        if (t.ChildPrice.HasValue)
+            ins.Parameters.Add(new Npgsql.NpgsqlParameter("@PriceChild", t.ChildPrice.Value));
+        else
+            ins.Parameters.Add(new Npgsql.NpgsqlParameter("@PriceChild", DBNull.Value));
+        ins.Parameters.Add(new Npgsql.NpgsqlParameter("@Capacity", t.Capacity));
+        ins.Parameters.Add(new Npgsql.NpgsqlParameter("@AvailableSeats", t.AvailableSeats));
+        ins.Parameters.Add(new Npgsql.NpgsqlParameter("@Now", DateTime.UtcNow));
+        await ins.ExecuteNonQueryAsync();
+        await using var upd = conn.CreateCommand();
+        upd.CommandText = @"UPDATE ""Trips"" SET ""HasOptions"" = true WHERE ""Id"" = @Id";
+        upd.Parameters.Add(new Npgsql.NpgsqlParameter("@Id", t.Id));
+        await upd.ExecuteNonQueryAsync();
+    }
+}
+
+
+static async Task EnsureBookingItemsTableAsync(AppDbContext db, string provider)
+{
+    if (provider == "sqlite")
+    {
+        await TryExecAsync(db, @"CREATE TABLE IF NOT EXISTS ""BookingItems"" (
+              ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_BookingItems"" PRIMARY KEY AUTOINCREMENT,
+              ""BookingId"" INTEGER NOT NULL,
+              ""TripOptionId"" INTEGER NOT NULL,
+              ""Adults"" INTEGER NOT NULL DEFAULT 0,
+              ""Children"" INTEGER NOT NULL DEFAULT 0,
+              ""UnitPriceAdult"" TEXT NOT NULL,
+              ""UnitPriceChild"" TEXT NULL,
+              ""OptionName"" TEXT NULL,
+              CONSTRAINT ""FK_BookingItems_Bookings_BookingId"" FOREIGN KEY (""BookingId"") REFERENCES ""Bookings"" (""Id"") ON DELETE CASCADE,
+              CONSTRAINT ""FK_BookingItems_TripOptions_TripOptionId"" FOREIGN KEY (""TripOptionId"") REFERENCES ""TripOptions"" (""Id"") ON DELETE RESTRICT
+          );");
+        await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_BookingItems_BookingId"" ON ""BookingItems"" (""BookingId"");");
+        await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_BookingItems_TripOptionId"" ON ""BookingItems"" (""TripOptionId"");");
+        return;
+    }
+
+    await TryExecAsync(db, @"CREATE TABLE IF NOT EXISTS ""BookingItems"" (
+          ""Id"" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+          ""BookingId"" integer NOT NULL,
+          ""TripOptionId"" integer NOT NULL,
+          ""Adults"" integer NOT NULL DEFAULT 0,
+          ""Children"" integer NOT NULL DEFAULT 0,
+          ""UnitPriceAdult"" numeric(18,2) NOT NULL,
+          ""UnitPriceChild"" numeric(18,2) NULL,
+          ""OptionName"" character varying(80) NULL,
+          CONSTRAINT ""PK_BookingItems"" PRIMARY KEY (""Id""),
+          CONSTRAINT ""FK_BookingItems_Bookings_BookingId"" FOREIGN KEY (""BookingId"") REFERENCES ""Bookings"" (""Id"") ON DELETE CASCADE,
+          CONSTRAINT ""FK_BookingItems_TripOptions_TripOptionId"" FOREIGN KEY (""TripOptionId"") REFERENCES ""TripOptions"" (""Id"") ON DELETE RESTRICT
+      );");
+    await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_BookingItems_BookingId"" ON ""BookingItems"" (""BookingId"");");
+    await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_BookingItems_TripOptionId"" ON ""BookingItems"" (""TripOptionId"");");
+}
+
+
+static async Task EnsureTripOptionsTableAsync(AppDbContext db, string provider)
+{
+    if (provider == "sqlite")
+    {
+        await TryExecAsync(db, @"CREATE TABLE IF NOT EXISTS ""TripOptions"" (
+              ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_TripOptions"" PRIMARY KEY AUTOINCREMENT,
+              ""TripId"" INTEGER NOT NULL,
+              ""Name"" TEXT NOT NULL,
+              ""Description"" TEXT NULL,
+              ""PriceAdult"" TEXT NOT NULL,
+              ""PriceChild"" TEXT NULL,
+              ""Capacity"" INTEGER NOT NULL DEFAULT 0,
+              ""AvailableSeats"" INTEGER NOT NULL DEFAULT 0,
+              ""Benefits"" TEXT NULL,
+              ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+              ""Order"" INTEGER NOT NULL DEFAULT 1,
+              ""CapacityMode"" INTEGER NOT NULL DEFAULT 0,
+              ""CreatedAt"" TEXT NOT NULL,
+              CONSTRAINT ""FK_TripOptions_Trips_TripId"" FOREIGN KEY (""TripId"") REFERENCES ""Trips"" (""Id"") ON DELETE RESTRICT
+          );");
+        await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_TripOptions_TripId"" ON ""TripOptions"" (""TripId"");");
+        return;
+    }
+
+    await TryExecAsync(db, @"CREATE TABLE IF NOT EXISTS ""TripOptions"" (
+          ""Id"" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+          ""TripId"" integer NOT NULL,
+          ""Name"" character varying(80) NOT NULL,
+          ""Description"" character varying(400) NULL,
+          ""PriceAdult"" numeric(18,2) NOT NULL,
+          ""PriceChild"" numeric(18,2) NULL,
+          ""Capacity"" integer NOT NULL DEFAULT 0,
+          ""AvailableSeats"" integer NOT NULL DEFAULT 0,
+          ""Benefits"" text NULL,
+          ""IsActive"" boolean NOT NULL DEFAULT true,
+          ""Order"" integer NOT NULL DEFAULT 1,
+          ""CapacityMode"" integer NOT NULL DEFAULT 0,
+          ""CreatedAt"" timestamp without time zone NOT NULL,
+          CONSTRAINT ""PK_TripOptions"" PRIMARY KEY (""Id""),
+          CONSTRAINT ""FK_TripOptions_Trips_TripId"" FOREIGN KEY (""TripId"") REFERENCES ""Trips"" (""Id"") ON DELETE RESTRICT
+      );");
+    await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_TripOptions_TripId"" ON ""TripOptions"" (""TripId"");");
+}
+
+
+static async Task EnsureTripHasOptionsColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "HasOptions", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"HasOptions\" INTEGER NOT NULL DEFAULT 0;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"HasOptions\" boolean NOT NULL DEFAULT false;");
+    }
 }
 
 static async Task EnsureTransportTypeColumnAsync(AppDbContext db, string provider)
