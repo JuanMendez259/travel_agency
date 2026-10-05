@@ -76,6 +76,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.IsActive).IsRequired();
             e.Property(x => x.Order).IsRequired();
             e.Property(x => x.CapacityMode).IsRequired();
+            e.Property(x => x.IsBase).IsRequired();
             e.Property(x => x.CreatedAt).IsRequired();
             e.HasOne(x => x.Trip).WithMany(t => t.Options).HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Restrict);
         });

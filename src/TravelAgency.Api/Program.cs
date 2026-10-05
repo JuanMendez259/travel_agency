@@ -135,6 +135,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureTripHasOptionsColumnAsync(db, provider);
     await EnsureTripHotelColumnsAsync(db, provider);
     await EnsureTripOptionsTableAsync(db, provider);
+    await EnsureTripOptionIsBaseColumnAsync(db, provider);
     await EnsureBookingItemsTableAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
@@ -337,6 +338,25 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db, ImageStorageService
 
     db.Trips.Add(trip);
     await db.SaveChangesAsync();
+
+    // Todo viaje nace con su entrada base "General" (se puede desactivar, no eliminar).
+    db.TripOptions.Add(new TravelAgency.Shared.Models.TripOption
+    {
+        TripId = trip.Id,
+        Name = "General",
+        PriceAdult = trip.Price,
+        PriceChild = trip.ChildPrice,
+        Capacity = trip.BookableCapacity,
+        AvailableSeats = trip.AvailableSeats,
+        IsActive = true,
+        Order = 1,
+        CapacityMode = TravelAgency.Shared.Models.TripOptionCapacityMode.Shared,
+        IsBase = true,
+        CreatedAt = DateTime.UtcNow
+    });
+    trip.HasOptions = true;
+    await db.SaveChangesAsync();
+
     return Results.Created($"/api/trips/{trip.Id}", trip);
 }).RequireAuthorization("AdminOnly");
 
@@ -1670,6 +1690,8 @@ app.MapDelete("/api/trips/{tripId}/options/{optionId}", async (int tripId, int o
 {
     var opt = await db.TripOptions.FirstOrDefaultAsync(o => o.Id == optionId && o.TripId == tripId);
     if (opt is null) return Results.NotFound();
+    if (opt.IsBase)
+        return Results.BadRequest("La entrada general no se puede eliminar. Puedes desactivarla si no la usas.");
     db.TripOptions.Remove(opt);
     await db.SaveChangesAsync();
     return Results.NoContent();
@@ -2018,6 +2040,17 @@ static async Task EnsureTripHotelColumnsAsync(AppDbContext db, string provider)
 }
 
 
+static async Task EnsureTripOptionIsBaseColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "TripOptions", "IsBase", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""TripOptions"" ADD COLUMN ""IsBase"" INTEGER NOT NULL DEFAULT 0;"
+            : @"ALTER TABLE ""TripOptions"" ADD COLUMN ""IsBase"" boolean NOT NULL DEFAULT false;");
+    }
+}
+
+
 static async Task EnsureTripOptionsTableAsync(AppDbContext db, string provider)
 {
     if (provider == "sqlite")
@@ -2107,13 +2140,38 @@ static async Task EnsureDefaultTripOptionsBackfillAsync(AppDbContext db, string 
     try
     {
         var trips = await db.Trips
-            .Where(t => !t.HasOptions && !db.TripOptions.Any(o => o.TripId == t.Id))
-            .Select(t => new { t.Id, t.Price, t.ChildPrice, t.Capacity, t.AvailableSeats })
+            .Select(t => new { t.Id, t.Price, t.ChildPrice, t.Capacity, t.AvailableSeats, t.HasOptions, t.IncludesHotel, t.HotelCapacity })
             .ToListAsync();
         if (trips.Count == 0) return;
+
+        var options = await db.TripOptions.ToListAsync();
+        var byTrip = options.GroupBy(o => o.TripId).ToDictionary(g => g.Key, g => g.ToList());
+
         var now = DateTime.UtcNow;
+        var changed = false;
+
         foreach (var t in trips)
         {
+            byTrip.TryGetValue(t.Id, out var opts);
+            opts ??= new List<TravelAgency.Shared.Models.TripOption>();
+
+            if (opts.Any(o => o.IsBase)) continue;
+
+            // Adoptar una opción existente como base (por nombre "General" o por
+            // tener el mismo precio base del viaje, para no duplicar si fue renombrada).
+            var candidate = opts.FirstOrDefault(o => string.Equals(o.Name, "General", StringComparison.OrdinalIgnoreCase))
+                            ?? opts.FirstOrDefault(o => o.PriceAdult == t.Price && o.PriceChild == t.ChildPrice);
+            if (candidate is not null)
+            {
+                candidate.IsBase = true;
+                changed = true;
+                continue;
+            }
+
+            var bookable = t.IncludesHotel && t.HotelCapacity.HasValue
+                ? Math.Min(t.Capacity, Math.Max(0, t.HotelCapacity.Value))
+                : t.Capacity;
+
             db.TripOptions.Add(new TravelAgency.Shared.Models.TripOption
             {
                 TripId = t.Id,
@@ -2121,18 +2179,25 @@ static async Task EnsureDefaultTripOptionsBackfillAsync(AppDbContext db, string 
                 Description = null,
                 PriceAdult = t.Price,
                 PriceChild = t.ChildPrice,
-                Capacity = t.Capacity,
-                AvailableSeats = t.AvailableSeats,
+                Capacity = bookable,
+                AvailableSeats = Math.Max(0, t.AvailableSeats),
                 Benefits = null,
                 IsActive = true,
-                Order = 1,
+                Order = opts.Count == 0 ? 1 : Math.Max(0, opts.Min(o => o.Order) - 1),
                 CapacityMode = TravelAgency.Shared.Models.TripOptionCapacityMode.Shared,
+                IsBase = true,
                 CreatedAt = now
             });
-            var trip = await db.Trips.FirstAsync(x => x.Id == t.Id);
-            trip.HasOptions = true;
+            changed = true;
+
+            if (!t.HasOptions)
+            {
+                var trip = await db.Trips.FirstAsync(x => x.Id == t.Id);
+                trip.HasOptions = true;
+            }
         }
-        await db.SaveChangesAsync();
+
+        if (changed) await db.SaveChangesAsync();
     }
     catch (Exception ex)
     {

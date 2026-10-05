@@ -106,13 +106,31 @@ public partial class AdminTripOptionsPage : ContentPage
             VerticalOptions = LayoutOptions.Center
         };
 
+        var badges = new HorizontalStackLayout { Spacing = 4, VerticalOptions = LayoutOptions.Start };
+        if (opt.IsBase)
+        {
+            badges.Children.Add(new Border
+            {
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
+                StrokeThickness = 0,
+                BackgroundColor = Color.FromArgb("#EAEDFF"),
+                Padding = new Thickness(8, 2),
+                Content = new Label
+                {
+                    Text = "Base",
+                    FontSize = 11,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Color.FromArgb("#404941")
+                }
+            });
+        }
+
         var badge = new Border
         {
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
             StrokeThickness = 0,
             BackgroundColor = opt.IsActive ? Color.FromArgb("#6CF8BB") : Color.FromArgb("#EAEDFF"),
             Padding = new Thickness(8, 2),
-            VerticalOptions = LayoutOptions.Start,
             Content = new Label
             {
                 Text = opt.IsActive ? "Activa" : "Inactiva",
@@ -121,9 +139,10 @@ public partial class AdminTripOptionsPage : ContentPage
                 TextColor = opt.IsActive ? Color.FromArgb("#003B1B") : Color.FromArgb("#404941")
             }
         };
+        badges.Children.Add(badge);
 
         header.Add(title, 0, 0);
-        header.Add(badge, 1, 0);
+        header.Add(badges, 1, 0);
         stack.Children.Add(header);
 
         var childText = opt.PriceChild.HasValue ? $"{opt.PriceChild.Value:C} niño" : "niño paga como adulto";
@@ -160,6 +179,11 @@ public partial class AdminTripOptionsPage : ContentPage
         actions.Children.Add(edit);
         actions.Children.Add(toggle);
         actions.Children.Add(del);
+        if (opt.IsBase)
+        {
+            del.IsEnabled = false;
+            del.Text = "Base fija";
+        }
         stack.Children.Add(actions);
 
         edit.Clicked += (_, __) => StartEdit(opt);

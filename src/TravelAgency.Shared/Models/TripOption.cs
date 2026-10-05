@@ -24,6 +24,12 @@ public class TripOption
     public TripOptionCapacityMode CapacityMode { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>
+    /// Marca la opción base del viaje (la "Entrada General"). Siempre existe una por
+    /// viaje y no se puede eliminar; el administrador puede desactivarla.
+    /// </summary>
+    public bool IsBase { get; set; }
+
     public int EffectiveAvailableSeats => CapacityMode == TripOptionCapacityMode.Own
         ? Math.Max(0, AvailableSeats)
         : Math.Max(0, AvailableSeats);
