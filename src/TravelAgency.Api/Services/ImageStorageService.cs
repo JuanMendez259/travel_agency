@@ -32,9 +32,15 @@ public class ImageStorageService
             : null;
 
     public async Task<string> UploadAsync(Stream stream, string extension, string contentType, CancellationToken ct = default)
-        => _mode == "supabase"
+    {
+        // Defensa: el stream debe subirse completo desde el inicio, sin importar
+        // en que posicion lo haya dejado un lector previo.
+        if (stream.CanSeek) stream.Position = 0;
+
+        return _mode == "supabase"
             ? await UploadSupabaseAsync(stream, extension, contentType, ct)
             : await UploadLocalAsync(stream, extension, ct);
+    }
 
     public async Task DeleteAsync(string imageUrl, CancellationToken ct = default)
     {

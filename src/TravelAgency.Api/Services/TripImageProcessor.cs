@@ -47,7 +47,12 @@ public static class TripImageProcessor
             var needsCompression = input.Length > TargetMaxBytes || needsResize;
 
             if (!needsCompression)
+            {
+                // Image.Identify avanza la posicion del stream; hay que regresarla a 0
+                // o el upload subiria el archivo truncado (sin cabecera).
+                input.Position = 0;
                 return (input, ContentTypeFor(extension), Owned: false, Compressed: false);
+            }
 
             input.Position = 0;
             using var image = Image.Load(input);
