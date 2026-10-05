@@ -680,32 +680,41 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     if (DateTime.Today > bookingDeadline.Date)
         return Results.BadRequest($"Este viaje cerró reservas el {bookingDeadline:dd/MM/yyyy}.");
 
-    if (request.NumberOfSeats < 1)
-        return Results.BadRequest("Indica al menos un asiento.");
+    var optionsMode = request.UseOptions == true || (request.Options != null && request.Options.Count > 0);
+    if (!optionsMode)
+    {
+        if (request.NumberOfSeats < 1)
+            return Results.BadRequest("Indica al menos un asiento.");
 
-    if (request.NumberOfSeats > trip.AvailableSeats)
-        return Results.BadRequest("No hay suficientes asientos disponibles.");
+        if (request.NumberOfSeats > trip.AvailableSeats)
+            return Results.BadRequest("No hay suficientes asientos disponibles.");
 
-    var requestedSeats = new List<int>();
-    if (request.SeatNumber.HasValue) requestedSeats.Add(request.SeatNumber.Value);
-    if (request.Passengers is { Count: > 0 })
-        requestedSeats.AddRange(request.Passengers.Where(p => p.SeatNumber.HasValue).Select(p => p.SeatNumber!.Value));
+        var requestedSeats = new List<int>();
+        if (request.SeatNumber.HasValue) requestedSeats.Add(request.SeatNumber.Value);
+        if (request.Passengers is { Count: > 0 })
+            requestedSeats.AddRange(request.Passengers.Where(p => p.SeatNumber.HasValue).Select(p => p.SeatNumber!.Value));
 
-    if (requestedSeats.Count == 0)
-        return Results.BadRequest("Debes seleccionar los asientos antes de confirmar la reserva.");
+        if (requestedSeats.Count == 0)
+            return Results.BadRequest("Debes seleccionar los asientos antes de confirmar la reserva.");
 
-    if (requestedSeats.Count != request.NumberOfSeats)
-        return Results.BadRequest($"Debes elegir exactamente {request.NumberOfSeats} asiento(s).");
+        if (request.NumberOfSeats > 0 && requestedSeats.Count != request.NumberOfSeats)
+            return Results.BadRequest($"Debes elegir exactamente {request.NumberOfSeats} asiento(s).");
 
-    if (requestedSeats.Distinct().Count() != requestedSeats.Count)
-        return Results.BadRequest("No puedes elegir el mismo asiento dos veces.");
+        if (requestedSeats.Distinct().Count() != requestedSeats.Count)
+            return Results.BadRequest("No puedes elegir el mismo asiento dos veces.");
 
-    if (requestedSeats.Any(s => s < 1 || s > trip.Capacity))
-        return Results.BadRequest("Uno de los asientos seleccionados no existe en este viaje.");
+        if (requestedSeats.Any(s => s < 1 || s > trip.Capacity))
+            return Results.BadRequest("Uno de los asientos seleccionados no existe en este viaje.");
 
-    var alreadyTaken = await GetTakenSeatNumbersAsync(db, trip);
-    if (requestedSeats.Any(alreadyTaken.Contains))
-        return Results.BadRequest("Alguno de los asientos seleccionados ya fue ocupado. Elige otros en el mapa.");
+        var alreadyTaken = await GetTakenSeatNumbersAsync(db, trip);
+        if (requestedSeats.Any(alreadyTaken.Contains))
+            return Results.BadRequest("Alguno de los asientos seleccionados ya fue ocupado. Elige otros en el mapa.");
+    }
+    else
+    {
+        if (request.Options == null || request.Options.Count == 0)
+            return Results.BadRequest("Debes indicar las opciones a reservar.");
+    }
 
     var passengers = new List<TripPassenger>();
     if (request.Passengers is { Count: > 0 })
@@ -755,16 +764,15 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     if (useOptions && request.Options != null && request.Options.Count > 0)
     {
         var optionIds = request.Options.Select(o => o.TripOptionId).Distinct().ToList();
-        var opts = await db.TripOptions.Where(o => o.TripId == trip.Id && optionIds.Contains(o.TripId == o.TripId ? o.Id : o.Id)).ToListAsync(); // simple
         var optsDict = await db.TripOptions.Where(o => o.TripId == trip.Id && optionIds.Contains(o.Id)).ToDictionaryAsync(o => o.Id);
         foreach (var oi in request.Options)
         {
-            if (!optsDict.TryGetValue(oi.TripOptionId, out var opt)) continue;
+            if (!optsDict.TryGetValue(oi.TripOptionId, out var opt)) return Results.BadRequest($"Opción {oi.TripOptionId} no válida para este viaje.");
             var adults = Math.Max(0, oi.Adults);
             var children = Math.Max(0, oi.Children);
             var seatsOpt = adults + children;
-            if (seatsOpt <= 0) continue;
-            if (seatsOpt > opt.AvailableSeats && opt.AvailableSeats >= 0) { /* allow? but check later */ }
+            if (seatsOpt <= 0) return Results.BadRequest("Cada línea de opción debe tener al menos 1 asiento.");
+            if (seatsOpt > opt.AvailableSeats) return Results.BadRequest($"No hay suficientes asientos disponibles para la opción {opt.Name}.");
             bookingItems.Add(new TravelAgency.Shared.Models.BookingItem
             {
                 BookingId = booking.Id,
@@ -778,6 +786,9 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         }
         if (bookingItems.Count > 0)
         {
+            var totalSeatsOpts = bookingItems.Sum(i => i.Adults + i.Children);
+            booking.NumberOfSeats = totalSeatsOpts;
+            db.Bookings.Update(booking);
             db.BookingItems.AddRange(bookingItems);
             await db.SaveChangesAsync();
             booking.TotalAmount = ComputeBookingTotal(trip, passengers, bookingItems);
