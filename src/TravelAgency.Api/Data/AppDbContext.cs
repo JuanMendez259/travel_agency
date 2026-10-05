@@ -13,8 +13,6 @@ public class AppDbContext : DbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<UserNotification> Notifications => Set<UserNotification>();
     public DbSet<CapacityRequest> CapacityRequests => Set<CapacityRequest>();
-    public DbSet<TripOption> TripOptions { get; set; } = null!;
-    public DbSet<BookingItem> BookingItems { get; set; } = null!;
     public DbSet<TripPointOfInterest> TripPointsOfInterest => Set<TripPointOfInterest>();
     public DbSet<TripPassenger> TripPassengers => Set<TripPassenger>();
     public DbSet<TripRating> TripRatings => Set<TripRating>();
@@ -62,35 +60,6 @@ public class AppDbContext : DbContext
                   .WithMany(b => b.Payments)
                   .HasForeignKey(p => p.BookingId)
                   .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<TripOption>(e =>
-        {
-            e.ToTable("TripOptions");
-            e.HasIndex(x => x.TripId).HasDatabaseName("IX_TripOptions_TripId");
-            e.Property(x => x.Name).IsRequired().HasMaxLength(80);
-            e.Property(x => x.Description).HasMaxLength(400);
-            e.Property(x => x.PriceAdult).HasPrecision(18, 2);
-            e.Property(x => x.PriceChild).HasPrecision(18, 2);
-            e.Property(x => x.IsActive).IsRequired();
-            e.Property(x => x.Order).IsRequired();
-            e.Property(x => x.CapacityMode).IsRequired();
-            e.Property(x => x.CreatedAt).IsRequired();
-            e.HasOne(x => x.Trip).WithMany(t => t.Options).HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<BookingItem>(e =>
-        {
-            e.ToTable("BookingItems");
-            e.HasIndex(x => x.BookingId).HasDatabaseName("IX_BookingItems_BookingId");
-            e.HasIndex(x => x.TripOptionId).HasDatabaseName("IX_BookingItems_TripOptionId");
-            e.Property(x => x.Adults).IsRequired();
-            e.Property(x => x.Children).IsRequired();
-            e.Property(x => x.UnitPriceAdult).HasPrecision(18, 2);
-            e.Property(x => x.UnitPriceChild).HasPrecision(18, 2);
-            e.Property(x => x.OptionName).HasMaxLength(80);
-            e.HasOne(x => x.Booking).WithMany(b => b.Items).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.TripOption).WithMany().HasForeignKey(x => x.TripOptionId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TripPassenger>(entity =>
