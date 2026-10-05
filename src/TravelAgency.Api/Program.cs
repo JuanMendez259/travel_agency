@@ -231,12 +231,14 @@ app.MapGet("/api/trips/manage", async (AppDbContext db) =>
             .ThenInclude(b => b.Passengers)
         .Include(t => t.CapacityRequests)
         .Include(t => t.PointsOfInterest)
+        .Include(t => t.Options)
         .OrderByDescending(t => t.StartDate)
         .ToListAsync()).RequireAuthorization("StaffOnly");
 
 app.MapGet("/api/trips/{id}", async (int id, AppDbContext db) =>
     await db.Trips
         .Include(t => t.PointsOfInterest)
+        .Include(t => t.Options)
         .FirstOrDefaultAsync(t => t.Id == id) is Trip trip ? Results.Ok(trip) : Results.NotFound());
 
 app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
@@ -1546,6 +1548,64 @@ app.MapGet("/api/admin/stats", async (AppDbContext db) =>
     return Results.Ok(stats);
 }).RequireAuthorization("AdminOnly");
 
+
+app.MapGet("/api/trips/{tripId}/options", async (int tripId, AppDbContext db) =>
+    await db.TripOptions.Where(o => o.TripId == tripId).OrderBy(o => o.Order).ToListAsync());
+
+app.MapPost("/api/trips/{tripId}/options", async (int tripId, TripOptionDto dto, AppDbContext db) =>
+{
+    var trip = await db.Trips.FindAsync(tripId);
+    if (trip is null) return Results.NotFound();
+    var opt = new TravelAgency.Shared.Models.TripOption
+    {
+        TripId = tripId,
+        Name = dto.Name,
+        Description = dto.Description,
+        PriceAdult = dto.PriceAdult,
+        PriceChild = dto.PriceChild,
+        Capacity = dto.Capacity,
+        AvailableSeats = dto.Capacity,
+        Benefits = dto.Benefits,
+        IsActive = dto.IsActive,
+        Order = dto.Order,
+        CapacityMode = dto.CapacityMode,
+        CreatedAt = DateTime.UtcNow
+    };
+    db.TripOptions.Add(opt);
+    trip.HasOptions = true;
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/trips/{tripId}/options/{opt.Id}", opt);
+}).RequireAuthorization("StaffOnly");
+
+app.MapPut("/api/trips/{tripId}/options/{optionId}", async (int tripId, int optionId, TripOptionDto dto, AppDbContext db) =>
+{
+    var opt = await db.TripOptions.FirstOrDefaultAsync(o => o.Id == optionId && o.TripId == tripId);
+    if (opt is null) return Results.NotFound();
+    opt.Name = dto.Name;
+    opt.Description = dto.Description;
+    opt.PriceAdult = dto.PriceAdult;
+    opt.PriceChild = dto.PriceChild;
+    opt.Capacity = dto.Capacity;
+    // adjust available seats if capacity increased/decreased? simple: keep non-negative relative
+    opt.AvailableSeats = Math.Max(0, opt.AvailableSeats + (dto.Capacity - opt.Capacity));
+    opt.Capacity = dto.Capacity;
+    opt.Benefits = dto.Benefits;
+    opt.IsActive = dto.IsActive;
+    opt.Order = dto.Order;
+    opt.CapacityMode = dto.CapacityMode;
+    await db.SaveChangesAsync();
+    return Results.Ok(opt);
+}).RequireAuthorization("StaffOnly");
+
+app.MapDelete("/api/trips/{tripId}/options/{optionId}", async (int tripId, int optionId, AppDbContext db) =>
+{
+    var opt = await db.TripOptions.FirstOrDefaultAsync(o => o.Id == optionId && o.TripId == tripId);
+    if (opt is null) return Results.NotFound();
+    db.TripOptions.Remove(opt);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+}).RequireAuthorization("StaffOnly");
+
 app.Run();
 
 static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)
@@ -2532,4 +2592,5 @@ record UpdateFinalizeRequest(bool Finalized);
 record UpdateTripRatingRequest(int Rating, string? Comment);
 record DeleteTripRequest(string? Message);
 record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);
+record TripOptionDto(string Name, string? Description, decimal PriceAdult, decimal? PriceChild, int Capacity, string? Benefits, bool IsActive, int Order, TravelAgency.Shared.Models.TripOptionCapacityMode CapacityMode);
 record UpsertPoiRequest(string? Name, string? Description, double Latitude, double Longitude);
