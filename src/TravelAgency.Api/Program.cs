@@ -747,6 +747,42 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     db.Bookings.Add(booking);
     await db.SaveChangesAsync();
 
+    // Save booking items if options provided (multi-item mode)
+    var bookingItems = new List<TravelAgency.Shared.Models.BookingItem>();
+    var useOptions = request.UseOptions == true || (request.Options != null && request.Options.Count > 0) || trip.HasOptions;
+    if (useOptions && request.Options != null && request.Options.Count > 0)
+    {
+        var optionIds = request.Options.Select(o => o.TripOptionId).Distinct().ToList();
+        var opts = await db.TripOptions.Where(o => o.TripId == trip.Id && optionIds.Contains(o.TripId == o.TripId ? o.Id : o.Id)).ToListAsync(); // simple
+        var optsDict = await db.TripOptions.Where(o => o.TripId == trip.Id && optionIds.Contains(o.Id)).ToDictionaryAsync(o => o.Id);
+        foreach (var oi in request.Options)
+        {
+            if (!optsDict.TryGetValue(oi.TripOptionId, out var opt)) continue;
+            var adults = Math.Max(0, oi.Adults);
+            var children = Math.Max(0, oi.Children);
+            var seatsOpt = adults + children;
+            if (seatsOpt <= 0) continue;
+            if (seatsOpt > opt.AvailableSeats && opt.AvailableSeats >= 0) { /* allow? but check later */ }
+            bookingItems.Add(new TravelAgency.Shared.Models.BookingItem
+            {
+                BookingId = booking.Id,
+                TripOptionId = opt.Id,
+                Adults = adults,
+                Children = children,
+                UnitPriceAdult = opt.PriceAdult,
+                UnitPriceChild = opt.PriceChild,
+                OptionName = opt.Name
+            });
+        }
+        if (bookingItems.Count > 0)
+        {
+            db.BookingItems.AddRange(bookingItems);
+            await db.SaveChangesAsync();
+            booking.TotalAmount = ComputeBookingTotal(trip, passengers, bookingItems);
+            await db.SaveChangesAsync();
+        }
+    }
+
     if (passengers.Count > 0)
     {
         await AssignFreeSeatsAsync(db, trip, passengers, booking.Id);
@@ -1518,6 +1554,20 @@ static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)
         .Where(b => b.TripId == trip.Id && b.Status != BookingStatus.Cancelled)
         .SumAsync(b => (int?)b.NumberOfSeats) ?? 0;
     trip.AvailableSeats = trip.Capacity - sold;
+
+    // Recompute option availability if options exist
+    if (trip.HasOptions)
+    {
+        var options = await db.TripOptions.Where(o => o.TripId == trip.Id).ToListAsync();
+        foreach (var opt in options)
+        {
+            var soldOpt = await db.BookingItems
+                .Where(i => i.TripOptionId == opt.Id)
+                .Join(db.Bookings.Where(b => b.Status != BookingStatus.Cancelled), i => i.BookingId, b => b.Id, (i,b) => i)
+                .SumAsync(i => (int?)(i.Adults + i.Children)) ?? 0;
+            opt.AvailableSeats = opt.Capacity - soldOpt;
+        }
+    }
 }
 
 static string PaymentMethodName(PaymentMethod method) => method switch
@@ -1734,14 +1784,21 @@ static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList
     }
 }
 
-static decimal ComputeBookingTotal(Trip trip, IEnumerable<TripPassenger> passengers)
+static decimal ComputeBookingTotal(Trip trip, IEnumerable<TripPassenger> passengers, IEnumerable<BookingItem>? items = null)
 {
-    var total = trip.Price;
+    if (items != null && items.Any())
+    {
+        decimal total = 0;
+        foreach (var it in items)
+            total += it.LineTotal;
+        return Math.Round(total, 2);
+    }
+    var totalLegacy = trip.Price;
     foreach (var p in passengers)
     {
-        total += p.IsChild && trip.ChildPrice.HasValue ? trip.ChildPrice.Value : trip.Price;
+        totalLegacy += p.IsChild && trip.ChildPrice.HasValue ? trip.ChildPrice.Value : trip.Price;
     }
-    return total;
+    return Math.Round(totalLegacy, 2);
 }
 
 static bool TryParseBookingStatus(string? status, out BookingStatus parsed)
@@ -2468,7 +2525,7 @@ record UpdateBookingStatusRequest(BookingStatus Status);
 record UpdateBookingCheckinRequest(bool CheckedIn);
 record UpdatePassengerCheckinRequest(bool CheckedIn);
 record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
-record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null);
+record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInput>? Options = null, bool? UseOptions = null);
 record CreatePassengersRequest(List<PassengerInput>? Passengers);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);
