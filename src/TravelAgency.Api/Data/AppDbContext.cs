@@ -37,6 +37,7 @@ public class AppDbContext : DbContext
             entity.Property(t => t.Title).HasMaxLength(200).IsRequired();
             entity.Property(t => t.Destination).HasMaxLength(150).IsRequired();
             entity.Property(t => t.Category).HasMaxLength(60);
+            entity.Property(t => t.HotelName).HasMaxLength(150);
             entity.Property(t => t.Price).HasPrecision(18, 2);
             entity.Property(t => t.ChildPrice).HasPrecision(18, 2);
         });
@@ -90,7 +91,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.UnitPriceChild).HasPrecision(18, 2);
             e.Property(x => x.OptionName).HasMaxLength(80);
             e.HasOne(x => x.Booking).WithMany(b => b.Items).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(x => x.TripOption).WithMany().HasForeignKey(x => x.TripOptionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.TripOption).WithMany(o => o.BookingItems).HasForeignKey(x => x.TripOptionId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TripPassenger>(entity =>

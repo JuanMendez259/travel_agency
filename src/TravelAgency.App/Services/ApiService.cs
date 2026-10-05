@@ -247,13 +247,17 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
-    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers)
+    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers, List<BookingOptionInput>? options = null)
     {
         var list = passengers?
             .Select(p => new PassengerInput(p.Name, p.Age, null))
             .ToList();
+        var optionDtos = options?
+            .Select(o => new BookingOptionInputDto(o.TripOptionId, o.Adults, o.Children))
+            .ToList();
+        var useOptions = optionDtos is { Count: > 0 };
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list, null), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, null, optionDtos, useOptions), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -262,13 +266,18 @@ public class ApiService
         int tripId,
         int seats,
         int holderSeat,
-        IEnumerable<(string Name, int Age, int SeatNumber)> passengers)
+        IEnumerable<(string Name, int Age, int SeatNumber)> passengers,
+        List<BookingOptionInput>? options = null)
     {
         var list = passengers
             .Select(p => new PassengerInput(p.Name, p.Age, p.SeatNumber))
             .ToList();
+        var optionDtos = options?
+            .Select(o => new BookingOptionInputDto(o.TripOptionId, o.Adults, o.Children))
+            .ToList();
+        var useOptions = optionDtos is { Count: > 0 };
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list, holderSeat), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, holderSeat, optionDtos, useOptions), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -379,7 +388,8 @@ public class ApiService
     private record CreatePassengersRequest(List<PassengerInput>? Passengers);
     private record UpdatePassengerCheckinRequest(bool CheckedIn);
     private record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
-    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null);
+    private record BookingOptionInputDto(int TripOptionId, int Adults, int Children);
+    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null);
 
     public async Task<TokenCheckinResult?> CheckinByTokenAsync(string token, int tripId)
     {
@@ -420,6 +430,30 @@ public class ApiService
         {
             return null;
         }
+    }
+
+
+    public Task<List<TripOption>?> GetTripOptionsAsync(int tripId) =>
+        _http.GetFromJsonAsync<List<TripOption>>($"/api/trips/{tripId}/options", JsonOptions);
+
+    public async Task<TripOption?> CreateTripOptionAsync(int tripId, TripOption option)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/trips/{tripId}/options", option, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripOption>(JsonOptions);
+    }
+
+    public async Task<TripOption?> UpdateTripOptionAsync(int tripId, TripOption option)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/options/{option.Id}", option, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripOption>(JsonOptions);
+    }
+
+    public async Task DeleteTripOptionAsync(int tripId, int optionId)
+    {
+        var response = await _http.DeleteAsync($"/api/trips/{tripId}/options/{optionId}");
+        response.EnsureSuccessStatusCode();
     }
 }
 

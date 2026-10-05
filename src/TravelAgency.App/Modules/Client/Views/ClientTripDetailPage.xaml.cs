@@ -15,6 +15,7 @@ public partial class ClientTripDetailPage : ContentPage
     private bool _isFavorite;
     private int _adults = 1;
     private int _children;
+    private readonly List<(TripOption Option, int Adults, int Children)> _optionSelections = new();
     private int _availableSeats;
     private bool _bookingClosed;
 
@@ -112,6 +113,7 @@ public partial class ClientTripDetailPage : ContentPage
         BookClosedLabel.Text = $"Este viaje cerró reservas el {deadline:dd/MM/yyyy}.";
         BookClosedLabel.IsVisible = available > 0 && bookingClosed;
         UpdateBookingSummary();
+        RenderOptionsIfAny();
 
         if (!string.IsNullOrEmpty(_trip.ImageUrl))
             TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
@@ -128,27 +130,51 @@ public partial class ClientTripDetailPage : ContentPage
 
     private void UpdateBookingSummary()
     {
-        var adults = _adults;
-        var children = _children;
-        var adultPrice = _trip?.Price ?? 0;
-        var childPrice = _trip?.ChildPrice ?? adultPrice;
-        var total = adults * adultPrice + children * childPrice;
-        var seats = adults + children;
+        if (_trip?.HasOptions == true && (_trip.Options?.Count ?? 0) > 0)
+        {
+            var total = 0m;
+            var seats = 0;
+            foreach (var sel in _optionSelections)
+            {
+                total += sel.Adults * sel.Option.PriceAdult + sel.Children * (sel.Option.PriceChild ?? sel.Option.PriceAdult);
+                seats += sel.Adults + sel.Children;
+            }
+            AdultsCountLabel.Text = "0";
+            ChildrenCountLabel.Text = "0";
+            var maxSeatsTotal = Math.Max(0, _availableSeats);
+            AdultsPlusButton.IsEnabled = false;
+            ChildrenPlusButton.IsEnabled = false;
+            AdultsMinusButton.IsEnabled = false;
+            ChildrenMinusButton.IsEnabled = false;
+            BookButton.IsEnabled = !_bookingClosed && seats >= 1 && seats <= maxSeatsTotal;
+            TotalLabel.Text = total.ToString("C");
+            SeatsSelectionHintLabel.Text = seats == 1
+                ? "(1 asiento seleccionado)"
+                : $"({seats} asientos seleccionados)";
+            return;
+        }
 
-        AdultsCountLabel.Text = adults.ToString();
-        ChildrenCountLabel.Text = children.ToString();
+        var adults2 = _adults;
+        var children2 = _children;
+        var adultPrice2 = _trip?.Price ?? 0;
+        var childPrice2 = _trip?.ChildPrice ?? adultPrice2;
+        var total2 = adults2 * adultPrice2 + children2 * childPrice2;
+        var seats2 = adults2 + children2;
 
-        var maxSeats = Math.Max(0, _availableSeats);
-        AdultsPlusButton.IsEnabled = !_bookingClosed && seats < maxSeats;
-        ChildrenPlusButton.IsEnabled = !_bookingClosed && seats < maxSeats;
-        AdultsMinusButton.IsEnabled = adults > 1;
-        ChildrenMinusButton.IsEnabled = children > 0;
-        BookButton.IsEnabled = !_bookingClosed && seats >= 1 && seats <= maxSeats;
+        AdultsCountLabel.Text = adults2.ToString();
+        ChildrenCountLabel.Text = children2.ToString();
 
-        TotalLabel.Text = total.ToString("C");
-        SeatsSelectionHintLabel.Text = seats == 1
+        var maxSeats2 = Math.Max(0, _availableSeats);
+        AdultsPlusButton.IsEnabled = !_bookingClosed && seats2 < maxSeats2;
+        ChildrenPlusButton.IsEnabled = !_bookingClosed && seats2 < maxSeats2;
+        AdultsMinusButton.IsEnabled = adults2 > 1;
+        ChildrenMinusButton.IsEnabled = children2 > 0;
+        BookButton.IsEnabled = !_bookingClosed && seats2 >= 1 && seats2 <= maxSeats2;
+
+        TotalLabel.Text = total2.ToString("C");
+        SeatsSelectionHintLabel.Text = seats2 == 1
             ? "(1 asiento seleccionado)"
-            : $"({seats} asientos seleccionados)";
+            : $"({seats2} asientos seleccionados)";
     }
 
     private void OnAdultsMinusClicked(object? sender, EventArgs e)
@@ -250,6 +276,34 @@ public partial class ClientTripDetailPage : ContentPage
     {
         if (_trip is null) return;
 
+        if (_trip.HasOptions && (_trip.Options?.Count ?? 0) > 0)
+        {
+            var seatsOpt = 0;
+            foreach (var sel in _optionSelections)
+                seatsOpt += sel.Adults + sel.Children;
+            if (seatsOpt < 1)
+            {
+                await DisplayAlertAsync("Error", "Selecciona al menos un asiento.", "OK");
+                return;
+            }
+            if (seatsOpt > Math.Max(0, _availableSeats))
+            {
+                await DisplayAlertAsync("Error", "No hay suficientes asientos disponibles.", "OK");
+                return;
+            }
+            var store = BookingSelectionStore.Instance;
+            store.Clear();
+            store.TripId = _trip.Id;
+            foreach (var sel in _optionSelections)
+            {
+                if (sel.Adults > 0 || sel.Children > 0)
+                    store.Options.Add(new BookingOptionSelection(sel.Option.Id, sel.Adults, sel.Children, sel.Adults + sel.Children));
+            }
+            store.TotalSeats = seatsOpt;
+            await Shell.Current.GoToAsync($"bookseats?tripId={_trip.Id}&seats={seatsOpt}");
+            return;
+        }
+
         var seats = _adults + _children;
         if (seats < 1)
         {
@@ -263,6 +317,110 @@ public partial class ClientTripDetailPage : ContentPage
             return;
         }
 
+        var store2 = BookingSelectionStore.Instance;
+        store2.Clear();
+        store2.TripId = _trip.Id;
+        store2.TotalSeats = seats;
         await Shell.Current.GoToAsync($"bookseats?tripId={_trip.Id}&seats={seats}");
+    }
+
+    private void RenderOptionsIfAny()
+    {
+        OptionsBorder.IsVisible = false;
+        if (_trip?.HasOptions != true || _trip.Options is null || _trip.Options.Count == 0)
+            return;
+
+        OptionsPanel.Children.Clear();
+        _optionSelections.Clear();
+
+        foreach (var opt in _trip.Options.Where(o => o.IsActive).OrderBy(o => o.Order))
+        {
+            _optionSelections.Add((opt, 0, 0));
+
+            var frame = new Border
+            {
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
+                Stroke = Color.FromArgb("#E2E7FF"),
+                StrokeThickness = 1,
+                BackgroundColor = Color.FromArgb("#F8F9FF"),
+                Padding = 12,
+                Margin = new Thickness(0, 6, 0, 6)
+            };
+
+            var title = new Label { Text = opt.Name, FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#131B2E") };
+            var price = new Label { Text = $"{opt.PriceAdult:C} adulto · {(opt.PriceChild ?? opt.PriceAdult):C} niño", FontSize = 12, TextColor = Color.FromArgb("#404941"), Margin = new Thickness(0,2,0,6) };
+            var stack = new VerticalStackLayout { Spacing = 6 };
+
+            stack.Add(title);
+            stack.Add(price);
+
+            if (opt.BenefitLines.Count > 0)
+            {
+                foreach (var b in opt.BenefitLines)
+                {
+                    stack.Add(new Label { Text = $"• {b}", FontSize = 12, TextColor = Color.FromArgb("#404941") });
+                }
+            }
+
+            var grid = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Auto) }, Margin = new Thickness(0,6,0,0) };
+
+            var adultsLbl = new Label { Text = "Adultos", VerticalOptions = LayoutOptions.Center };
+            var adultsMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
+            var adultsCount = new Label { Text = "0", WidthRequest = 26, HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center };
+            var adultsPlus = new Button { Text = "+", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Color.FromArgb("#006C49"), TextColor = Colors.White };
+
+            var childLbl = new Label { Text = "Niños", VerticalOptions = LayoutOptions.Center };
+            var childMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
+            var childCount = new Label { Text = "0", WidthRequest = 26, HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center };
+            var childPlus = new Button { Text = "+", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Color.FromArgb("#006C49"), TextColor = Colors.White };
+
+            var row = 0;
+            grid.Add(adultsLbl, 0, row);
+            grid.Add(adultsMinus, 1, row);
+            grid.Add(adultsCount, 2, row);
+            grid.Add(adultsPlus, 3, row);
+            row++;
+            grid.Add(childLbl, 0, row);
+            grid.Add(childMinus, 1, row);
+            grid.Add(childCount, 2, row);
+            grid.Add(childPlus, 3, row);
+
+            stack.Add(grid);
+
+            var selIndex = _optionSelections.Count - 1;
+
+            void ApplyDelta(int adultsDelta, int childrenDelta)
+            {
+                var sel = _optionSelections[selIndex];
+                var newAdults = sel.Adults + adultsDelta;
+                var newChildren = sel.Children + childrenDelta;
+                if (newAdults < 0 || newChildren < 0) return;
+
+                var totalSeatsSel = 0;
+                foreach (var x in _optionSelections)
+                    totalSeatsSel += x.Adults + x.Children;
+                var delta = (newAdults + newChildren) - (sel.Adults + sel.Children);
+                if (totalSeatsSel + delta > Math.Max(0, _availableSeats)) return;
+
+                _optionSelections[selIndex] = (sel.Option, newAdults, newChildren);
+                adultsCount.Text = newAdults.ToString();
+                childCount.Text = newChildren.ToString();
+                UpdateBookingSummary();
+            }
+
+            adultsMinus.Clicked += (_, __) => ApplyDelta(-1, 0);
+            adultsPlus.Clicked += (_, __) => ApplyDelta(1, 0);
+            childMinus.Clicked += (_, __) => ApplyDelta(0, -1);
+            childPlus.Clicked += (_, __) => ApplyDelta(0, 1);
+
+            frame.Content = stack;
+            OptionsPanel.Children.Add(frame);
+        }
+
+        OptionsPanel.IsVisible = true;
+        OptionsBorder.IsVisible = true;
+        AdultsRow.IsVisible = false;
+        ChildrenRow.IsVisible = false;
+        UpdateBookingSummary();
     }
 }

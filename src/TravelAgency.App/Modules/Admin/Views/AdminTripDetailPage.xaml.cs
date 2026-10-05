@@ -84,6 +84,7 @@ public partial class AdminTripDetailPage : ContentPage
         RenderCapacityRequests();
         RenderPassengers();
         await RenderRatingsAsync();
+        RenderOptions();
 
         TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
         TripImage.IsVisible = TripImage.Source is not null;
@@ -350,5 +351,37 @@ public partial class AdminTripDetailPage : ContentPage
     private async void OnBackClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync("..");
+    }
+
+
+    private void RenderOptions()
+    {
+        OptionsLayout.Children.Clear();
+        HotelSummaryLabel.Text = _trip?.IncludesHotel == true
+            ? $"Incluye hotel · {(_trip.HotelName ?? "sin nombre")} · cupo {_trip.BookableCapacity} lugares"
+            : "No incluye hotel · cupo según transporte";
+
+        var options = _trip?.Options?.OrderBy(o => o.Order).ToList() ?? new List<TripOption>();
+        OptionsSummaryLabel.Text = options.Count == 0
+            ? "Sin opciones: se usa el precio y cupo general del viaje."
+            : $"{options.Count} opción(es). Toca \"Administrar opciones\" para editarlas.";
+
+        foreach (var opt in options)
+        {
+            var state = opt.IsActive ? "Activa" : "Inactiva";
+            var child = opt.PriceChild.HasValue ? $"{opt.PriceChild.Value:C} niño" : "niño = adulto";
+            OptionsLayout.Children.Add(new Label
+            {
+                Text = $"{opt.Name} · {opt.PriceAdult:C} adulto · {child} · {state}",
+                FontSize = 13,
+                TextColor = Color.FromArgb("#404941")
+            });
+        }
+    }
+
+    private async void OnManageOptionsClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+        await Shell.Current.GoToAsync($"tripoptions?id={_trip.Id}");
     }
 }

@@ -40,7 +40,25 @@ public class Trip
 
     public bool HasOptions { get; set; }
 
+    /// <summary>Indica si el viaje incluye hospedaje.</summary>
+    public bool IncludesHotel { get; set; }
+
+    /// <summary>Nombre del hotel. Solo informativo para el administrador.</summary>
+    public string? HotelName { get; set; }
+
+    /// <summary>Lugares confirmados con el hotel. Solo aplica si IncludesHotel.</summary>
+    public int? HotelCapacity { get; set; }
+
     public ICollection<TripOption> Options { get; set; } = new List<TripOption>();
+
+    /// <summary>
+    /// Cupo efectivo para reservar: si el viaje incluye hotel se usa el cupo del
+    /// hotel (limitado por la capacidad del transporte); si no, la capacidad del transporte.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int BookableCapacity => IncludesHotel && HotelCapacity.HasValue
+        ? Math.Min(Capacity, Math.Max(0, HotelCapacity.Value))
+        : Capacity;
 
     [System.Text.Json.Serialization.JsonIgnore]
     public decimal? FromPrice => HasOptions && Options.Count > 0

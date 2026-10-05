@@ -168,6 +168,24 @@ public partial class ClientMyBookingDetailPage : ContentPage
             }
         }
         PaymentsList.ItemsSource = payments;
+        if (currentBooking.HasOptionItems && currentBooking.Items is not null && currentBooking.Items.Count > 0)
+        {
+            ItemsSection.IsVisible = true;
+            ItemsLayout.Children.Clear();
+            foreach (var it in currentBooking.Items)
+            {
+                var optName = it.TripOption?.Name ?? $"Opción #{it.TripOptionId}";
+                var row = new Grid
+                {
+                    ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
+                    Padding = new Thickness(0, 4, 0, 4)
+                };
+                row.Add(new Label { Text = $"{optName} · {it.Adults}A/{it.Children}N", FontSize = 12, TextColor = Color.FromArgb("#CCFFFFFF") }, 0, 0);
+                row.Add(new Label { Text = it.LineTotal.ToString("C"), FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#CCFFFFFF"), HorizontalOptions = LayoutOptions.End }, 1, 0);
+                ItemsLayout.Children.Add(row);
+            }
+        }
+
 
         var qrImage = QrCodeService.FromToken(currentBooking.QrToken);
         QrImage!.Source = qrImage;

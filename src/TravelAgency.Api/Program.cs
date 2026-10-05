@@ -133,6 +133,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureBookingDeadlineColumnAsync(db, provider);
     await EnsureTripCategoryColumnAsync(db, provider);
     await EnsureTripHasOptionsColumnAsync(db, provider);
+    await EnsureTripHotelColumnsAsync(db, provider);
     await EnsureTripOptionsTableAsync(db, provider);
     await EnsureBookingItemsTableAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
@@ -322,6 +323,9 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db, ImageStorageService
     if (trip.Category?.Length > 60)
         return Results.BadRequest("La categoría no puede superar los 60 caracteres.");
 
+    if (ValidateHotelFields(trip) is { } hotelError)
+        return Results.BadRequest(hotelError);
+
     trip.CreatedAt = DateTime.UtcNow;
     trip.Category = NormalizeCategory(trip.Category);
     trip.AvailableSeats = trip.Capacity;
@@ -420,6 +424,9 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     if (input.Category?.Length > 60)
         return Results.BadRequest("La categoría no puede superar los 60 caracteres.");
 
+    if (ValidateHotelFields(input) is { } hotelError)
+        return Results.BadRequest(hotelError);
+
     var capacityIncreased = input.Capacity > trip.Capacity;
 
     trip.Title = input.Title;
@@ -442,6 +449,9 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     trip.OriginLongitude = input.OriginLongitude;
     trip.DestinationLatitude = input.DestinationLatitude;
     trip.DestinationLongitude = input.DestinationLongitude;
+    trip.IncludesHotel = input.IncludesHotel;
+    trip.HotelName = string.IsNullOrWhiteSpace(input.HotelName) ? null : input.HotelName.Trim();
+    trip.HotelCapacity = input.IncludesHotel ? input.HotelCapacity : null;
 
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
@@ -634,6 +644,8 @@ app.MapGet("/api/users/{id}/bookings", async (int id, AppDbContext db, ClaimsPri
         .Include(b => b.Trip)
         .Include(b => b.Payments)
         .Include(b => b.Passengers)
+        .Include(b => b.Items)
+            .ThenInclude(i => i.TripOption)
         .Where(b => b.UserId == id);
 
     if (TryParseBookingStatus(status, out var parsed))
@@ -660,6 +672,8 @@ app.MapGet("/api/bookings", async (AppDbContext db, string? status) =>
         .Include(b => b.Trip)
         .Include(b => b.User)
         .Include(b => b.Passengers)
+        .Include(b => b.Items)
+            .ThenInclude(i => i.TripOption)
         .AsQueryable();
 
     if (TryParseBookingStatus(status, out var parsed))
@@ -681,6 +695,7 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         return Results.BadRequest($"Este viaje cerró reservas el {bookingDeadline:dd/MM/yyyy}.");
 
     var optionsMode = request.UseOptions == true || (request.Options != null && request.Options.Count > 0);
+    Dictionary<int, TravelAgency.Shared.Models.TripOption>? optionsLookup = null;
     if (!optionsMode)
     {
         if (request.NumberOfSeats < 1)
@@ -714,6 +729,27 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     {
         if (request.Options == null || request.Options.Count == 0)
             return Results.BadRequest("Debes indicar las opciones a reservar.");
+
+        var optionIds = request.Options.Select(o => o.TripOptionId).Distinct().ToList();
+        optionsLookup = await db.TripOptions
+            .Where(o => o.TripId == trip.Id && optionIds.Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id);
+
+        var totalRequestedSeats = request.Options.Sum(o => Math.Max(0, o.Adults) + Math.Max(0, o.Children));
+        if (totalRequestedSeats < 1)
+            return Results.BadRequest("Cada línea de opción debe tener al menos 1 asiento.");
+        if (totalRequestedSeats > trip.AvailableSeats)
+            return Results.BadRequest("No hay suficientes lugares disponibles para este viaje.");
+
+        foreach (var oi in request.Options)
+        {
+            if (!optionsLookup.TryGetValue(oi.TripOptionId, out var opt))
+                return Results.BadRequest($"Opción {oi.TripOptionId} no válida para este viaje.");
+            if (!opt.IsActive)
+                return Results.BadRequest($"La opción \"{opt.Name}\" ya no está disponible.");
+            if (Math.Max(0, oi.Adults) + Math.Max(0, oi.Children) < 1)
+                return Results.BadRequest("Cada línea de opción debe tener al menos 1 asiento.");
+        }
     }
 
     var passengers = new List<TripPassenger>();
@@ -763,16 +799,15 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     var useOptions = request.UseOptions == true || (request.Options != null && request.Options.Count > 0) || trip.HasOptions;
     if (useOptions && request.Options != null && request.Options.Count > 0)
     {
-        var optionIds = request.Options.Select(o => o.TripOptionId).Distinct().ToList();
-        var optsDict = await db.TripOptions.Where(o => o.TripId == trip.Id && optionIds.Contains(o.Id)).ToDictionaryAsync(o => o.Id);
+        optionsLookup ??= await db.TripOptions
+            .Where(o => o.TripId == trip.Id && request.Options.Select(x => x.TripOptionId).Contains(o.Id))
+            .ToDictionaryAsync(o => o.Id);
+
         foreach (var oi in request.Options)
         {
-            if (!optsDict.TryGetValue(oi.TripOptionId, out var opt)) return Results.BadRequest($"Opción {oi.TripOptionId} no válida para este viaje.");
+            if (!optionsLookup.TryGetValue(oi.TripOptionId, out var opt)) return Results.BadRequest($"Opción {oi.TripOptionId} no válida para este viaje.");
             var adults = Math.Max(0, oi.Adults);
             var children = Math.Max(0, oi.Children);
-            var seatsOpt = adults + children;
-            if (seatsOpt <= 0) return Results.BadRequest("Cada línea de opción debe tener al menos 1 asiento.");
-            if (seatsOpt > opt.AvailableSeats) return Results.BadRequest($"No hay suficientes asientos disponibles para la opción {opt.Name}.");
             bookingItems.Add(new TravelAgency.Shared.Models.BookingItem
             {
                 BookingId = booking.Id,
@@ -881,6 +916,8 @@ app.MapGet("/api/bookings/{id}", async (int id, AppDbContext db, ClaimsPrincipal
         .Include(b => b.User)
         .Include(b => b.Payments)
         .Include(b => b.Passengers)
+        .Include(b => b.Items)
+            .ThenInclude(i => i.TripOption)
         .FirstOrDefaultAsync(b => b.Id == id);
 
     if (booking is null) return Results.NotFound();
@@ -1567,23 +1604,35 @@ app.MapPost("/api/trips/{tripId}/options", async (int tripId, TripOptionDto dto,
 {
     var trip = await db.Trips.FindAsync(tripId);
     if (trip is null) return Results.NotFound();
+
+    if (string.IsNullOrWhiteSpace(dto.Name))
+        return Results.BadRequest("El nombre de la opción es obligatorio.");
+    if (dto.Name.Length > 80)
+        return Results.BadRequest("El nombre de la opción no puede superar los 80 caracteres.");
+    if (dto.PriceAdult < 0)
+        return Results.BadRequest("El precio no puede ser negativo.");
+    if (dto.PriceChild < 0)
+        return Results.BadRequest("El precio de niño no puede ser negativo.");
+
     var opt = new TravelAgency.Shared.Models.TripOption
     {
         TripId = tripId,
-        Name = dto.Name,
+        Name = dto.Name.Trim(),
         Description = dto.Description,
         PriceAdult = dto.PriceAdult,
         PriceChild = dto.PriceChild,
-        Capacity = dto.Capacity,
-        AvailableSeats = dto.Capacity,
+        Capacity = trip.BookableCapacity,
+        AvailableSeats = trip.AvailableSeats,
         Benefits = dto.Benefits,
         IsActive = dto.IsActive,
         Order = dto.Order,
-        CapacityMode = dto.CapacityMode,
+        CapacityMode = TravelAgency.Shared.Models.TripOptionCapacityMode.Shared,
         CreatedAt = DateTime.UtcNow
     };
     db.TripOptions.Add(opt);
     trip.HasOptions = true;
+    await db.SaveChangesAsync();
+    await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
     return Results.Created($"/api/trips/{tripId}/options/{opt.Id}", opt);
 }).RequireAuthorization("StaffOnly");
@@ -1592,18 +1641,27 @@ app.MapPut("/api/trips/{tripId}/options/{optionId}", async (int tripId, int opti
 {
     var opt = await db.TripOptions.FirstOrDefaultAsync(o => o.Id == optionId && o.TripId == tripId);
     if (opt is null) return Results.NotFound();
-    opt.Name = dto.Name;
+
+    if (string.IsNullOrWhiteSpace(dto.Name))
+        return Results.BadRequest("El nombre de la opción es obligatorio.");
+    if (dto.Name.Length > 80)
+        return Results.BadRequest("El nombre de la opción no puede superar los 80 caracteres.");
+    if (dto.PriceAdult < 0)
+        return Results.BadRequest("El precio no puede ser negativo.");
+    if (dto.PriceChild < 0)
+        return Results.BadRequest("El precio de niño no puede ser negativo.");
+
+    opt.Name = dto.Name.Trim();
     opt.Description = dto.Description;
     opt.PriceAdult = dto.PriceAdult;
     opt.PriceChild = dto.PriceChild;
-    opt.Capacity = dto.Capacity;
-    // adjust available seats if capacity increased/decreased? simple: keep non-negative relative
-    opt.AvailableSeats = Math.Max(0, opt.AvailableSeats + (dto.Capacity - opt.Capacity));
-    opt.Capacity = dto.Capacity;
     opt.Benefits = dto.Benefits;
     opt.IsActive = dto.IsActive;
     opt.Order = dto.Order;
-    opt.CapacityMode = dto.CapacityMode;
+
+    var trip = await db.Trips.FindAsync(tripId);
+    if (trip is not null) await RecomputeAvailabilityAsync(db, trip);
+
     await db.SaveChangesAsync();
     return Results.Ok(opt);
 }).RequireAuthorization("StaffOnly");
@@ -1624,21 +1682,28 @@ static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)
     var sold = await db.Bookings
         .Where(b => b.TripId == trip.Id && b.Status != BookingStatus.Cancelled)
         .SumAsync(b => (int?)b.NumberOfSeats) ?? 0;
-    trip.AvailableSeats = trip.Capacity - sold;
+    trip.AvailableSeats = trip.BookableCapacity - sold;
 
-    // Recompute option availability if options exist
+    // Cuando el viaje tiene opciones, todas comparten el mismo cupo del viaje.
     if (trip.HasOptions)
     {
         var options = await db.TripOptions.Where(o => o.TripId == trip.Id).ToListAsync();
         foreach (var opt in options)
         {
-            var soldOpt = await db.BookingItems
-                .Where(i => i.TripOptionId == opt.Id)
-                .Join(db.Bookings.Where(b => b.Status != BookingStatus.Cancelled), i => i.BookingId, b => b.Id, (i,b) => i)
-                .SumAsync(i => (int?)(i.Adults + i.Children)) ?? 0;
-            opt.AvailableSeats = opt.Capacity - soldOpt;
+            opt.AvailableSeats = trip.AvailableSeats;
+            opt.Capacity = trip.BookableCapacity;
         }
     }
+}
+
+static string? ValidateHotelFields(Trip trip)
+{
+    if (!trip.IncludesHotel) return null;
+    if (!trip.HotelCapacity.HasValue || trip.HotelCapacity.Value < 1)
+        return "Indica cuántos lugares hay disponibles según el hotel (mínimo 1).";
+    if (trip.HotelName?.Length > 150)
+        return "El nombre del hotel no puede superar los 150 caracteres.";
+    return null;
 }
 
 static string PaymentMethodName(PaymentMethod method) => method switch
@@ -1925,6 +1990,30 @@ static async Task EnsureTripHasOptionsColumnAsync(AppDbContext db, string provid
         await TryExecAsync(db, provider == "sqlite"
             ? @"ALTER TABLE ""Trips"" ADD COLUMN ""HasOptions"" INTEGER NOT NULL DEFAULT 0;"
             : @"ALTER TABLE ""Trips"" ADD COLUMN ""HasOptions"" boolean NOT NULL DEFAULT false;");
+    }
+}
+
+static async Task EnsureTripHotelColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "IncludesHotel", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""Trips"" ADD COLUMN ""IncludesHotel"" INTEGER NOT NULL DEFAULT 0;"
+            : @"ALTER TABLE ""Trips"" ADD COLUMN ""IncludesHotel"" boolean NOT NULL DEFAULT false;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Trips", "HotelName", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""Trips"" ADD COLUMN ""HotelName"" TEXT NULL;"
+            : @"ALTER TABLE ""Trips"" ADD COLUMN ""HotelName"" character varying(150) NULL;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Trips", "HotelCapacity", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""Trips"" ADD COLUMN ""HotelCapacity"" INTEGER NULL;"
+            : @"ALTER TABLE ""Trips"" ADD COLUMN ""HotelCapacity"" integer NULL;");
     }
 }
 
@@ -2603,5 +2692,5 @@ record UpdateFinalizeRequest(bool Finalized);
 record UpdateTripRatingRequest(int Rating, string? Comment);
 record DeleteTripRequest(string? Message);
 record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);
-record TripOptionDto(string Name, string? Description, decimal PriceAdult, decimal? PriceChild, int Capacity, string? Benefits, bool IsActive, int Order, TravelAgency.Shared.Models.TripOptionCapacityMode CapacityMode);
+record TripOptionDto(string Name, string? Description, decimal PriceAdult, decimal? PriceChild, string? Benefits, bool IsActive, int Order);
 record UpsertPoiRequest(string? Name, string? Description, double Latitude, double Longitude);

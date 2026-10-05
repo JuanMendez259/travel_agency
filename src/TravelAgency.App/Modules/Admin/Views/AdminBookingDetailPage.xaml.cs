@@ -47,6 +47,20 @@ public partial class AdminBookingDetailPage : ContentPage
             InfoLabel.Text = $"{_booking.BookingDate:dd/MM/yyyy} · {_booking.NumberOfSeats} asientos · Total {_booking.TotalAmount:C}";
             StatusLabel.Text = $"Estado: {_booking.Status}";
             PaymentsList.ItemsSource = _booking.Payments;
+        if (_booking.HasOptionItems && _booking.Items is not null && _booking.Items.Count > 0)
+        {
+            ItemsHeader.IsVisible = true;
+            ItemsLayout.Children.Clear();
+            foreach (var it in _booking.Items)
+            {
+                var optName = it.TripOption?.Name ?? $"Opción #{it.TripOptionId}";
+                var grid = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) }, Padding = new Thickness(0,4,0,4) };
+                grid.Add(new Label { Text = $"{optName} · {it.Adults}A/{it.Children}N", FontSize = 12, TextColor = Color.FromArgb("#404941") }, 0, 0);
+                grid.Add(new Label { Text = it.LineTotal.ToString("C"), FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#131B2E"), HorizontalOptions = LayoutOptions.End }, 1, 0);
+                ItemsLayout.Children.Add(grid);
+            }
+        }
+
 
             var paid = _booking.Payments?.Sum(p => p.Amount) ?? 0;
             var remaining = _booking.TotalAmount - paid;

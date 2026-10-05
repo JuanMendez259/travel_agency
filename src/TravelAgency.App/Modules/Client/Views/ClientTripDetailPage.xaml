@@ -188,6 +188,24 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- ============ OPCIONES DEL VIAJE ============ -->
+            <Border x:Name="OptionsBorder" Margin="20,16,20,0" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16" IsVisible="False">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="14" Offset="0,4" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                        <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                            <Label Text="🎟️" FontSize="18" VerticalOptions="Center" />
+                            <Label Text="Opciones de viaje" FontSize="16" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                    <VerticalStackLayout x:Name="OptionsPanel" Spacing="6" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- ============ SELECCIÓN DE ASIENTOS ============ -->
             <Border Margin="20,16,20,0" StrokeShape="RoundRectangle 12" Stroke="Transparent"
                     BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
@@ -214,7 +232,7 @@
                             BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
                         <VerticalStackLayout Spacing="10">
 
-                            <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            <Border x:Name="AdultsRow" StrokeShape="RoundRectangle 10" Stroke="Transparent"
                                     BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <VerticalStackLayout Grid.Column="0" Spacing="1">

@@ -611,8 +611,17 @@ public partial class ClientBookingSeatsPage : ContentPage
         ConfirmButton.IsEnabled = false;
         try
         {
+            var storeSel = BookingSelectionStore.Instance;
+            List<BookingOptionInput>? optList = null;
+            if (storeSel.TripId == int.Parse(TripId) && storeSel.Options.Count > 0)
+            {
+                optList = storeSel.Options
+                    .Select(o => new BookingOptionInput(o.TripOptionId, o.Adults, o.Children))
+                    .Where(o => o.Adults > 0 || o.Children > 0)
+                    .ToList();
+            }
             var created = await _api.CreateBookingWithSeatsAsync(
-                int.Parse(TripId), _slots.Count, holderSeat, passengers);
+                int.Parse(TripId), _slots.Count, holderSeat, passengers, optList);
 
             await DisplayAlertAsync("Reserva creada",
                 $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. "

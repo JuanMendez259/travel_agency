@@ -14,25 +14,25 @@
 
             <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill" />
             <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" />
-            <Label x:Name="DestinationLabel" FontSize="16" TextColor="Gray" />
+            <Label x:Name="DestinationLabel" FontSize="16" TextColor="{StaticResource OnSurfaceVariant}" />
             <Label x:Name="DatesLabel" FontSize="15" />
             <Label x:Name="PriceLabel" FontSize="18" FontAttributes="Bold" />
             <Label x:Name="TransportLabel" FontSize="15" />
             <Label x:Name="StatusLabel" FontSize="15" FontAttributes="Bold" />
-            <Label x:Name="CancellationLabel" FontSize="14" TextColor="Gray" IsVisible="False" />
+            <Label x:Name="CancellationLabel" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
 
             <Border Margin="0,10,0,0" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F4F4F4, Dark=#2C2C2C}">
                 <Grid Padding="16" ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto">
                     <VerticalStackLayout>
-                        <Label Text="Vendidos" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label Text="Vendidos" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
                         <Label x:Name="SoldLabel" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
                     </VerticalStackLayout>
                     <VerticalStackLayout Grid.Column="1">
-                        <Label Text="Disponibles" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label Text="Disponibles" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
                         <Label x:Name="AvailableLabel" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
                     </VerticalStackLayout>
                     <VerticalStackLayout Grid.Column="2">
-                        <Label Text="Capacidad" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label Text="Capacidad" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
                         <Label x:Name="CapacityLabel" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
                     </VerticalStackLayout>
                 </Grid>
@@ -41,6 +41,12 @@
             <Label Text="Descripción" FontSize="16" FontAttributes="Bold" Margin="0,10,0,0" />
             <Label x:Name="DescriptionLabel" FontSize="14" />
 
+            <Label x:Name="HotelSummaryLabel" FontSize="15" Margin="0,10,0,0" />
+            <Label x:Name="OptionsHeader" Text="Opciones del viaje" FontSize="16" FontAttributes="Bold" Margin="0,10,0,0" />
+            <Label x:Name="OptionsSummaryLabel" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+            <VerticalStackLayout x:Name="OptionsLayout" Spacing="4" />
+            <Button x:Name="ManageOptionsButton" Text="Administrar opciones" Clicked="OnManageOptionsClicked" Margin="0,6,0,0"
+                    BackgroundColor="{StaticResource Primary}" TextColor="White" />
             <Label x:Name="CapacityRequestsHeader" Text="Solicitudes de cupo" FontSize="16" FontAttributes="Bold" Margin="0,10,0,0" IsVisible="False" />
             <VerticalStackLayout x:Name="CapacityRequestsLayout" Spacing="8" />
 
@@ -51,13 +57,13 @@
             <Button x:Name="PaymentsButton" Text="Reservas y pagos"
                     Clicked="OnPaymentsClicked"
                     Margin="0,15,0,0"
-                    BackgroundColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"
+                    BackgroundColor="{StaticResource Primary}"
                     TextColor="White" />
 
             <Button x:Name="MapButton" Text="Mapa e itinerario"
                     Clicked="OnMapClicked"
                     Margin="0,10,0,0"
-                    BackgroundColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"
+                    BackgroundColor="{StaticResource Primary}"
                     TextColor="White" />
 
             <Button x:Name="CheckinButton" Text="Check-in / Salida"
@@ -69,19 +75,19 @@
             <Button x:Name="FinalizeButton" Text="Finalizar viaje"
                     Clicked="OnFinalizeClicked"
                     Margin="0,10,0,0"
-                    BackgroundColor="#2B6CB0"
+                    BackgroundColor="{StaticResource Primary}"
                     TextColor="White" />
 
             <Button x:Name="AuditButton" Text="Historial de cambios"
                     Clicked="OnAuditClicked"
                     Margin="0,10,0,0"
-                    BackgroundColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"
+                    BackgroundColor="{StaticResource Primary}"
                     TextColor="White" />
 
             <HorizontalStackLayout x:Name="EditActions" Spacing="10" Margin="0,10,0,0">
                 <Button Text="Editar"
                         Clicked="OnEditClicked"
-                        BackgroundColor="{AppThemeBinding Light=#2B6CB0, Dark=#63B3ED}"
+                    BackgroundColor="{StaticResource Primary}"
                         TextColor="White" />
                 <Button Text="Eliminar"
                         Clicked="OnDeleteClicked"
@@ -90,9 +96,9 @@
             </HorizontalStackLayout>
 
             <Label x:Name="RatingsHeader" Text="Opiniones de clientes" FontSize="16" FontAttributes="Bold" Margin="0,15,0,0" IsVisible="False" />
-            <Label x:Name="RatingsAverageLabel" FontSize="14" TextColor="Gray" IsVisible="False" />
+            <Label x:Name="RatingsAverageLabel" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
             <VerticalStackLayout x:Name="RatingsLayout" Spacing="8" />
-            <Label x:Name="RatingsEmptyLabel" Text="Aún no hay opiniones." FontSize="14" TextColor="Gray" IsVisible="False" />
+            <Label x:Name="RatingsEmptyLabel" Text="Aún no hay opiniones." FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
 
             <Button Text="Volver a mis viajes" Clicked="OnBackClicked" Margin="0,10,0,0" />
         </VerticalStackLayout>

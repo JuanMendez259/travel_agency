@@ -74,6 +74,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 BookingDeadline = BookingDeadlineSwitch.IsToggled
                     ? BookingDeadlinePicker.Date.GetValueOrDefault().Date
                     : null,
+                IncludesHotel = IncludesHotelSwitch.IsToggled,
+                HotelName = string.IsNullOrWhiteSpace(HotelNameEntry.Text) ? null : HotelNameEntry.Text.Trim(),
+                HotelCapacity = int.TryParse(HotelCapacityEntry.Text, out var hotelCap) ? hotelCap : (int?)null,
             };
 
             if (string.IsNullOrEmpty(trip.Title) || string.IsNullOrEmpty(trip.Destination))
@@ -133,6 +136,13 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                     await DisplayAlertAsync("Error", "La fecha límite de reserva no puede estar en el pasado.", "OK");
                     return;
                 }
+            }
+
+            if (trip.IncludesHotel && (trip.HotelCapacity is null || trip.HotelCapacity < 1))
+            {
+                await DisplayAlertAsync("Error", "Indica cuántos lugares hay disponibles según el hotel (mínimo 1).", "OK");
+                HotelCapacityEntry.Focus();
+                return;
             }
 
 
@@ -225,6 +235,11 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ActiveSwitch.IsToggled = trip.IsActive;
         ApplyActiveState();
 
+        IncludesHotelSwitch.IsToggled = trip.IncludesHotel;
+        HotelNameEntry.Text = trip.HotelName ?? string.Empty;
+        HotelCapacityEntry.Text = trip.HotelCapacity?.ToString() ?? string.Empty;
+        ApplyHotelState();
+
         ImagePreview.Source = null;
         ImagePreview.IsVisible = false;
         ImageNameLabel.IsVisible = false;
@@ -261,6 +276,12 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         CategoryPicker.SelectedIndex = 0;
         ActiveSwitch.IsToggled = true;
         ApplyActiveState();
+
+        IncludesHotelSwitch.IsToggled = false;
+        HotelNameEntry.Text = string.Empty;
+        HotelCapacityEntry.Text = string.Empty;
+        ApplyHotelState();
+
         _selectedImage = null;
         ImageNameLabel.Text = string.Empty;
         ImageNameLabel.IsVisible = false;
@@ -283,6 +304,22 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ActiveHintLabel.Text = active
             ? "Los clientes podrán verlo y reservar."
             : "No aparecerá para nuevas reservas; las existentes se mantienen.";
+    }
+
+    private void OnIncludesHotelToggled(object? sender, ToggledEventArgs e)
+    {
+        ApplyHotelState();
+    }
+
+    private void ApplyHotelState()
+    {
+        var enabled = IncludesHotelSwitch.IsToggled;
+        HotelFieldsLayout.IsVisible = enabled;
+        if (!enabled)
+        {
+            HotelNameEntry.Text = string.Empty;
+            HotelCapacityEntry.Text = string.Empty;
+        }
     }
 
     private void OnBookingDeadlineToggled(object? sender, ToggledEventArgs e)

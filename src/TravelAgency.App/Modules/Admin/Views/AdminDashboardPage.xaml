@@ -37,7 +37,7 @@
                 <VerticalStackLayout>
                     <Label Text="Precio (por asiento)" />
                     <Entry x:Name="PriceEntry" Keyboard="Numeric" />
-                    <Label Text="Precio niño (opcional)" FontSize="12" TextColor="Gray" />
+                     <Label Text="Precio niño (opcional)" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                     <Entry x:Name="ChildPriceEntry" Keyboard="Numeric" />
                 </VerticalStackLayout>
                 <VerticalStackLayout Grid.Column="1">
@@ -48,10 +48,28 @@
 
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                    <Label Text="Este viaje incluye hotel" />
+                    <Label Text="Si lo activas, la disponibilidad depende del cupo del hotel."
+                           FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                </VerticalStackLayout>
+                <Switch x:Name="IncludesHotelSwitch" Grid.Column="1" Toggled="OnIncludesHotelToggled" VerticalOptions="Center" />
+            </Grid>
+
+            <VerticalStackLayout x:Name="HotelFieldsLayout" Spacing="8" IsVisible="False">
+                <Label Text="Nombre del hotel (opcional)" />
+                <Entry x:Name="HotelNameEntry" Placeholder="Ej. Hotel Costa Azul" />
+                <Label Text="Lugares disponibles según el hotel" />
+                <Entry x:Name="HotelCapacityEntry" Keyboard="Numeric" Placeholder="Confírmalo con el hotel" />
+                <Label Text="Este número será el cupo que verán los clientes. Verifícalo con el hotel antes de publicar."
+                       FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+            </VerticalStackLayout>
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <VerticalStackLayout Spacing="1" VerticalOptions="Center">
                     <Label Text="Fecha límite de reserva" />
                     <Label x:Name="BookingDeadlineHintLabel"
                            Text="Actívalo para cerrar las reservas antes de la salida."
-                           FontSize="12" TextColor="Gray" />
+                           FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                 </VerticalStackLayout>
                 <Switch x:Name="BookingDeadlineSwitch" Grid.Column="1" Toggled="OnBookingDeadlineToggled" VerticalOptions="Center" />
             </Grid>
@@ -59,12 +77,12 @@
 
             <Label Text="Cancelación (política del cliente)" />
             <Entry x:Name="CancellationDaysLimitEntry" Keyboard="Numeric" Placeholder="Obligatorio, ej: 3" />
-            <Label x:Name="CancellationHintLabel" FontSize="12" TextColor="Gray" />
+             <Label x:Name="CancellationHintLabel" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
 
             <Label Text="Categoría del viaje" />
             <Picker x:Name="CategoryPicker" />
             <Label Text="Agrupa el viaje para que los clientes lo encuentren más fácil."
-                   FontSize="12" TextColor="Gray" />
+                   FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
 
             <Label Text="Descripción" />
             <Editor x:Name="DescriptionEditor" HeightRequest="100" />
@@ -80,7 +98,7 @@
                     <Label x:Name="ActiveHintLabel"
                            Text="Los clientes podrán verlo y reservar."
                            FontSize="12"
-                           TextColor="Gray" />
+                           TextColor="{StaticResource OnSurfaceVariant}" />
                 </VerticalStackLayout>
             </Grid>
 
@@ -92,7 +110,7 @@
                    Margin="0,8,0,0" />
             <Label x:Name="ImageNameLabel"
                    FontSize="12"
-                   TextColor="Gray"
+                   TextColor="{StaticResource OnSurfaceVariant}"
                    IsVisible="False" />
 
             <Button x:Name="SaveButton" Text="Guardar viaje" Clicked="OnSaveClicked" />

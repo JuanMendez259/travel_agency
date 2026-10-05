@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripOptionsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Opciones del viaje">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="10">
+
+            <Label x:Name="TripNameLabel" FontSize="20" FontAttributes="Bold" />
+            <Border StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{StaticResource SurfaceContainerLow}" Padding="12">
+                <VerticalStackLayout Spacing="2">
+                    <Label x:Name="AvailabilityLabel" FontSize="13" FontAttributes="Bold"
+                           TextColor="{StaticResource Primary}" />
+                    <Label x:Name="HotelLabel" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Label x:Name="FormTitleLabel" Text="Nueva opción" FontSize="17" FontAttributes="Bold" Margin="0,10,0,0" />
+            <Label Text="Un paquete o boleto con su propio precio y beneficios. Los clientes eligen una o varias de estas opciones al reservar."
+                   FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+
+            <Label Text="Nombre de la opción" />
+            <Entry x:Name="OptionNameEntry" Placeholder="Ej. Sencillo, VIP, Todo incluido" />
+
+            <Label Text="Precio adulto (MXN)" />
+            <Entry x:Name="PriceAdultEntry" Placeholder="Ej. 2500" Keyboard="Numeric" />
+
+            <Label Text="Precio niño (opcional)" />
+            <Entry x:Name="PriceChildEntry" Placeholder="Vacío = paga como adulto" Keyboard="Numeric" />
+
+            <Label Text="Beneficios" />
+            <Label Text="Escribe uno por línea (ej. Transporte, Desayuno, Guía)." FontSize="12"
+                   TextColor="{StaticResource OnSurfaceVariant}" />
+            <Editor x:Name="BenefitsEditor" Placeholder="Transporte redondo&#10;Desayuno incluido&#10;Guía certificado"
+                    AutoSize="TextChanges" HeightRequest="110" />
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
+                <VerticalStackLayout Grid.Column="0" Spacing="1" VerticalOptions="Center">
+                    <Label Text="Opción activa" FontAttributes="Bold" />
+                    <Label Text="Si la desactivas, deja de ofrecerse a nuevos clientes."
+                           FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                </VerticalStackLayout>
+                <Switch x:Name="ActiveSwitch" Grid.Column="1" IsToggled="True" VerticalOptions="Center" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,6,0,0">
+                <Button x:Name="SaveButton" Text="Guardar opción" Clicked="OnSaveClicked"
+                        BackgroundColor="{StaticResource Primary}" TextColor="White" />
+                <Button x:Name="CancelEditButton" Grid.Column="1" Text="Cancelar edición"
+                        Clicked="OnCancelEditClicked" IsVisible="False"
+                        BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                        TextColor="{StaticResource OnSurface}" />
+            </Grid>
+
+            <Label x:Name="FeedbackLabel" FontSize="13" IsVisible="False" />
+
+            <BoxView HeightRequest="1" Color="{StaticResource OutlineVariant}" Margin="0,20,0,10" />
+
+            <Label Text="Opciones registradas" FontSize="17" FontAttributes="Bold" />
+            <Label x:Name="CountLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+
+            <VerticalStackLayout x:Name="OptionsLayout" Spacing="8" Margin="0,6,0,0" />
+
+            <Label x:Name="EmptyLabel"
+                   Text="Este viaje todavía no tiene opciones."
+                   FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
+
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
