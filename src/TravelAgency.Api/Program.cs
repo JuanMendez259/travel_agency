@@ -548,12 +548,18 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
     }
 
     var bookingIds = trip.Bookings.Select(b => b.Id).ToList();
+    var bookingItems = await db.BookingItems.Where(i => bookingIds.Contains(i.BookingId)).ToListAsync();
+    db.BookingItems.RemoveRange(bookingItems);
     var payments = await db.Payments.Where(p => bookingIds.Contains(p.BookingId)).ToListAsync();
     db.Payments.RemoveRange(payments);
     db.Bookings.RemoveRange(trip.Bookings);
 
     var capacityRequests = await db.CapacityRequests.Where(c => c.TripId == id).ToListAsync();
     db.CapacityRequests.RemoveRange(capacityRequests);
+
+    // Las opciones del viaje deben borrarse antes que el viaje (FK Restrict).
+    var tripOptions = await db.TripOptions.Where(o => o.TripId == id).ToListAsync();
+    db.TripOptions.RemoveRange(tripOptions);
 
     db.Trips.Remove(trip);
     await db.SaveChangesAsync();
@@ -1692,6 +1698,8 @@ app.MapDelete("/api/trips/{tripId}/options/{optionId}", async (int tripId, int o
     if (opt is null) return Results.NotFound();
     if (opt.IsBase)
         return Results.BadRequest("La entrada general no se puede eliminar. Puedes desactivarla si no la usas.");
+    if (await db.BookingItems.AnyAsync(i => i.TripOptionId == optionId))
+        return Results.BadRequest("Esta opción tiene reservas registradas y no se puede eliminar. Puedes desactivarla.");
     db.TripOptions.Remove(opt);
     await db.SaveChangesAsync();
     return Results.NoContent();
