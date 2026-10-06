@@ -34,6 +34,11 @@ public partial class ClientBookingSeatsPage : ContentPage
     private bool _passengersReady;
     private decimal _adultPrice;
     private decimal? _childPrice;
+    private decimal _baseTotal;
+    private decimal _discountAmount;
+    private string? _discountCode;
+    private DiscountType? _discountType;
+    private decimal? _discountValue;
 
     public string TripId { get; set; } = string.Empty;
     public string Seats { get; set; } = string.Empty;
@@ -191,7 +196,7 @@ public partial class ClientBookingSeatsPage : ContentPage
             else adults++;
         }
 
-        TotalLabel.Text = (adults * _adultPrice + children * childFare).ToString("C");
+        _baseTotal = adults * _adultPrice + children * childFare;
 
         var parts = new List<string> { $"{adults} adulto(s) × {_adultPrice.ToString("C")}" };
         if (children > 0)
@@ -200,6 +205,25 @@ public partial class ClientBookingSeatsPage : ContentPage
                 ? $"{children} niño(s) × {childFare.ToString("C")}"
                 : $"{children} niño(s) × {_adultPrice.ToString("C")} (tarifa de adulto)");
         }
+
+        var total = _baseTotal;
+
+        if (!string.IsNullOrEmpty(_discountCode) && _discountType.HasValue && _discountValue.HasValue)
+        {
+            var temp = new Discount { Type = _discountType.Value, Value = _discountValue.Value };
+            _discountAmount = temp.ComputeDiscount(_baseTotal);
+            total = Math.Max(0, _baseTotal - _discountAmount);
+            parts.Add($"Descuento {_discountCode}: −{_discountAmount.ToString("C")}");
+
+            DiscountStatusLabel.IsVisible = true;
+            DiscountStatusLabel.Text = $"Descuento aplicado: −{_discountAmount.ToString("C")}";
+        }
+        else
+        {
+            _discountAmount = 0;
+        }
+
+        TotalLabel.Text = total.ToString("C");
         FareBreakdownLabel.Text = string.Join("  ·  ", parts);
     }
 
@@ -647,6 +671,60 @@ public partial class ClientBookingSeatsPage : ContentPage
         RefreshSeatVisuals();
     }
 
+    private async void OnApplyDiscountClicked(object? sender, EventArgs e)
+    {
+        var code = DiscountCodeEntry.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            ClearDiscount();
+            await DisplayAlertAsync("Código", "Escribe un código de descuento.", "OK");
+            return;
+        }
+
+        if (!int.TryParse(TripId, out var tripId)) return;
+
+        ApplyDiscountButton.IsEnabled = false;
+        try
+        {
+            var result = await _api.ValidateDiscountAsync(code, tripId, _baseTotal);
+            if (result is null || !result.Valid)
+            {
+                ClearDiscount();
+                DiscountStatusLabel.IsVisible = true;
+                DiscountStatusLabel.TextColor = Color.FromArgb("#BA1A1A");
+                DiscountStatusLabel.Text = result?.Message ?? "No se pudo validar el código.";
+                return;
+            }
+
+            _discountCode = result.Code ?? code.ToUpperInvariant();
+            _discountType = result.Type;
+            _discountValue = result.Value;
+            DiscountCodeEntry.Text = _discountCode;
+            DiscountStatusLabel.IsVisible = true;
+            DiscountStatusLabel.TextColor = SecondaryColor;
+            DiscountStatusLabel.Text = $"Descuento aplicado: −{result.DiscountAmount.ToString("C")}";
+            UpdateTotal();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            ApplyDiscountButton.IsEnabled = true;
+        }
+    }
+
+    private void ClearDiscount()
+    {
+        _discountCode = null;
+        _discountType = null;
+        _discountValue = null;
+        _discountAmount = 0;
+        DiscountStatusLabel.IsVisible = false;
+        UpdateTotal();
+    }
+
     private async void OnConfirmClicked(object? sender, EventArgs e)
     {
         if (_slots.Count == 0)
@@ -710,7 +788,7 @@ public partial class ClientBookingSeatsPage : ContentPage
                     .ToList();
             }
             var created = await _api.CreateBookingWithSeatsAsync(
-                int.Parse(TripId), _slots.Count, holderSeat, passengers, optList);
+                int.Parse(TripId), _slots.Count, holderSeat, passengers, optList, _discountCode);
 
             if (created is not null && created.Id > 0)
             {

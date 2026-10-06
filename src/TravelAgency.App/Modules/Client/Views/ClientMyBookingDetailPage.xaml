@@ -218,13 +218,14 @@
                         <Label Text="💳" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
                         <Label Text="Reserva y Costo" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
                     </HorizontalStackLayout>
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
                         <Label Grid.Row="0" Grid.Column="0" Text="Cupo reservado" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
                         <Label Grid.Row="0" Grid.Column="1" x:Name="ReservaCupoLabel" FontSize="13" TextColor="{StaticResource OnSurface}" />
                         <Label Grid.Row="1" Grid.Column="0" Text="Conceptos incluidos" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
                         <Label Grid.Row="1" Grid.Column="1" x:Name="ReservaIncluyeLabel1" FontSize="13" TextColor="{StaticResource Secondary}" IsVisible="False" />
-                        <Label Grid.Row="2" Grid.Column="0" x:Name="ReservaIncluyeLabel2" IsVisible="False" FontSize="13" TextColor="{StaticResource Secondary}" />
-                        <Label Grid.Row="2" Grid.Column="1" Text="Total" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
+                        <Label Grid.Row="2" Grid.Column="0" x:Name="ReservaDescuentoTitle" Text="Descuento" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
+                        <Label Grid.Row="2" Grid.Column="1" x:Name="ReservaDescuentoLabel" FontSize="13" TextColor="{StaticResource Secondary}" IsVisible="False" />
+                        <Label Grid.Row="3" Grid.Column="1" Text="Total" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
                     </Grid>
                     <Label x:Name="ReservaTotalLabel" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Primary}" HorizontalOptions="End" />
                 </VerticalStackLayout>

@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<TripRating> TripRatings => Set<TripRating>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<FavoriteTrip> FavoriteTrips => Set<FavoriteTrip>();
+    public DbSet<Discount> Discounts => Set<Discount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +46,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Booking>(entity =>
         {
             entity.Property(b => b.TotalAmount).HasPrecision(18, 2);
+            entity.Property(b => b.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(b => b.DiscountCode).HasMaxLength(60);
             entity.HasIndex(b => b.QrToken).IsUnique();
             entity.HasOne(b => b.User)
                   .WithMany(u => u.Bookings)
@@ -93,6 +96,20 @@ public class AppDbContext : DbContext
             e.Property(x => x.OptionName).HasMaxLength(80);
             e.HasOne(x => x.Booking).WithMany(b => b.Items).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.TripOption).WithMany(o => o.BookingItems).HasForeignKey(x => x.TripOptionId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Discount>(e =>
+        {
+            e.ToTable("Discounts");
+            e.HasIndex(x => x.Code).IsUnique().HasDatabaseName("IX_Discounts_Code");
+            e.HasIndex(x => x.TripId).HasDatabaseName("IX_Discounts_TripId");
+            e.Property(x => x.Code).IsRequired().HasMaxLength(60);
+            e.Property(x => x.Type).IsRequired();
+            e.Property(x => x.Value).HasPrecision(18, 2);
+            e.Property(x => x.UsedCount).IsRequired();
+            e.Property(x => x.IsActive).IsRequired();
+            e.Property(x => x.CreatedAt).IsRequired();
+            e.HasOne(x => x.Trip).WithMany().HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TripPassenger>(entity =>

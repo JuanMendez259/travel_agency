@@ -55,6 +55,10 @@
             ContentTemplate="{DataTemplate admin:AdminCoordinadoresPage}"
             Route="coordinators" />
         <ShellContent
+            Title="Descuentos"
+            ContentTemplate="{DataTemplate admin:AdminDiscountsPage}"
+            Route="discounts" />
+        <ShellContent
             Title="Avisos"
             ContentTemplate="{DataTemplate client:ClientNotificationsPage}"
             Route="notifications" />

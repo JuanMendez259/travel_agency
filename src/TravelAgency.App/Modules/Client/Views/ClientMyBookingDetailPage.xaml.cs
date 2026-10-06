@@ -108,6 +108,18 @@ public partial class ClientMyBookingDetailPage : ContentPage
             ReservaCupoLabel.Text = $"{currentBooking.NumberOfSeats} lugar(es)";
         if (ReservaTotalLabel is not null)
             ReservaTotalLabel.Text = $"{currentBooking.TotalAmount:C}";
+
+        if (currentBooking.DiscountAmount > 0)
+        {
+            ReservaDescuentoTitle.IsVisible = true;
+            ReservaDescuentoLabel.IsVisible = true;
+            ReservaDescuentoLabel.Text = $"-{currentBooking.DiscountAmount:C} ({currentBooking.DiscountCode})";
+        }
+        else
+        {
+            ReservaDescuentoTitle.IsVisible = false;
+            ReservaDescuentoLabel.IsVisible = false;
+        }
         BalanceLabel!.Text = currentBooking.Status == BookingStatus.Cancelled
             ? refunded > 0
                 ? $"Reserva cancelada · Reembolsado {refunded:C}"

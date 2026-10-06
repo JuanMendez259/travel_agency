@@ -44,7 +44,10 @@ public partial class AdminBookingDetailPage : ContentPage
 
             TripLabel.Text = _booking.Trip?.Title;
             ClientLabel.Text = $"Cliente: {_booking.User?.Name} ({_booking.User?.Email})";
-            InfoLabel.Text = $"{_booking.BookingDate:dd/MM/yyyy} · {_booking.NumberOfSeats} asientos · Total {_booking.TotalAmount:C}";
+            var discountText = _booking.DiscountAmount > 0
+                ? $" · Descuento {_booking.DiscountCode}: -{_booking.DiscountAmount:C}"
+                : string.Empty;
+            InfoLabel.Text = $"{_booking.BookingDate:dd/MM/yyyy} · {_booking.NumberOfSeats} asientos · Total {_booking.TotalAmount:C}{discountText}";
             StatusLabel.Text = $"Estado: {_booking.Status}";
             PaymentsList.ItemsSource = _booking.Payments;
         if (_booking.HasOptionItems && _booking.Items is not null && _booking.Items.Count > 0)

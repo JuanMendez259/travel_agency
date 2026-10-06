@@ -11,6 +11,12 @@ public class Booking
     public int? SeatNumber { get; set; }
     public decimal TotalAmount { get; set; }
 
+    /// <summary>Codigo de descuento aplicado (snapshot; null si no hubo).</summary>
+    public string? DiscountCode { get; set; }
+
+    /// <summary>Monto descontado (snapshot). El subtotal se deriva: TotalAmount + DiscountAmount.</summary>
+    public decimal DiscountAmount { get; set; }
+
     public bool CheckedIn { get; set; }
     public DateTime? CheckedInAt { get; set; }
     public string? QrToken { get; set; }

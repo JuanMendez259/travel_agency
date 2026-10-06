@@ -247,7 +247,7 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
-    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers, List<BookingOptionInput>? options = null)
+    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers, List<BookingOptionInput>? options = null, string? discountCode = null)
     {
         var list = passengers?
             .Select(p => new PassengerInput(p.Name, p.Age, null))
@@ -257,7 +257,7 @@ public class ApiService
             .ToList();
         var useOptions = optionDtos is { Count: > 0 };
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list, null, optionDtos, useOptions), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, null, optionDtos, useOptions, discountCode), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -267,7 +267,8 @@ public class ApiService
         int seats,
         int holderSeat,
         IEnumerable<(string Name, int Age, int SeatNumber)> passengers,
-        List<BookingOptionInput>? options = null)
+        List<BookingOptionInput>? options = null,
+        string? discountCode = null)
     {
         var list = passengers
             .Select(p => new PassengerInput(p.Name, p.Age, p.SeatNumber))
@@ -277,7 +278,7 @@ public class ApiService
             .ToList();
         var useOptions = optionDtos is { Count: > 0 };
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list, holderSeat, optionDtos, useOptions), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, holderSeat, optionDtos, useOptions, discountCode), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -389,7 +390,41 @@ public class ApiService
     private record UpdatePassengerCheckinRequest(bool CheckedIn);
     private record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
     private record BookingOptionInputDto(int TripOptionId, int Adults, int Children);
-    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null);
+    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null, string? DiscountCode = null);
+    private record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
+
+    public record DiscountValidationResult(bool Valid, string Message, decimal DiscountAmount, decimal FinalAmount, string? Code, DiscountType? Type = null, decimal? Value = null);
+
+    public Task<List<Discount>?> GetDiscountsAsync() =>
+        _http.GetFromJsonAsync<List<Discount>>("/api/discounts", JsonOptions);
+
+    public async Task<Discount?> CreateDiscountAsync(Discount discount)
+    {
+        var response = await _http.PostAsJsonAsync("/api/discounts", discount, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Discount>(JsonOptions);
+    }
+
+    public async Task<Discount?> UpdateDiscountAsync(Discount discount)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/discounts/{discount.Id}", discount, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Discount>(JsonOptions);
+    }
+
+    public async Task DeleteDiscountAsync(int id)
+    {
+        var response = await _http.DeleteAsync($"/api/discounts/{id}");
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<DiscountValidationResult?> ValidateDiscountAsync(string code, int tripId, decimal baseAmount)
+    {
+        var response = await _http.PostAsJsonAsync("/api/discounts/validate",
+            new ValidateDiscountRequest(code, tripId, baseAmount), JsonOptions);
+        if (!response.IsSuccessStatusCode) return null;
+        return await response.Content.ReadFromJsonAsync<DiscountValidationResult>(JsonOptions);
+    }
 
     public async Task<TokenCheckinResult?> CheckinByTokenAsync(string token, int tripId)
     {

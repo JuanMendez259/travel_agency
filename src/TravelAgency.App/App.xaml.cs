@@ -64,7 +64,7 @@ public partial class App : Application
         if (session.IsAdmin)
         {
             foreach (var item in tabs)
-                item.IsVisible = item.Route is "admintrips" or "bookings" or "adminstats" or "admin" or "coordinators" or "notifications";
+                item.IsVisible = item.Route is "admintrips" or "bookings" or "adminstats" or "admin" or "coordinators" or "discounts" or "notifications";
         }
         else if (session.IsCoordinator)
         {

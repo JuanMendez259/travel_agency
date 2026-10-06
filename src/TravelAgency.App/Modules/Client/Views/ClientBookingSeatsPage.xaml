@@ -277,6 +277,31 @@
                        FontSize="11"
                        TextColor="{StaticResource ColorOnSurfaceVariant}" />
 
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="10,0">
+                        <Entry x:Name="DiscountCodeEntry"
+                               Placeholder="Código de descuento"
+                               BackgroundColor="Transparent"
+                               TextColor="{StaticResource ColorOnSurface}"
+                               PlaceholderColor="{StaticResource ColorOnSurfaceVariant}"
+                               HeightRequest="42" />
+                    </Border>
+                    <Button x:Name="ApplyDiscountButton"
+                            Grid.Column="1"
+                            Text="Aplicar"
+                            Clicked="OnApplyDiscountClicked"
+                            BackgroundColor="{StaticResource ColorSecondary}"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            CornerRadius="10"
+                            HeightRequest="42"
+                            Padding="14,0" />
+                </Grid>
+
+                <Label x:Name="DiscountStatusLabel" FontSize="12"
+                       TextColor="{StaticResource ColorSecondary}" IsVisible="False" />
+
                 <Button x:Name="ConfirmButton"
                         Text="Elige los asientos"
                         Clicked="OnConfirmClicked"

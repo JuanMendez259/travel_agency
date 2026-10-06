@@ -137,6 +137,8 @@ using (var scope = app.Services.CreateScope())
     await EnsureTripOptionsTableAsync(db, provider);
     await EnsureTripOptionIsBaseColumnAsync(db, provider);
     await EnsureBookingItemsTableAsync(db, provider);
+    await EnsureDiscountsTableAsync(db, provider);
+    await EnsureBookingDiscountColumnsAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
     await EnsureFavoriteTripsTableAsync(db, provider);
@@ -561,6 +563,10 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
     var tripOptions = await db.TripOptions.Where(o => o.TripId == id).ToListAsync();
     db.TripOptions.RemoveRange(tripOptions);
 
+    // Los descuentos ligados al viaje se eliminan con el (las reservas guardan snapshot).
+    var tripDiscounts = await db.Discounts.Where(d => d.TripId == id).ToListAsync();
+    db.Discounts.RemoveRange(tripDiscounts);
+
     db.Trips.Remove(trip);
     await db.SaveChangesAsync();
 
@@ -805,6 +811,48 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         // reserva multiasiento sin pasajeros: se permite crear y agregarlos después
     }
 
+    // Total base (con opciones si el modo multi-item esta activo).
+    var itemsMode = (request.UseOptions == true || (request.Options != null && request.Options.Count > 0) || trip.HasOptions)
+                    && request.Options != null && request.Options.Count > 0;
+    decimal baseTotal;
+    if (itemsMode)
+    {
+        baseTotal = 0m;
+        foreach (var oi in request.Options!)
+        {
+            var opt = optionsLookup![oi.TripOptionId];
+            baseTotal += Math.Max(0, oi.Adults) * opt.PriceAdult
+                       + Math.Max(0, oi.Children) * (opt.PriceChild ?? opt.PriceAdult);
+        }
+        baseTotal = Math.Round(baseTotal, 2);
+    }
+    else
+    {
+        baseTotal = ComputeBookingTotal(trip, passengers);
+    }
+
+    // Descuento: validar y reservar el uso (incremento atomico) antes de crear la reserva.
+    Discount? appliedDiscount = null;
+    var discountAmount = 0m;
+    if (!string.IsNullOrWhiteSpace(request.DiscountCode))
+    {
+        var code = request.DiscountCode.Trim();
+        appliedDiscount = await db.Discounts.FirstOrDefaultAsync(d => d.Code.ToLower() == code.ToLower());
+        if (appliedDiscount is null) return Results.BadRequest("El código de descuento no existe.");
+        if (!appliedDiscount.IsActive) return Results.BadRequest("El código de descuento está inactivo.");
+        if (!appliedDiscount.IsWithinWindow(DateTime.UtcNow)) return Results.BadRequest("El código de descuento no está vigente.");
+        if (!appliedDiscount.AppliesToTrip(trip.Id)) return Results.BadRequest("El código de descuento no aplica a este viaje.");
+        if (!appliedDiscount.HasUsesLeft) return Results.BadRequest("El código de descuento ya no tiene usos disponibles.");
+
+        discountAmount = appliedDiscount.ComputeDiscount(baseTotal);
+
+        var reserved = await db.Database.ExecuteSqlRawAsync(
+            "UPDATE \"Discounts\" SET \"UsedCount\" = \"UsedCount\" + 1 WHERE \"Id\" = {0} AND (\"UsageLimit\" IS NULL OR \"UsedCount\" < \"UsageLimit\")",
+            appliedDiscount.Id);
+        if (reserved == 0)
+            return Results.BadRequest("El código de descuento ya no tiene usos disponibles.");
+    }
+
     var booking = new Booking
     {
         UserId = GetUserId(principal),
@@ -813,33 +861,28 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         SeatNumber = request.SeatNumber,
         BookingDate = DateTime.UtcNow,
         Status = BookingStatus.Pending,
-        QrToken = GenerateQrToken()
+        QrToken = GenerateQrToken(),
+        DiscountCode = appliedDiscount?.Code,
+        DiscountAmount = discountAmount,
+        TotalAmount = Math.Max(0, Math.Round(baseTotal - discountAmount, 2))
     };
-    booking.TotalAmount = ComputeBookingTotal(trip, passengers);
 
     db.Bookings.Add(booking);
     await db.SaveChangesAsync();
 
-    // Save booking items if options provided (multi-item mode)
+    // Guardar los items de opcion (multi-item) si aplica.
     var bookingItems = new List<TravelAgency.Shared.Models.BookingItem>();
-    var useOptions = request.UseOptions == true || (request.Options != null && request.Options.Count > 0) || trip.HasOptions;
-    if (useOptions && request.Options != null && request.Options.Count > 0)
+    if (itemsMode)
     {
-        optionsLookup ??= await db.TripOptions
-            .Where(o => o.TripId == trip.Id && request.Options.Select(x => x.TripOptionId).Contains(o.Id))
-            .ToDictionaryAsync(o => o.Id);
-
-        foreach (var oi in request.Options)
+        foreach (var oi in request.Options!)
         {
-            if (!optionsLookup.TryGetValue(oi.TripOptionId, out var opt)) return Results.BadRequest($"Opción {oi.TripOptionId} no válida para este viaje.");
-            var adults = Math.Max(0, oi.Adults);
-            var children = Math.Max(0, oi.Children);
+            var opt = optionsLookup![oi.TripOptionId];
             bookingItems.Add(new TravelAgency.Shared.Models.BookingItem
             {
                 BookingId = booking.Id,
                 TripOptionId = opt.Id,
-                Adults = adults,
-                Children = children,
+                Adults = Math.Max(0, oi.Adults),
+                Children = Math.Max(0, oi.Children),
                 UnitPriceAdult = opt.PriceAdult,
                 UnitPriceChild = opt.PriceChild,
                 OptionName = opt.Name
@@ -847,12 +890,9 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         }
         if (bookingItems.Count > 0)
         {
-            var totalSeatsOpts = bookingItems.Sum(i => i.Adults + i.Children);
-            booking.NumberOfSeats = totalSeatsOpts;
+            booking.NumberOfSeats = bookingItems.Sum(i => i.Adults + i.Children);
             db.Bookings.Update(booking);
             db.BookingItems.AddRange(bookingItems);
-            await db.SaveChangesAsync();
-            booking.TotalAmount = ComputeBookingTotal(trip, passengers, bookingItems);
             await db.SaveChangesAsync();
         }
     }
@@ -1705,6 +1745,98 @@ app.MapDelete("/api/trips/{tripId}/options/{optionId}", async (int tripId, int o
     return Results.NoContent();
 }).RequireAuthorization("StaffOnly");
 
+// ===== Descuentos =====
+app.MapGet("/api/discounts", async (AppDbContext db) =>
+    await db.Discounts
+        .Include(d => d.Trip)
+        .OrderByDescending(d => d.CreatedAt)
+        .ToListAsync()).RequireAuthorization("AdminOnly");
+
+app.MapPost("/api/discounts", async (DiscountDto dto, AppDbContext db) =>
+{
+    var error = ValidateDiscountDto(dto);
+    if (error is not null) return Results.BadRequest(error);
+
+    var code = dto.Code.Trim().ToUpperInvariant();
+    if (await db.Discounts.AnyAsync(d => d.Code.ToLower() == code.ToLower()))
+        return Results.BadRequest("Ya existe un descuento con ese código.");
+
+    var discount = new Discount
+    {
+        Code = code,
+        Type = dto.Type,
+        Value = dto.Value,
+        StartDate = dto.StartDate?.Date,
+        EndDate = dto.EndDate?.Date,
+        UsageLimit = dto.UsageLimit,
+        UsedCount = 0,
+        IsActive = dto.IsActive,
+        TripId = dto.TripId,
+        CreatedAt = DateTime.UtcNow
+    };
+    db.Discounts.Add(discount);
+    await db.SaveChangesAsync();
+    return Results.Created($"/api/discounts/{discount.Id}", discount);
+}).RequireAuthorization("AdminOnly");
+
+app.MapPut("/api/discounts/{id}", async (int id, DiscountDto dto, AppDbContext db) =>
+{
+    var discount = await db.Discounts.FirstOrDefaultAsync(d => d.Id == id);
+    if (discount is null) return Results.NotFound();
+
+    var error = ValidateDiscountDto(dto);
+    if (error is not null) return Results.BadRequest(error);
+
+    var code = dto.Code.Trim().ToUpperInvariant();
+    if (await db.Discounts.AnyAsync(d => d.Id != id && d.Code.ToLower() == code.ToLower()))
+        return Results.BadRequest("Ya existe un descuento con ese código.");
+
+    discount.Code = code;
+    discount.Type = dto.Type;
+    discount.Value = dto.Value;
+    discount.StartDate = dto.StartDate?.Date;
+    discount.EndDate = dto.EndDate?.Date;
+    discount.UsageLimit = dto.UsageLimit;
+    discount.IsActive = dto.IsActive;
+    discount.TripId = dto.TripId;
+    await db.SaveChangesAsync();
+    return Results.Ok(discount);
+}).RequireAuthorization("AdminOnly");
+
+app.MapDelete("/api/discounts/{id}", async (int id, AppDbContext db) =>
+{
+    var discount = await db.Discounts.FirstOrDefaultAsync(d => d.Id == id);
+    if (discount is null) return Results.NotFound();
+    db.Discounts.Remove(discount);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+}).RequireAuthorization("AdminOnly");
+
+app.MapPost("/api/discounts/validate", async (ValidateDiscountRequest request, AppDbContext db) =>
+{
+    var baseAmount = Math.Max(0, request.BaseAmount);
+
+    if (string.IsNullOrWhiteSpace(request.Code))
+        return Results.Ok(new DiscountValidationResult(false, "Escribe un código de descuento.", 0, baseAmount, null));
+
+    var code = request.Code.Trim();
+    var discount = await db.Discounts.FirstOrDefaultAsync(d => d.Code.ToLower() == code.ToLower());
+    if (discount is null)
+        return Results.Ok(new DiscountValidationResult(false, "El código no existe.", 0, baseAmount, null));
+    if (!discount.IsActive)
+        return Results.Ok(new DiscountValidationResult(false, "El código está inactivo.", 0, baseAmount, null));
+    if (!discount.IsWithinWindow(DateTime.UtcNow))
+        return Results.Ok(new DiscountValidationResult(false, "El código no está vigente.", 0, baseAmount, null));
+    if (!discount.AppliesToTrip(request.TripId))
+        return Results.Ok(new DiscountValidationResult(false, "El código no aplica a este viaje.", 0, baseAmount, null));
+    if (!discount.HasUsesLeft)
+        return Results.Ok(new DiscountValidationResult(false, "El código ya no tiene usos disponibles.", 0, baseAmount, null));
+
+    var amount = discount.ComputeDiscount(baseAmount);
+    return Results.Ok(new DiscountValidationResult(
+        true, "Descuento aplicado.", amount, Math.Max(0, Math.Round(baseAmount - amount, 2)), discount.Code, discount.Type, discount.Value));
+}).RequireAuthorization();
+
 app.Run();
 
 static async Task RecomputeAvailabilityAsync(AppDbContext db, Trip trip)
@@ -1733,6 +1865,20 @@ static string? ValidateHotelFields(Trip trip)
         return "Indica cuántos lugares hay disponibles según el hotel (mínimo 1).";
     if (trip.HotelName?.Length > 150)
         return "El nombre del hotel no puede superar los 150 caracteres.";
+    return null;
+}
+
+static string? ValidateDiscountDto(DiscountDto dto)
+{
+    if (string.IsNullOrWhiteSpace(dto.Code)) return "El código es obligatorio.";
+    if (dto.Code.Trim().Length > 60) return "El código no puede superar los 60 caracteres.";
+    if (dto.Value <= 0) return "El valor del descuento debe ser mayor a 0.";
+    if (dto.Type == DiscountType.Percentage && dto.Value > 100)
+        return "El porcentaje no puede ser mayor a 100.";
+    if (dto.UsageLimit is < 1)
+        return "El límite de uso debe ser al menos 1 (o vacío para ilimitado).";
+    if (dto.StartDate.HasValue && dto.EndDate.HasValue && dto.EndDate.Value.Date < dto.StartDate.Value.Date)
+        return "La fecha de fin no puede ser anterior a la de inicio.";
     return null;
 }
 
@@ -2140,6 +2286,67 @@ static async Task EnsureBookingItemsTableAsync(AppDbContext db, string provider)
       );");
     await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_BookingItems_BookingId"" ON ""BookingItems"" (""BookingId"");");
     await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_BookingItems_TripOptionId"" ON ""BookingItems"" (""TripOptionId"");");
+}
+
+
+static async Task EnsureDiscountsTableAsync(AppDbContext db, string provider)
+{
+    if (provider == "sqlite")
+    {
+        await TryExecAsync(db, @"CREATE TABLE IF NOT EXISTS ""Discounts"" (
+              ""Id"" INTEGER NOT NULL CONSTRAINT ""PK_Discounts"" PRIMARY KEY AUTOINCREMENT,
+              ""Code"" TEXT NOT NULL,
+              ""Type"" INTEGER NOT NULL DEFAULT 0,
+              ""Value"" TEXT NOT NULL DEFAULT '0',
+              ""StartDate"" TEXT NULL,
+              ""EndDate"" TEXT NULL,
+              ""UsageLimit"" INTEGER NULL,
+              ""UsedCount"" INTEGER NOT NULL DEFAULT 0,
+              ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+              ""TripId"" INTEGER NULL,
+              ""CreatedAt"" TEXT NOT NULL,
+              CONSTRAINT ""FK_Discounts_Trips_TripId"" FOREIGN KEY (""TripId"") REFERENCES ""Trips"" (""Id"") ON DELETE CASCADE
+          );");
+        await TryExecAsync(db, @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Discounts_Code"" ON ""Discounts"" (""Code"");");
+        await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_Discounts_TripId"" ON ""Discounts"" (""TripId"");");
+        return;
+    }
+
+    await TryExecAsync(db, @"CREATE TABLE IF NOT EXISTS ""Discounts"" (
+          ""Id"" integer GENERATED BY DEFAULT AS IDENTITY NOT NULL,
+          ""Code"" character varying(60) NOT NULL,
+          ""Type"" integer NOT NULL DEFAULT 0,
+          ""Value"" numeric(18,2) NOT NULL DEFAULT 0,
+          ""StartDate"" timestamp with time zone NULL,
+          ""EndDate"" timestamp with time zone NULL,
+          ""UsageLimit"" integer NULL,
+          ""UsedCount"" integer NOT NULL DEFAULT 0,
+          ""IsActive"" boolean NOT NULL DEFAULT true,
+          ""TripId"" integer NULL,
+          ""CreatedAt"" timestamp with time zone NOT NULL,
+          CONSTRAINT ""PK_Discounts"" PRIMARY KEY (""Id""),
+          CONSTRAINT ""FK_Discounts_Trips_TripId"" FOREIGN KEY (""TripId"") REFERENCES ""Trips"" (""Id"") ON DELETE CASCADE
+      );");
+    await TryExecAsync(db, @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Discounts_Code"" ON ""Discounts"" (""Code"");");
+    await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_Discounts_TripId"" ON ""Discounts"" (""TripId"");");
+}
+
+
+static async Task EnsureBookingDiscountColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Bookings", "DiscountCode", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"DiscountCode\" TEXT NULL;"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"DiscountCode\" character varying(60) NULL;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Bookings", "DiscountAmount", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"DiscountAmount\" TEXT NOT NULL DEFAULT '0';"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"DiscountAmount\" numeric(18,2) NOT NULL DEFAULT 0;");
+    }
 }
 
 
@@ -2758,7 +2965,7 @@ record UpdateBookingStatusRequest(BookingStatus Status);
 record UpdateBookingCheckinRequest(bool CheckedIn);
 record UpdatePassengerCheckinRequest(bool CheckedIn);
 record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
-record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInput>? Options = null, bool? UseOptions = null);
+record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInput>? Options = null, bool? UseOptions = null, string? DiscountCode = null);
 record CreatePassengersRequest(List<PassengerInput>? Passengers);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);
@@ -2766,4 +2973,7 @@ record UpdateTripRatingRequest(int Rating, string? Comment);
 record DeleteTripRequest(string? Message);
 record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);
 record TripOptionDto(string Name, string? Description, decimal PriceAdult, decimal? PriceChild, string? Benefits, bool IsActive, int Order);
+record DiscountDto(string Code, DiscountType Type, decimal Value, DateTime? StartDate, DateTime? EndDate, int? UsageLimit, bool IsActive, int? TripId);
+record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
+record DiscountValidationResult(bool Valid, string Message, decimal DiscountAmount, decimal FinalAmount, string? Code, DiscountType? Type = null, decimal? Value = null);
 record UpsertPoiRequest(string? Name, string? Description, double Latitude, double Longitude);
