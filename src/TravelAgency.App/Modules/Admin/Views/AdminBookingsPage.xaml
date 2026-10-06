@@ -77,7 +77,7 @@
                     <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
                         <VerticalStackLayout Padding="12" Spacing="4">
                             <Label Text="{Binding Trip.Title}" FontSize="17" FontAttributes="Bold" />
-                            <Label Text="{Binding User.Name}" FontSize="14" TextColor="Gray" />
+                            <Label Text="{Binding User.Name}" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" />
                             <HorizontalStackLayout Spacing="4">
                                 <Label Text="{Binding NumberOfSeats}" />
                                 <Label Text="asientos ·" />

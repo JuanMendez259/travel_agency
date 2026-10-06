@@ -45,7 +45,7 @@
                                                 CommandParameter="{Binding}"
                                                 VerticalOptions="Center" />
                                     </Grid>
-                                    <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
+                                    <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" />
                                     <HorizontalStackLayout Spacing="4">
                                         <Label Text="{Binding Trip.StartDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" />
                                         <Label Text="al" />
@@ -54,7 +54,7 @@
                                     <HorizontalStackLayout Spacing="4">
                                         <Label Text="{Binding Trip.Price, StringFormat='{0:C}'}" FontAttributes="Bold" />
                                         <Label Text="·" />
-                                        <Label Text="{Binding AvailabilityText}" TextColor="Gray" />
+                                        <Label Text="{Binding AvailabilityText}" TextColor="{StaticResource OnSurfaceVariant}" />
                                     </HorizontalStackLayout>
                                     <Button Text="Ver viaje"
                                             Clicked="OnTripClicked"

@@ -10,7 +10,7 @@
 
             <Image x:Name="QrImage" HeightRequest="260" WidthRequest="260" HorizontalOptions="Center" />
             <Label x:Name="PassengerLabel" FontSize="18" FontAttributes="Bold" HorizontalOptions="Center" />
-            <Label x:Name="TripLabel" FontSize="14" TextColor="Gray" HorizontalOptions="Center" />
+            <Label x:Name="TripLabel" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
 
             <Border StrokeThickness="0"
                     BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}"
@@ -19,7 +19,7 @@
                 <VerticalStackLayout Spacing="6">
                     <Label x:Name="SeatsLabel" FontSize="14" />
                     <Label x:Name="StateLabel" FontSize="14" FontAttributes="Bold" />
-                    <Label x:Name="CheckedInAtLabel" FontSize="13" TextColor="Gray" IsVisible="False" />
+                    <Label x:Name="CheckedInAtLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
                 </VerticalStackLayout>
             </Border>
 

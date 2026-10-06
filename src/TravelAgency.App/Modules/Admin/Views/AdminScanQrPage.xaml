@@ -13,7 +13,7 @@
             <Label x:Name="HintLabel"
                    Text="Enfoca el código QR del cliente para registrar el check-in."
                    FontSize="13"
-                   TextColor="Gray" />
+                   TextColor="{StaticResource OnSurfaceVariant}" />
         </VerticalStackLayout>
 
         <Grid Grid.Row="1">
@@ -34,7 +34,7 @@
                    HorizontalOptions="Center" />
             <Label x:Name="DetailLabel"
                    FontSize="13"
-                   TextColor="Gray"
+                   TextColor="{StaticResource OnSurfaceVariant}"
                    HorizontalOptions="Center"
                    IsVisible="False" />
 

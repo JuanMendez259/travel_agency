@@ -78,10 +78,10 @@
                                             </DataTrigger>
                                         </Label.Triggers>
                                     </Label>
-                                    <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="Gray" />
-                                    <Label Text="{Binding ScheduleText}" FontSize="13" TextColor="Gray" />
-                                    <Label Text="{Binding TransportText}" FontSize="13" TextColor="Gray" />
-                                    <Label Text="{Binding Trip.Price, StringFormat='{0:C} por asiento'}" FontSize="13" TextColor="Gray" />
+                                    <Label Text="{Binding Trip.Destination}" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" />
+                                    <Label Text="{Binding ScheduleText}" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                                    <Label Text="{Binding TransportText}" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                                    <Label Text="{Binding Trip.Price, StringFormat='{0:C} por asiento'}" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
                                 </VerticalStackLayout>
                             </Grid>
                             <HorizontalStackLayout Spacing="4">
@@ -103,7 +103,7 @@
                                         CommandParameter="{Binding Trip}"
                                         HorizontalOptions="Fill"
                                         Margin="0,4,0,0"
-                                        BackgroundColor="#2B6CB0"
+                                        BackgroundColor="{StaticResource Primary}"
                                         TextColor="White" />
                             </HorizontalStackLayout>
                         </VerticalStackLayout>

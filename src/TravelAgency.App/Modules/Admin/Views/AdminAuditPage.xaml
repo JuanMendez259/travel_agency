@@ -23,7 +23,7 @@
                                     BackgroundColor="{AppThemeBinding Light=#F2F4F7, Dark=#2C2C2C}">
                                 <VerticalStackLayout Padding="12" Spacing="4">
                                     <Label Text="{Binding Summary}" FontAttributes="Bold" />
-                                    <Label Text="{Binding WhoWhen}" FontSize="12" TextColor="Gray" />
+                                    <Label Text="{Binding WhoWhen}" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                                     <Label Text="{Binding DiffText}"
                                            FontSize="12"
                                            Margin="0,4,0,0"
@@ -36,7 +36,7 @@
 
                 <Label x:Name="EmptyLabel"
                        Text="Sin registros de cambios."
-                       TextColor="Gray"
+                       TextColor="{StaticResource OnSurfaceVariant}"
                        HorizontalOptions="Center"
                        Margin="0,30,0,0"
                        IsVisible="False" />

@@ -8,10 +8,10 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="12">
 
-            <Label x:Name="TripLabel" FontSize="14" TextColor="Gray" HorizontalOptions="Center" />
+            <Label x:Name="TripLabel" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
             <Label x:Name="NoPassengersLabel"
                    Text="Esta reserva no tiene pasajeros adicionales."
-                   TextColor="Gray"
+                    TextColor="{StaticResource OnSurfaceVariant}"
                    HorizontalOptions="Center"
                    IsVisible="False" />
 

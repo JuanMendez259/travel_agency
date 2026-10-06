@@ -33,7 +33,7 @@
         <VerticalStackLayout Grid.Row="3" Spacing="6">
             <Label x:Name="ModeHint"
                    FontSize="12"
-                   TextColor="Gray"
+                   TextColor="{StaticResource OnSurfaceVariant}"
                    HorizontalOptions="Center"
                    HorizontalTextAlignment="Center" />
 

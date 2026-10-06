@@ -17,7 +17,7 @@
                    HorizontalOptions="Center" />
             <Label x:Name="SummaryLabel"
                    FontSize="13"
-                   TextColor="Gray"
+                    TextColor="{StaticResource OnSurfaceVariant}"
                    HorizontalOptions="Center" />
         </VerticalStackLayout>
 

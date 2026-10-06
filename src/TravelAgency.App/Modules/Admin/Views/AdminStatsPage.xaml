@@ -17,25 +17,25 @@
                 <Border StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEF2FF, Dark=#26304A}">
                     <VerticalStackLayout Padding="12" Spacing="2">
                         <Label x:Name="TripsKpi" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
-                        <Label Text="Viajes" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label Text="Viajes" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
                     </VerticalStackLayout>
                 </Border>
                 <Border Grid.Column="1" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#E6F7EE, Dark=#1F3B2D}">
                     <VerticalStackLayout Padding="12" Spacing="2">
                         <Label x:Name="SeatsKpi" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
-                        <Label Text="Asientos vendidos" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label Text="Asientos vendidos" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
                     </VerticalStackLayout>
                 </Border>
                 <Border Grid.Row="1" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#FFF4E5, Dark=#4A3826}">
                     <VerticalStackLayout Padding="12" Spacing="2">
                         <Label x:Name="RevenueKpi" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
-                        <Label Text="Ingresos" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label Text="Ingresos" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
                     </VerticalStackLayout>
                 </Border>
                 <Border Grid.Row="1" Grid.Column="1" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#F3E8FF, Dark=#3B2D4A}">
                     <VerticalStackLayout Padding="12" Spacing="2">
                         <Label x:Name="OccupancyKpi" FontSize="22" FontAttributes="Bold" HorizontalOptions="Center" />
-                        <Label Text="Ocupación general" FontSize="12" TextColor="Gray" HorizontalOptions="Center" />
+                        <Label Text="Ocupación general" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
                     </VerticalStackLayout>
                 </Border>
             </Grid>
@@ -51,7 +51,7 @@
                     <DataTemplate x:DataType="models:TripOccupancy">
                         <VerticalStackLayout Spacing="4">
                             <Label Text="{Binding Title}" FontAttributes="Bold" LineBreakMode="TailTruncation" />
-                            <Label Text="{Binding Detail}" FontSize="12" TextColor="Gray" />
+                            <Label Text="{Binding Detail}" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                             <ProgressBar Progress="{Binding Progress}" HeightRequest="8" />
                         </VerticalStackLayout>
                     </DataTemplate>

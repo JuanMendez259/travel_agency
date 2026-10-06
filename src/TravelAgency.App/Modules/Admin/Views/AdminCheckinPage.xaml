@@ -13,7 +13,7 @@
         <VerticalStackLayout Padding="20" Spacing="10">
 
             <Label x:Name="TripTitleLabel" FontSize="22" FontAttributes="Bold" />
-            <Label x:Name="TripMetaLabel" FontSize="14" TextColor="Gray" />
+            <Label x:Name="TripMetaLabel" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" />
 
             <Border x:Name="StatusBanner"
                     StrokeThickness="0"
@@ -35,7 +35,7 @@
             <Button x:Name="OpenCheckinButton"
                     Text="Abrir check-in"
                     Clicked="OnOpenCheckinClicked"
-                    BackgroundColor="#2B6CB0" TextColor="White" />
+                    BackgroundColor="{StaticResource Primary}" TextColor="{StaticResource OnPrimary}" />
 
             <Button x:Name="CloseCheckinButton"
                     Text="Cerrar check-in"
@@ -52,14 +52,14 @@
                     Text="Reabrir salida"
                     Clicked="OnReopenClicked"
                     IsVisible="False"
-                    BackgroundColor="#2B6CB0" TextColor="White" />
+                    BackgroundColor="{StaticResource Primary}" TextColor="{StaticResource OnPrimary}" />
 
             <Label Text="Pasajeros" FontSize="16" FontAttributes="Bold" Margin="0,15,0,0" />
             <VerticalStackLayout x:Name="PassengersLayout" Spacing="6" />
 
             <Label x:Name="NoPassengersLabel"
                    Text="Este viaje no tiene reservas para controlar."
-                   TextColor="Gray"
+                   TextColor="{StaticResource OnSurfaceVariant}"
                    IsVisible="False" />
 
             <Button Text="Volver" Clicked="OnBackClicked" Margin="0,15,0,0" />

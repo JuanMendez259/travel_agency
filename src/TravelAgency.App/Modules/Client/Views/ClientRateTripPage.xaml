@@ -9,7 +9,7 @@
         <VerticalStackLayout Padding="20" Spacing="12">
 
             <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" />
-            <Label x:Name="DestinationLabel" FontSize="16" TextColor="Gray" />
+            <Label x:Name="DestinationLabel" FontSize="16" TextColor="{StaticResource OnSurfaceVariant}" />
 
             <Label Text="¿Cómo fue tu experiencia?" FontSize="16" FontAttributes="Bold" Margin="0,15,0,0" />
 
@@ -25,7 +25,7 @@
                 <Button Text="★" FontSize="32" WidthRequest="56" HeightRequest="56" Padding="0"
                         Clicked="OnStarClicked" BackgroundColor="#2D3748" TextColor="White" />
             </HorizontalStackLayout>
-            <Label x:Name="RatingLabel" Text="Selecciona de 1 a 5 estrellas" FontSize="13" TextColor="Gray" HorizontalOptions="Center" />
+            <Label x:Name="RatingLabel" Text="Selecciona de 1 a 5 estrellas" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
 
             <Editor x:Name="CommentEditor"
                     Placeholder="Cuéntanos cómo fue (opcional)"
