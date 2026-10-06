@@ -457,3 +457,8 @@ graphify-out/
 opencode.json
 opencode.jsonc
 .opencode/
+
+# Tooling local de skills (impeccable)
+.claude/
+/package.json
+/package-lock.json
