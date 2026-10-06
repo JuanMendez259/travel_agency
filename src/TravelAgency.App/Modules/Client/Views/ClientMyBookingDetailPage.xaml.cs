@@ -26,6 +26,12 @@ public partial class ClientMyBookingDetailPage : ContentPage
         _api = api;
     }
 
+    // Resuelve un token de color global (Colors.xaml) con un respaldo seguro.
+    private static Color Token(string key, string fallback) =>
+        Application.Current?.Resources.TryGetValue(key, out var value) == true && value is Color color
+            ? color
+            : Color.FromArgb(fallback);
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
@@ -54,13 +60,13 @@ public partial class ClientMyBookingDetailPage : ContentPage
         var currentBooking = booking ?? throw new InvalidOperationException("No se encontró la reserva.");
         var trip = currentBooking.Trip;
 
+        // Id del viaje para el boton de mapa (siempre disponible, aunque la reserva no este finalizada).
+        _tripId = trip?.Id;
+        ForceMapButton.IsVisible = _tripId is not null;
+
         Title = trip?.Title;
         TitleLabel.Text = trip?.Title;
         DestinationLabel.Text = trip?.Destination;
-        if (FindByName("SalidaLabel") is Label sl && trip is not null)
-            sl.Text = $"{trip.StartDate:dddd dd/MM/yyyy HH:mm}";
-        if (FindByName("RegresoLabel") is Label rl && trip is not null)
-            rl.Text = $"{trip.EndDate:dddd dd/MM/yyyy HH:mm}";
 
 
         if (DurationLabel is not null && trip is not null)
@@ -102,10 +108,6 @@ public partial class ClientMyBookingDetailPage : ContentPage
             ReservaCupoLabel.Text = $"{currentBooking.NumberOfSeats} lugar(es)";
         if (ReservaTotalLabel is not null)
             ReservaTotalLabel.Text = $"{currentBooking.TotalAmount:C}";
-        if (ReservaIncluyeLabel1 is not null)
-            ReservaIncluyeLabel1.Text = "Próximamente";
-        if (ReservaIncluyeLabel2 is not null)
-            ReservaIncluyeLabel2.IsVisible = false;
         BalanceLabel!.Text = currentBooking.Status == BookingStatus.Cancelled
             ? refunded > 0
                 ? $"Reserva cancelada · Reembolsado {refunded:C}"
@@ -115,58 +117,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 : $"Pagado {paid:C} de {total:C} · Saldo pendiente {remaining:C}";
 
         RenderCancellationSection(currentBooking, trip, paid);
-        if (FindByName("ReservaCupoLabel") is Label rcl)
-            rcl.Text = $"Cupo reservado: {currentBooking.NumberOfSeats} lugar(es)";
-        if (FindByName("ReservaTotalLabel") is Label rtl)
-            rtl.Text = $"Monto Total: {currentBooking.TotalAmount:C}";
 
         var saldoPendiente = currentBooking.TotalAmount - paid;
         if (PagoSaldoLabel is not null)
-            PagoSaldoLabel!.Text = saldoPendiente > 0 ? $"Saldo Pendiente: {saldoPendiente:C}" : "Saldo Pendiente: $0.00 MXN";
-        if (PagoAbono1Label is not null)
-        {
-            if (payments.Count > 0)
-                PagoAbono1Label.Text = $"{payments[0].PaymentDate:dd MMM} - {payments[0].Amount:C}";
-            else
-                PagoAbono1Label.Text = "Próximamente";
-        }
-        if (PagoAbono2Label is not null)
-        {
-            if (payments.Count > 1)
-            {
-                PagoAbono2Label.IsVisible = true;
-                PagoAbono2Label.Text = $"{payments[1].PaymentDate:dd MMM} - {payments[1].Amount:C}";
-            }
-            else
-            {
-                PagoAbono2Label.IsVisible = false;
-            }
-        }
+            PagoSaldoLabel.Text = saldoPendiente > 0 ? $"Saldo Pendiente: {saldoPendiente:C}" : "Saldo Pendiente: $0.00 MXN";
 
-        if (FindByName("PagoSaldoLabel") is Label psl)
-        {
-            var saldoPendienteFind = currentBooking.TotalAmount - paid;
-            psl.Text = saldoPendienteFind > 0 ? $"Saldo Pendiente: {saldoPendienteFind:C}" : "Saldo Pendiente: $0.00 MXN";
-        }
-        if (FindByName("PagoAbono1Label") is Label pa1)
-        {
-            if (payments.Count > 0)
-                pa1.Text = $"{payments[0].PaymentDate:dd MMM} - {payments[0].Amount:C}";
-            else
-                pa1.Text = "Próximamente";
-        }
-        if (FindByName("PagoAbono2Label") is Label pa2)
-        {
-            if (payments.Count > 1)
-            {
-                pa2.IsVisible = true;
-                pa2.Text = $"{payments[1].PaymentDate:dd MMM} - {payments[1].Amount:C}";
-            }
-            else
-            {
-                pa2.IsVisible = false;
-            }
-        }
         BindableLayout.SetItemsSource(PaymentsLayout, payments);
         NoPaymentsLabel.IsVisible = payments.Count == 0;
         if (currentBooking.HasOptionItems && currentBooking.Items is not null && currentBooking.Items.Count > 0)
@@ -181,8 +136,9 @@ public partial class ClientMyBookingDetailPage : ContentPage
                     ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
                     Padding = new Thickness(0, 4, 0, 4)
                 };
-                row.Add(new Label { Text = $"{optName} · {it.Adults}A/{it.Children}N", FontSize = 12, TextColor = Color.FromArgb("#CCFFFFFF") }, 0, 0);
-                row.Add(new Label { Text = it.LineTotal.ToString("C"), FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#CCFFFFFF"), HorizontalOptions = LayoutOptions.End }, 1, 0);
+                var optionTextColor = Token("OnSurface", "#131B2E");
+                row.Add(new Label { Text = $"{optName} · {it.Adults}A/{it.Children}N", FontSize = 12, TextColor = optionTextColor }, 0, 0);
+                row.Add(new Label { Text = it.LineTotal.ToString("C"), FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = optionTextColor, HorizontalOptions = LayoutOptions.End }, 1, 0);
                 ItemsLayout.Children.Add(row);
             }
         }
@@ -311,13 +267,10 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         if (!canRate)
         {
-            _tripId = null;
             return;
         }
 
-        _tripId = trip!.Id;
-
-        var my = await _api.GetMyTripRatingAsync(trip.Id);
+        var my = await _api.GetMyTripRatingAsync(trip!.Id);
         if (my is not null)
         {
             RateButton.Text = "Actualizar mi calificación";
@@ -352,19 +305,6 @@ public partial class ClientMyBookingDetailPage : ContentPage
         try
         {
             if (_tripId is not int tripId || tripId <= 0) return;
-            await Shell.Current.GoToAsync($"clienttripmap?tripId={tripId}");
-        }
-        catch (Exception ex)
-        {
-            await DisplayAlertAsync("Error", ex.Message, "OK");
-        }
-    }
-
-    private async void OnForceMapClicked(object? sender, EventArgs e)
-    {
-        try
-        {
-            var tripId = _tripId ?? 8;
             await Shell.Current.GoToAsync($"clienttripmap?tripId={tripId}");
         }
         catch (Exception ex)

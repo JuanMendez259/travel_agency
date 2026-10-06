@@ -6,25 +6,7 @@
     xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
     Title="Detalle de Mi Reserva">
 
-    <ContentPage.Resources>
-        <ResourceDictionary>
-            <Color x:Key="ColorPrimary">#003B1B</Color>
-            <Color x:Key="ColorPrimaryContainer">#14532D</Color>
-            <Color x:Key="ColorSecondary">#006C49</Color>
-            <Color x:Key="ColorSecondaryFixed">#6FFBBE</Color>
-            <Color x:Key="ColorSurface">#FAF8FF</Color>
-            <Color x:Key="ColorSurfaceContainerLowest">#FFFFFF</Color>
-            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
-            <Color x:Key="ColorSurfaceContainer">#EAEDFF</Color>
-            <Color x:Key="ColorSurfaceContainerHigh">#E2E7FF</Color>
-            <Color x:Key="ColorOnSurface">#131B2E</Color>
-            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
-            <Color x:Key="ColorOutline">#717970</Color>
-            <Color x:Key="ColorError">#BA1A1A</Color>
-        </ResourceDictionary>
-    </ContentPage.Resources>
-
-    <ScrollView BackgroundColor="{StaticResource ColorSurface}">
+    <ScrollView BackgroundColor="{StaticResource Surface}">
         <VerticalStackLayout Padding="16" Spacing="14">
 
             <!-- ============ FOTO + TÍTULO ============ -->
@@ -32,38 +14,39 @@
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.08" Radius="14" Offset="0,3" />
                 </Border.Shadow>
-                <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill" />
+                <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill"
+                       SemanticProperties.Description="Foto del viaje" />
             </Border>
 
             <VerticalStackLayout Spacing="2">
                 <HorizontalStackLayout Spacing="4">
-                    <Label Text="📍" FontSize="12" />
-                    <Label x:Name="DestinationLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource ColorSecondary}" />
+                    <Label Text="📍" FontSize="12" AutomationProperties.IsInAccessibleTree="False" />
+                    <Label x:Name="DestinationLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Secondary}" />
                 </HorizontalStackLayout>
-                <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
             </VerticalStackLayout>
 
             <!-- ============ ACERCA DE ESTE VIAJE ============ -->
-            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
+            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
-                        <Label Text="🌲" FontSize="15" />
-                        <Label Text="Acerca de este viaje" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                        <Label Text="🌲" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Acerca de este viaje" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
                     </HorizontalStackLayout>
-                    <Label x:Name="DescriptionLabel" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                    <Label x:Name="DescriptionLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
                 </VerticalStackLayout>
             </Border>
 
             <!-- ============ ESTADO DE LA RESERVA (tarjeta verde) ============ -->
-            <Border StrokeShape="RoundRectangle 16" Stroke="Transparent" BackgroundColor="{StaticResource ColorPrimary}" Padding="16">
+            <Border StrokeShape="RoundRectangle 16" Stroke="Transparent" BackgroundColor="{StaticResource Primary}" Padding="16">
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.12" Radius="14" Offset="0,4" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="6">
-                    <Label x:Name="StatusLabel" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource ColorSecondaryFixed}" />
+                    <Label x:Name="StatusLabel" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource SecondaryFixed}" />
                     <Label x:Name="BalanceLabel" FontSize="16" FontAttributes="Bold" TextColor="White" />
                 </VerticalStackLayout>
             </Border>
@@ -72,7 +55,7 @@
             <Border x:Name="QrSection"
                     StrokeShape="RoundRectangle 18"
                     Stroke="Transparent"
-                    BackgroundColor="{StaticResource ColorPrimaryContainer}"
+                    BackgroundColor="{StaticResource PrimaryContainer}"
                     Padding="18"
                     IsVisible="False">
                 <Border.Shadow>
@@ -80,24 +63,25 @@
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="10">
                     <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
-                        <Label Text="🎫" FontSize="16" />
+                        <Label Text="🎫" FontSize="16" AutomationProperties.IsInAccessibleTree="False" />
                         <Label Text="Mi código QR" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
                     </HorizontalStackLayout>
 
                     <Border StrokeShape="RoundRectangle 14" BackgroundColor="White" Padding="12" HorizontalOptions="Center">
-                        <Image x:Name="QrImage" HeightRequest="220" WidthRequest="220" HorizontalOptions="Center" />
+                        <Image x:Name="QrImage" HeightRequest="220" WidthRequest="220" HorizontalOptions="Center"
+                               SemanticProperties.Description="Código QR de tu reserva" />
                     </Border>
 
-                    <Label Text="Preséntalo en el check-in de tu salida." FontSize="12" TextColor="#4DFFFFFF" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                    <Label Text="Preséntalo en el check-in de tu salida." FontSize="12" TextColor="#DEFFFFFF" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
 
-                    <Label x:Name="PassengersListLabel" FontSize="12" TextColor="#CCFFFFFF" HorizontalOptions="Center" HorizontalTextAlignment="Center" IsVisible="False" />
+                    <Label x:Name="PassengersListLabel" FontSize="12" TextColor="#E6FFFFFF" HorizontalOptions="Center" HorizontalTextAlignment="Center" IsVisible="False" />
 
                     <Button x:Name="AddPassengersButton"
                             Text="Agregar acompañantes"
                             Clicked="OnAddPassengersClicked"
                             IsVisible="False"
-                            BackgroundColor="{StaticResource ColorSecondaryFixed}"
-                            TextColor="#002113"
+                            BackgroundColor="{StaticResource SecondaryFixed}"
+                            TextColor="{StaticResource OnSecondaryFixed}"
                             FontAttributes="Bold"
                             CornerRadius="12"
                             HeightRequest="46" />
@@ -115,62 +99,62 @@
             </Border>
 
             <!-- ============ HORARIOS E ITINERARIO ============ -->
-            <Border Margin="20,16,20,0" StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}"
-                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
+            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}"
+                    BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
                         <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
-                            <Label Text="📅" FontSize="18" VerticalOptions="Center" />
+                            <Label Text="📅" FontSize="18" VerticalOptions="Center" AutomationProperties.IsInAccessibleTree="False" />
                             <Label Text="Horarios e Itinerario" FontSize="16" FontAttributes="Bold"
-                                   TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                                   TextColor="{StaticResource Primary}" VerticalOptions="Center" SemanticProperties.HeadingLevel="Level2" />
                         </HorizontalStackLayout>
                         <Border Grid.Column="1" StrokeShape="RoundRectangle 10" Stroke="Transparent"
-                                BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                                BackgroundColor="{StaticResource SurfaceContainer}"
                                 Padding="9,3" VerticalOptions="Center">
                             <Label x:Name="DurationLabel" FontSize="11" FontAttributes="Bold"
-                                   TextColor="{StaticResource ColorSecondary}" />
+                                   TextColor="{StaticResource Secondary}" />
                         </Border>
                     </Grid>
 
                     <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
-                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                            BackgroundColor="{StaticResource SurfaceContainerLow}" Padding="12">
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                             <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0"
-                                    BackgroundColor="{StaticResource ColorPrimary}"
+                                    BackgroundColor="{StaticResource Primary}"
                                     StrokeShape="RoundRectangle 16">
                                 <Label Text="🛫" FontSize="15"
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
                                 <Label Text="SALIDA / IDA" FontSize="11" FontAttributes="Bold"
-                                       TextColor="{StaticResource ColorSecondary}" />
+                                       TextColor="{StaticResource Secondary}" />
                                 <Label x:Name="ItineraryOutLabel" FontSize="16" FontAttributes="Bold"
-                                       TextColor="{StaticResource ColorOnSurface}" />
+                                       TextColor="{StaticResource OnSurface}" />
                                 <Label x:Name="OutMeetingLabel" FontSize="12"
-                                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                       TextColor="{StaticResource OnSurfaceVariant}" />
                             </VerticalStackLayout>
                         </Grid>
                     </Border>
 
                     <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
-                            BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                            BackgroundColor="{StaticResource SurfaceContainerLow}" Padding="12">
                         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
                             <Border WidthRequest="32" HeightRequest="32" StrokeThickness="0"
-                                    BackgroundColor="{StaticResource ColorSecondary}"
+                                    BackgroundColor="{StaticResource Secondary}"
                                     StrokeShape="RoundRectangle 16">
                                 <Label Text="🛬" FontSize="15"
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
                                 <Label Text="REGRESO / RETORNO" FontSize="11" FontAttributes="Bold"
-                                       TextColor="{StaticResource ColorSecondary}" />
+                                       TextColor="{StaticResource Secondary}" />
                                 <Label x:Name="ItineraryBackLabel" FontSize="16" FontAttributes="Bold"
-                                       TextColor="{StaticResource ColorOnSurface}" />
+                                       TextColor="{StaticResource OnSurface}" />
                                 <Label x:Name="BackMeetingLabel" FontSize="12"
-                                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                       TextColor="{StaticResource OnSurfaceVariant}" />
                             </VerticalStackLayout>
                         </Grid>
                     </Border>
@@ -179,9 +163,9 @@
 
             <!-- ============ ITINERARIO Y PUNTOS DE INTERÉS ============ -->
             <VerticalStackLayout Spacing="8">
-                <Label x:Name="ItineraryHeader" Text="Itinerario y puntos de interés" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" IsVisible="False" />
+                <Label x:Name="ItineraryHeader" Text="Itinerario y puntos de interés" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" IsVisible="False" SemanticProperties.HeadingLevel="Level2" />
 
-                <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14"
+                <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14"
                         IsVisible="{Binding Source={x:Reference ItineraryHeader}, Path=IsVisible}">
                     <Border.Shadow>
                         <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
@@ -190,12 +174,12 @@
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="models:TripPointOfInterest">
                                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
-                                    <Border StrokeShape="RoundRectangle 14" WidthRequest="26" HeightRequest="26" BackgroundColor="{StaticResource ColorSecondaryFixed}" Padding="0" VerticalOptions="Start">
-                                        <Label Text="{Binding Order}" FontSize="11" FontAttributes="Bold" TextColor="#002113" HorizontalOptions="Center" VerticalOptions="Center" />
+                                    <Border StrokeShape="RoundRectangle 14" WidthRequest="26" HeightRequest="26" BackgroundColor="{StaticResource SecondaryFixed}" Padding="0" VerticalOptions="Start">
+                                        <Label Text="{Binding Order}" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource OnSecondaryFixed}" HorizontalOptions="Center" VerticalOptions="Center" />
                                     </Border>
                                     <VerticalStackLayout Grid.Column="1" Spacing="1">
-                                        <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="13" TextColor="{StaticResource ColorOnSurface}" />
-                                        <Label Text="{Binding Description}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                        <Label Text="{Binding Name}" FontAttributes="Bold" FontSize="13" TextColor="{StaticResource OnSurface}" />
+                                        <Label Text="{Binding Description}" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                                     </VerticalStackLayout>
                                 </Grid>
                             </DataTemplate>
@@ -205,21 +189,21 @@
             </VerticalStackLayout>
 
             <!-- ============ RUTA EN MAPA ============ -->
-            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
+            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
-                        <Label Text="🗺️" FontSize="15" />
-                        <Label Text="Ruta y Trayecto" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                        <Label Text="🗺️" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Ruta y Trayecto" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
                     </HorizontalStackLayout>
                     <Label Text="Consulta el trazado completo de la ruta y los puntos de interés en el mapa interactivo."
-                           FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                           FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                     <Button x:Name="ForceMapButton"
                             Text="Ver ruta en mapa interactivo"
-                            Clicked="OnForceMapClicked"
-                            BackgroundColor="{StaticResource ColorPrimary}"
+                            Clicked="OnMapRouteClicked"
+                            BackgroundColor="{StaticResource Primary}"
                             TextColor="White"
                             FontAttributes="Bold"
                             CornerRadius="12"
@@ -228,79 +212,63 @@
             </Border>
 
             <!-- ============ RESERVA Y COSTO ============ -->
-            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
+            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
-                        <Label Text="💳" FontSize="15" />
-                        <Label Text="Reserva y Costo" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                        <Label Text="💳" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Reserva y Costo" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
                     </HorizontalStackLayout>
                     <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="4" ColumnSpacing="8">
-                        <Label Grid.Row="0" Grid.Column="0" Text="Cupo reservado" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                        <Label Grid.Row="0" Grid.Column="1" x:Name="ReservaCupoLabel" FontSize="13" TextColor="{StaticResource ColorOnSurface}" />
-                        <Label Grid.Row="1" Grid.Column="0" Text="Conceptos incluidos" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                        <Label Grid.Row="1" Grid.Column="1" x:Name="ReservaIncluyeLabel1" FontSize="13" TextColor="{StaticResource ColorSecondary}" />
-                        <Label Grid.Row="2" Grid.Column="0" x:Name="ReservaIncluyeLabel2" IsVisible="False" FontSize="13" TextColor="{StaticResource ColorSecondary}" />
-                        <Label Grid.Row="2" Grid.Column="1" Text="Total" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                        <Label Grid.Row="0" Grid.Column="0" Text="Cupo reservado" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Label Grid.Row="0" Grid.Column="1" x:Name="ReservaCupoLabel" FontSize="13" TextColor="{StaticResource OnSurface}" />
+                        <Label Grid.Row="1" Grid.Column="0" Text="Conceptos incluidos" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
+                        <Label Grid.Row="1" Grid.Column="1" x:Name="ReservaIncluyeLabel1" FontSize="13" TextColor="{StaticResource Secondary}" IsVisible="False" />
+                        <Label Grid.Row="2" Grid.Column="0" x:Name="ReservaIncluyeLabel2" IsVisible="False" FontSize="13" TextColor="{StaticResource Secondary}" />
+                        <Label Grid.Row="2" Grid.Column="1" Text="Total" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
                     </Grid>
-                    <Label x:Name="ReservaTotalLabel" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" HorizontalOptions="End" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- ============ HISTORIAL DE PAGO ============ -->
-            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
-                <VerticalStackLayout Spacing="8">
-                    <HorizontalStackLayout Spacing="6">
-                        <Label Text="💰" FontSize="15" />
-                        <Label Text="Historial de Pago" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
-                    </HorizontalStackLayout>
-                    <VerticalStackLayout Spacing="4">
-                        <Label x:Name="PagoAbono1Label" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                        <Label x:Name="PagoAbono2Label" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" IsVisible="False" />
-                        <Label x:Name="PagoSaldoLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
-                    </VerticalStackLayout>
-                    <Button x:Name="DownloadReceiptButton" Text="Descargar Recibo Digital (PDF)" IsVisible="False" />
+                    <Label x:Name="ReservaTotalLabel" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Primary}" HorizontalOptions="End" />
                 </VerticalStackLayout>
             </Border>
 
             <!-- ============ DETALLE POR OPCIONES ============ -->
             <VerticalStackLayout x:Name="ItemsSection" Spacing="8" IsVisible="False">
                 <HorizontalStackLayout Spacing="6">
-                    <Label Text="🧾" FontSize="15" />
-                    <Label Text="Detalle por opciones" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                    <Label Text="🧾" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                    <Label Text="Detalle por opciones" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
                 </HorizontalStackLayout>
                 <VerticalStackLayout x:Name="ItemsLayout" Spacing="4" />
             </VerticalStackLayout>
 
             <!-- ============ MIS PAGOS ============ -->
-            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
+            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
-                        <Label Text="💳" FontSize="15" />
-                        <Label Text="Mis pagos" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                        <Label Text="💳" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Mis pagos" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
                     </HorizontalStackLayout>
 
                     <Label x:Name="NoPaymentsLabel"
                            Text="Aún no has realizado pagos para esta reserva."
                            FontSize="13"
-                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                           TextColor="{StaticResource OnSurfaceVariant}" />
 
                     <VerticalStackLayout x:Name="PaymentsLayout" Spacing="4">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate x:DataType="models:Payment">
-                                <Border Margin="0,4" StrokeShape="RoundRectangle 12" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                                <Border Margin="0,4" StrokeShape="RoundRectangle 12" Stroke="Transparent" BackgroundColor="{StaticResource SurfaceContainerLow}" Padding="12">
                                     <VerticalStackLayout Spacing="3">
                                         <HorizontalStackLayout Spacing="4">
-                                            <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                                            <Label Text="·" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                                            <Label Text="{Binding Method}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                            <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                                            <Label Text="·" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                                            <Label Text="{Binding Method}" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                                         </HorizontalStackLayout>
                                         <HorizontalStackLayout Spacing="4">
-                                            <Label Text="{Binding Amount, StringFormat='{0:C}'}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
-                                            <Label Text="·" FontSize="14" TextColor="{StaticResource ColorOnSurface}" />
-                                            <Label Text="{Binding Status}" FontSize="13" TextColor="{StaticResource ColorSecondary}" />
+                                            <Label Text="{Binding Amount, StringFormat='{0:C}'}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource OnSurface}" />
+                                            <Label Text="·" FontSize="14" TextColor="{StaticResource OnSurface}" />
+                                            <Label Text="{Binding Status}" FontSize="13" TextColor="{StaticResource Secondary}" />
                                         </HorizontalStackLayout>
                                     </VerticalStackLayout>
                                 </Border>
@@ -308,7 +276,8 @@
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
 
-                    <Label x:Name="PaymentsTotalLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" IsVisible="False" />
+                    <Label x:Name="PaymentsTotalLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Primary}" IsVisible="False" />
+                    <Label x:Name="PagoSaldoLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
                 </VerticalStackLayout>
             </Border>
 
@@ -316,20 +285,20 @@
             <Border x:Name="CancelSection"
                     StrokeShape="RoundRectangle 16"
                     Stroke="Transparent"
-                    BackgroundColor="#FFDAD6"
+                    BackgroundColor="{StaticResource ErrorContainer}"
                     Padding="14"
                     IsVisible="False">
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
-                        <Label Text="⚠️" FontSize="14" />
-                        <Label Text="Cancelación de la reserva" FontSize="15" FontAttributes="Bold" TextColor="#93000A" />
+                        <Label Text="⚠️" FontSize="14" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Cancelación de la reserva" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource OnErrorContainer}" SemanticProperties.HeadingLevel="Level2" />
                     </HorizontalStackLayout>
-                    <Label x:Name="CancelPolicyLabel" FontSize="12" TextColor="#5C0004" />
-                    <Label x:Name="CancelRefundLabel" FontSize="12" FontAttributes="Bold" TextColor="#5C0004" />
+                    <Label x:Name="CancelPolicyLabel" FontSize="12" TextColor="{StaticResource OnErrorContainer}" />
+                    <Label x:Name="CancelRefundLabel" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource OnErrorContainer}" />
                     <Button x:Name="CancelButton"
                             Text="Cancelar reserva"
                             Clicked="OnCancelClicked"
-                            BackgroundColor="{StaticResource ColorError}"
+                            BackgroundColor="{StaticResource Error}"
                             TextColor="White"
                             FontAttributes="Bold"
                             CornerRadius="12"
@@ -339,11 +308,11 @@
 
             <!-- ============ CALIFICAR VIAJE ============ -->
             <VerticalStackLayout Spacing="6">
-                <Label x:Name="RateHintLabel" FontSize="13" TextColor="{StaticResource ColorOnSurfaceVariant}" IsVisible="False" />
+                <Label x:Name="RateHintLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
                 <Button x:Name="RateButton" Text="Calificar viaje"
                         Clicked="OnRateClicked"
                         IsVisible="False"
-                        BackgroundColor="{StaticResource ColorSecondary}"
+                        BackgroundColor="{StaticResource Secondary}"
                         TextColor="White"
                         FontAttributes="Bold"
                         CornerRadius="12"
