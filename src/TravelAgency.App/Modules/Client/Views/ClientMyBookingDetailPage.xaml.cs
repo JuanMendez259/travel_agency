@@ -167,7 +167,8 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 pa2.IsVisible = false;
             }
         }
-        PaymentsList.ItemsSource = payments;
+        BindableLayout.SetItemsSource(PaymentsLayout, payments);
+        NoPaymentsLabel.IsVisible = payments.Count == 0;
         if (currentBooking.HasOptionItems && currentBooking.Items is not null && currentBooking.Items.Count > 0)
         {
             ItemsSection.IsVisible = true;

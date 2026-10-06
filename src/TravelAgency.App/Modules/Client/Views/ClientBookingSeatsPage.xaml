@@ -82,7 +82,8 @@
                             </Border>
                         </Grid>
 
-                        <Label Text="Toca un asiento libre en el mapa y asígnalo a cada viajero."
+                        <Label x:Name="SeatGateHintLabel"
+                               Text="Completa el nombre y la edad de cada pasajero para poder elegir asientos."
                                FontSize="12"
                                TextColor="{StaticResource ColorOnSurfaceVariant}" />
 

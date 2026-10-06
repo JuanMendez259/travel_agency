@@ -26,20 +26,23 @@ public partial class ClientBookingSeatsPage : ContentPage
     private static readonly Color OutlineVariantColor = Color.FromArgb("#C0C9BE");
 
     private readonly ApiService _api;
+    private readonly SessionService _session;
     private readonly List<SeatSlot> _slots = new();
     private readonly HashSet<int> _taken = new();
     private int _capacity;
     private bool _built;
+    private bool _passengersReady;
     private decimal _adultPrice;
     private decimal? _childPrice;
 
     public string TripId { get; set; } = string.Empty;
     public string Seats { get; set; } = string.Empty;
 
-    public ClientBookingSeatsPage(ApiService api)
+    public ClientBookingSeatsPage(ApiService api, SessionService session)
     {
         InitializeComponent();
         _api = api;
+        _session = session;
     }
 
     private sealed class SeatSlot
@@ -100,7 +103,7 @@ public partial class ClientBookingSeatsPage : ContentPage
             BuildSlots(seats);
             RenderMap(availability.Rows);
             await LoadFaresAsync(tripId);
-            RefreshSeatVisuals();
+            RefreshPassengerGate();
         }
         catch (Exception ex)
         {
@@ -138,7 +141,15 @@ public partial class ClientBookingSeatsPage : ContentPage
         SelectedSeatsLabel.Text = $"Asientos: {string.Join(", ", seatList)}";
 
         var missing = required - assigned;
-        if (missing > 0)
+
+        if (!_passengersReady)
+        {
+            RemainingLabel.Text = "Completa el nombre y la edad de los pasajeros";
+            RemainingLabel.TextColor = OutlineColor;
+            ConfirmButton.IsEnabled = false;
+            ConfirmButton.Text = "Completa los datos de pasajeros";
+        }
+        else if (missing > 0)
         {
             RemainingLabel.Text = missing == 1
                 ? "Falta asignar 1 asiento"
@@ -198,6 +209,46 @@ public partial class ClientBookingSeatsPage : ContentPage
             return Math.Clamp(age, 0, 110);
 
         return ChildMaxAge;
+    }
+
+    private bool AllPassengersComplete()
+    {
+        for (var i = 1; i < _slots.Count; i++)
+        {
+            var name = _slots[i].NameEntry?.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(name)) return false;
+
+            var ageText = _slots[i].AgeEntry?.Text?.Trim();
+            if (string.IsNullOrEmpty(ageText) ||
+                !int.TryParse(ageText, out var age) || age is < 0 or > 110)
+                return false;
+        }
+
+        return true;
+    }
+
+    private void RefreshPassengerGate()
+    {
+        _passengersReady = AllPassengersComplete();
+
+        SeatGateHintLabel.Text = _passengersReady
+            ? "Ya puedes tocar un asiento libre para asignarlo a un viajero."
+            : "Completa el nombre y la edad de cada pasajero para poder elegir asientos.";
+        SeatGateHintLabel.TextColor = _passengersReady ? SecondaryColor : OnSurfaceVariantColor;
+
+        RefreshSeatVisuals();
+    }
+
+    private string SlotDisplayName(int index)
+    {
+        if (index == 0)
+        {
+            var holder = _session.UserName?.Trim();
+            return string.IsNullOrWhiteSpace(holder) ? "Titular (tú)" : holder;
+        }
+
+        var name = _slots[index].NameEntry?.Text?.Trim();
+        return string.IsNullOrWhiteSpace(name) ? _slots[index].Label : name;
     }
 
     private void BuildSlots(int seats)
@@ -290,7 +341,8 @@ public partial class ClientBookingSeatsPage : ContentPage
             BackgroundColor = Colors.Transparent,
             HorizontalTextAlignment = TextAlignment.Center
         };
-        slot.AgeEntry.TextChanged += (_, _) => UpdateTotal();
+        slot.NameEntry.TextChanged += (_, _) => RefreshPassengerGate();
+        slot.AgeEntry.TextChanged += (_, _) => RefreshPassengerGate();
 
         var inputs = new Grid { ColumnSpacing = 8 };
         inputs.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
@@ -505,6 +557,21 @@ public partial class ClientBookingSeatsPage : ContentPage
             return;
         }
 
+        if (!_passengersReady)
+        {
+            border.BackgroundColor = SurfaceContainerColor;
+            border.Opacity = 1;
+            border.Scale = 1;
+            numberLabel.TextColor = OutlineColor;
+            numberLabel.FontSize = 10;
+            numberLabel.FontAttributes = FontAttributes.Bold;
+            statusLabel.Text = "🔒";
+            statusLabel.FontSize = 10;
+            statusLabel.FontAttributes = FontAttributes.None;
+            statusLabel.TextColor = OutlineColor;
+            return;
+        }
+
         border.BackgroundColor = SurfaceHighestColor;
         border.Opacity = 1;
         border.Scale = 1;
@@ -550,8 +617,23 @@ public partial class ClientBookingSeatsPage : ContentPage
             return;
         }
 
+        if (!_passengersReady)
+        {
+            await DisplayAlertAsync("Completa los datos",
+                "Primero llena el nombre y la edad de cada pasajero para poder elegir asientos.", "OK");
+            return;
+        }
+
+        // Nombres reales de cada viajero; se desambiguan si se repiten.
+        var names = _slots.Select((_, i) => SlotDisplayName(i)).ToList();
+        for (var i = 0; i < names.Count; i++)
+        {
+            if (names.Where((n, j) => j != i && n == names[i]).Any())
+                names[i] = $"{names[i]} ({_slots[i].Label})";
+        }
+
         var options = _slots
-            .Select(s => $"{s.Label}{(s.Seat.HasValue ? $" (mueve del {s.Seat.Value})" : "")}")
+            .Select((s, i) => s.Seat.HasValue ? $"{names[i]} (mueve del {s.Seat.Value})" : names[i])
             .ToArray();
 
         var choice = await DisplayActionSheet($"Asiento {seatNumber}", "Cancelar", null, options);
@@ -570,6 +652,13 @@ public partial class ClientBookingSeatsPage : ContentPage
         if (_slots.Count == 0)
         {
             await DisplayAlertAsync("Error", "No hay asientos que reservar.", "OK");
+            return;
+        }
+
+        if (!_passengersReady)
+        {
+            await DisplayAlertAsync("Completa los datos",
+                "Completa el nombre y la edad de cada pasajero antes de confirmar.", "OK");
             return;
         }
 
@@ -623,13 +712,17 @@ public partial class ClientBookingSeatsPage : ContentPage
             var created = await _api.CreateBookingWithSeatsAsync(
                 int.Parse(TripId), _slots.Count, holderSeat, passengers, optList);
 
-            await DisplayAlertAsync("Reserva creada",
-                $"Tu reserva quedó {created?.Status} por un total de {created?.TotalAmount:C}. "
-                + $"Asientos: {string.Join(", ", _slots.Select(s => s.Seat!.Value).OrderBy(n => n))}.",
-                "OK");
-
             if (created is not null && created.Id > 0)
+            {
+                // Limpia la pestaña Explorar (home -> viaje -> asientos) y abre el detalle de la reserva.
+                await Shell.Current.GoToAsync("//home", animate: false);
                 await Shell.Current.GoToAsync($"//mytrips/mybooking?id={created.Id}");
+            }
+            else
+            {
+                await DisplayAlertAsync("Reserva creada",
+                    "Tu reserva se registró, pero no se pudo abrir el detalle.", "OK");
+            }
         }
         catch (Exception ex)
         {

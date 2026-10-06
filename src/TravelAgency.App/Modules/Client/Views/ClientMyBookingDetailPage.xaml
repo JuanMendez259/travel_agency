@@ -272,37 +272,45 @@
             </VerticalStackLayout>
 
             <!-- ============ MIS PAGOS ============ -->
-            <VerticalStackLayout Spacing="8">
-                <HorizontalStackLayout Spacing="6">
-                    <Label Text="💳" FontSize="15" />
-                    <Label Text="Mis pagos" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
-                </HorizontalStackLayout>
+            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource ColorSurfaceContainerHigh}" BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="14">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="8">
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="💳" FontSize="15" />
+                        <Label Text="Mis pagos" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" />
+                    </HorizontalStackLayout>
 
-                <CollectionView x:Name="PaymentsList"
-                                SelectionMode="None"
-                                EmptyView="Aún no has realizado pagos para esta reserva.">
-                    <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="models:Payment">
-                            <Border Margin="0,4" StrokeShape="RoundRectangle 12" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
-                                <VerticalStackLayout Spacing="3">
-                                    <HorizontalStackLayout Spacing="4">
-                                        <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                                        <Label Text="·" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                                        <Label Text="{Binding Method}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                                    </HorizontalStackLayout>
-                                    <HorizontalStackLayout Spacing="4">
-                                        <Label Text="{Binding Amount, StringFormat='{0:C}'}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
-                                        <Label Text="·" FontSize="14" TextColor="{StaticResource ColorOnSurface}" />
-                                        <Label Text="{Binding Status}" FontSize="13" TextColor="{StaticResource ColorSecondary}" />
-                                    </HorizontalStackLayout>
-                                </VerticalStackLayout>
-                            </Border>
-                        </DataTemplate>
-                    </CollectionView.ItemTemplate>
-                </CollectionView>
+                    <Label x:Name="NoPaymentsLabel"
+                           Text="Aún no has realizado pagos para esta reserva."
+                           FontSize="13"
+                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
 
-                <Label x:Name="PaymentsTotalLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" IsVisible="False" />
-            </VerticalStackLayout>
+                    <VerticalStackLayout x:Name="PaymentsLayout" Spacing="4">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="models:Payment">
+                                <Border Margin="0,4" StrokeShape="RoundRectangle 12" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12">
+                                    <VerticalStackLayout Spacing="3">
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                            <Label Text="·" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                            <Label Text="{Binding Method}" FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                        </HorizontalStackLayout>
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="{Binding Amount, StringFormat='{0:C}'}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurface}" />
+                                            <Label Text="·" FontSize="14" TextColor="{StaticResource ColorOnSurface}" />
+                                            <Label Text="{Binding Status}" FontSize="13" TextColor="{StaticResource ColorSecondary}" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+
+                    <Label x:Name="PaymentsTotalLabel" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource ColorPrimary}" IsVisible="False" />
+                </VerticalStackLayout>
+            </Border>
 
             <!-- ============ CANCELACIÓN ============ -->
             <Border x:Name="CancelSection"
