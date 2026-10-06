@@ -116,6 +116,7 @@ using (var scope = app.Services.CreateScope())
     // Antes que cualquier otra migracion: las funciones siguientes materializan
     // Bookings y Payments con LINQ, y EF proyecta todas las columnas mapeadas.
     // Si estas columnas faltan todavia, el SELECT revienta con 42703.
+    await EnsureBookingDiscountColumnsAsync(db, provider);
     await EnsureBookingCancellationAuditColumnsAsync(db, provider);
     await EnsurePaymentRefundedAmountColumnAsync(db, provider);
     await EnsurePassengerSeatColumnAsync(db, provider);
@@ -138,7 +139,6 @@ using (var scope = app.Services.CreateScope())
     await EnsureTripOptionIsBaseColumnAsync(db, provider);
     await EnsureBookingItemsTableAsync(db, provider);
     await EnsureDiscountsTableAsync(db, provider);
-    await EnsureBookingDiscountColumnsAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
     await EnsureFavoriteTripsTableAsync(db, provider);
