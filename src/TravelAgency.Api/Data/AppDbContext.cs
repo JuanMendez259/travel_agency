@@ -48,6 +48,7 @@ public class AppDbContext : DbContext
             entity.Property(b => b.TotalAmount).HasPrecision(18, 2);
             entity.Property(b => b.DiscountAmount).HasPrecision(18, 2);
             entity.Property(b => b.DiscountCode).HasMaxLength(60);
+            entity.Property(b => b.SpecialNeedsNote).HasMaxLength(500);
             entity.HasIndex(b => b.QrToken).IsUnique();
             entity.HasOne(b => b.User)
                   .WithMany(u => u.Bookings)

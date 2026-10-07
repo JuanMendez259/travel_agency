@@ -247,7 +247,7 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
-    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers, List<BookingOptionInput>? options = null, string? discountCode = null)
+    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers, List<BookingOptionInput>? options = null, string? discountCode = null, string? specialNeedsNote = null)
     {
         var list = passengers?
             .Select(p => new PassengerInput(p.Name, p.Age, null))
@@ -257,7 +257,7 @@ public class ApiService
             .ToList();
         var useOptions = optionDtos is { Count: > 0 };
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list, null, optionDtos, useOptions, discountCode), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, null, optionDtos, useOptions, discountCode, specialNeedsNote), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -268,7 +268,8 @@ public class ApiService
         int holderSeat,
         IEnumerable<(string Name, int Age, int SeatNumber)> passengers,
         List<BookingOptionInput>? options = null,
-        string? discountCode = null)
+        string? discountCode = null,
+        string? specialNeedsNote = null)
     {
         var list = passengers
             .Select(p => new PassengerInput(p.Name, p.Age, p.SeatNumber))
@@ -278,7 +279,7 @@ public class ApiService
             .ToList();
         var useOptions = optionDtos is { Count: > 0 };
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list, holderSeat, optionDtos, useOptions, discountCode), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, holderSeat, optionDtos, useOptions, discountCode, specialNeedsNote), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -390,7 +391,7 @@ public class ApiService
     private record UpdatePassengerCheckinRequest(bool CheckedIn);
     private record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
     private record BookingOptionInputDto(int TripOptionId, int Adults, int Children);
-    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null, string? DiscountCode = null);
+    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null, string? DiscountCode = null, string? SpecialNeedsNote = null);
     private record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
 
     public record DiscountValidationResult(bool Valid, string Message, decimal DiscountAmount, decimal FinalAmount, string? Code, DiscountType? Type = null, decimal? Value = null);

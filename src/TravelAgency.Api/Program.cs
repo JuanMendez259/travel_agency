@@ -117,6 +117,7 @@ using (var scope = app.Services.CreateScope())
     // Bookings y Payments con LINQ, y EF proyecta todas las columnas mapeadas.
     // Si estas columnas faltan todavia, el SELECT revienta con 42703.
     await EnsureBookingDiscountColumnsAsync(db, provider);
+    await EnsureBookingSpecialNeedsColumnAsync(db, provider);
     await EnsureBookingCancellationAuditColumnsAsync(db, provider);
     await EnsurePaymentRefundedAmountColumnAsync(db, provider);
     await EnsurePassengerSeatColumnAsync(db, provider);
@@ -864,6 +865,11 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         QrToken = GenerateQrToken(),
         DiscountCode = appliedDiscount?.Code,
         DiscountAmount = discountAmount,
+        SpecialNeedsNote = string.IsNullOrWhiteSpace(request.SpecialNeedsNote)
+            ? null
+            : (request.SpecialNeedsNote.Trim().Length <= 500
+                ? request.SpecialNeedsNote.Trim()
+                : request.SpecialNeedsNote.Trim()[..500]),
         TotalAmount = Math.Max(0, Math.Round(baseTotal - discountAmount, 2))
     };
 
@@ -913,6 +919,9 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         .Select(u => u.Name)
         .FirstOrDefaultAsync() ?? "Cliente";
     await SendToStaffAsync(db, $"Nueva reserva de {userName} para \"{trip.Title}\" ({booking.NumberOfSeats} asiento(s)).");
+
+    if (!string.IsNullOrWhiteSpace(booking.SpecialNeedsNote))
+        await SendToStaffAsync(db, $"Necesidades especiales de {userName} para \"{trip.Title}\": {booking.SpecialNeedsNote}");
 
     return Results.Created($"/api/bookings/{booking.Id}", booking);
 }).RequireAuthorization();
@@ -2356,6 +2365,17 @@ static async Task EnsureBookingDiscountColumnsAsync(AppDbContext db, string prov
 }
 
 
+static async Task EnsureBookingSpecialNeedsColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Bookings", "SpecialNeedsNote", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Bookings\" ADD COLUMN \"SpecialNeedsNote\" TEXT NULL;"
+            : "ALTER TABLE \"Bookings\" ADD COLUMN \"SpecialNeedsNote\" character varying(500) NULL;");
+    }
+}
+
+
 static async Task EnsureDefaultTripOptionsBackfillAsync(AppDbContext db, string provider)
 {
     try
@@ -2971,7 +2991,7 @@ record UpdateBookingStatusRequest(BookingStatus Status);
 record UpdateBookingCheckinRequest(bool CheckedIn);
 record UpdatePassengerCheckinRequest(bool CheckedIn);
 record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
-record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInput>? Options = null, bool? UseOptions = null, string? DiscountCode = null);
+record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInput>? Options = null, bool? UseOptions = null, string? DiscountCode = null, string? SpecialNeedsNote = null);
 record CreatePassengersRequest(List<PassengerInput>? Passengers);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);

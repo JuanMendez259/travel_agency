@@ -779,8 +779,9 @@ public partial class ClientBookingSeatsPage : ContentPage
         try
         {
             var storeSel = BookingSelectionStore.Instance;
+            var sameTrip = storeSel.TripId == int.Parse(TripId);
             List<BookingOptionInput>? optList = null;
-            if (storeSel.TripId == int.Parse(TripId) && storeSel.Options.Count > 0)
+            if (sameTrip && storeSel.Options.Count > 0)
             {
                 optList = storeSel.Options
                     .Select(o => new BookingOptionInput(o.TripOptionId, o.Adults, o.Children))
@@ -788,7 +789,8 @@ public partial class ClientBookingSeatsPage : ContentPage
                     .ToList();
             }
             var created = await _api.CreateBookingWithSeatsAsync(
-                int.Parse(TripId), _slots.Count, holderSeat, passengers, optList, _discountCode);
+                int.Parse(TripId), _slots.Count, holderSeat, passengers, optList, _discountCode,
+                sameTrip ? storeSel.SpecialNeedsNote : null);
 
             if (created is not null && created.Id > 0)
             {

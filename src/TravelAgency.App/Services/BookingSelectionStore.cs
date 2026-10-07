@@ -15,11 +15,13 @@ public class BookingSelectionStore
     public int TripId { get; set; }
     public List<BookingOptionSelection> Options { get; set; } = new();
     public int TotalSeats { get; set; }
+    public string? SpecialNeedsNote { get; set; }
 
     public void Clear()
     {
         TripId = 0;
         Options.Clear();
         TotalSeats = 0;
+        SpecialNeedsNote = null;
     }
 }

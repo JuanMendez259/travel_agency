@@ -17,6 +17,9 @@ public class Booking
     /// <summary>Monto descontado (snapshot). El subtotal se deriva: TotalAmount + DiscountAmount.</summary>
     public decimal DiscountAmount { get; set; }
 
+    /// <summary>Comentario del cliente sobre necesidades especiales para el viaje (null si no aplica).</summary>
+    public string? SpecialNeedsNote { get; set; }
+
     public bool CheckedIn { get; set; }
     public DateTime? CheckedInAt { get; set; }
     public string? QrToken { get; set; }

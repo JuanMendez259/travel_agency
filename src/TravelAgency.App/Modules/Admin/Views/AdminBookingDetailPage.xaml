@@ -15,6 +15,14 @@
             <Label x:Name="StatusLabel" FontSize="15" FontAttributes="Bold" />
             <Label x:Name="BalanceLabel" FontSize="15" FontAttributes="Bold" TextColor="#1976D2" />
 
+            <Border x:Name="SpecialNeedsSection" IsVisible="False" StrokeShape="RoundRectangle 10"
+                    StrokeThickness="0" BackgroundColor="#FFF3CD" Padding="12" Margin="0,4">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="🧩 Necesidades especiales" FontSize="14" FontAttributes="Bold" TextColor="#7A5C00" />
+                    <Label x:Name="SpecialNeedsLabel" FontSize="14" TextColor="#7A5C00" />
+                </VerticalStackLayout>
+            </Border>
+
             <Button x:Name="PaymentButton" Text="Registrar pago" Clicked="OnRegisterPaymentClicked" />
             <Button x:Name="CancelButton" Text="Cancelar reserva" Clicked="OnCancelClicked" BackgroundColor="#B00020" />
 

@@ -110,6 +110,7 @@ public partial class ClientTripDetailPage : ContentPage
         _bookingClosed = bookingClosed;
         BookPanel.IsVisible = available > 0;
         NoCapacityPanel.IsVisible = available <= 0;
+        SpecialNeedsSection.IsVisible = available > 0;
         BookClosedLabel.Text = $"Este viaje cerró reservas el {deadline:dd/MM/yyyy}.";
         BookClosedLabel.IsVisible = available > 0 && bookingClosed;
         UpdateBookingSummary();
@@ -272,9 +273,27 @@ public partial class ClientTripDetailPage : ContentPage
         }
     }
 
+    private void OnSpecialNeedsToggled(object? sender, ToggledEventArgs e)
+    {
+        SpecialNeedsPanel.IsVisible = e.Value;
+    }
+
     private async void OnBookClicked(object? sender, EventArgs e)
     {
         if (_trip is null) return;
+
+        string? specialNeedsNote = null;
+        if (SpecialNeedsSwitch.IsToggled)
+        {
+            var note = SpecialNeedsEditor.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(note))
+            {
+                await DisplayAlertAsync("Necesidades especiales",
+                    "Cuéntanos qué necesitas para tu viaje o desactiva la opción.", "OK");
+                return;
+            }
+            specialNeedsNote = note.Length <= 500 ? note : note[..500];
+        }
 
         if (_trip.HasOptions && (_trip.Options?.Count ?? 0) > 0)
         {
@@ -294,6 +313,7 @@ public partial class ClientTripDetailPage : ContentPage
             var store = BookingSelectionStore.Instance;
             store.Clear();
             store.TripId = _trip.Id;
+            store.SpecialNeedsNote = specialNeedsNote;
             foreach (var sel in _optionSelections)
             {
                 if (sel.Adults > 0 || sel.Children > 0)
@@ -321,6 +341,7 @@ public partial class ClientTripDetailPage : ContentPage
         store2.Clear();
         store2.TripId = _trip.Id;
         store2.TotalSeats = seats;
+        store2.SpecialNeedsNote = specialNeedsNote;
         await Shell.Current.GoToAsync($"bookseats?tripId={_trip.Id}&seats={seats}");
     }
 

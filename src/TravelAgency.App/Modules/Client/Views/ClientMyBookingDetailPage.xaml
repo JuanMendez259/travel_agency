@@ -231,6 +231,18 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- ============ NECESIDADES ESPECIALES ============ -->
+            <Border x:Name="SpecialNeedsSection" IsVisible="False" StrokeShape="RoundRectangle 16"
+                    Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
+                <VerticalStackLayout Spacing="6">
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="🧩" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Necesidades especiales" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
+                    </HorizontalStackLayout>
+                    <Label x:Name="SpecialNeedsLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- ============ DETALLE POR OPCIONES ============ -->
             <VerticalStackLayout x:Name="ItemsSection" Spacing="8" IsVisible="False">
                 <HorizontalStackLayout Spacing="6">

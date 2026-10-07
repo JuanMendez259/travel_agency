@@ -120,6 +120,10 @@ public partial class ClientMyBookingDetailPage : ContentPage
             ReservaDescuentoTitle.IsVisible = false;
             ReservaDescuentoLabel.IsVisible = false;
         }
+
+        var specialNeeds = currentBooking.SpecialNeedsNote?.Trim();
+        SpecialNeedsSection.IsVisible = !string.IsNullOrEmpty(specialNeeds);
+        SpecialNeedsLabel.Text = specialNeeds ?? string.Empty;
         BalanceLabel!.Text = currentBooking.Status == BookingStatus.Cancelled
             ? refunded > 0
                 ? $"Reserva cancelada · Reembolsado {refunded:C}"

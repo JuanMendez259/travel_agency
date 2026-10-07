@@ -206,6 +206,35 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- ============ NECESIDADES ESPECIALES ============ -->
+            <Border x:Name="SpecialNeedsSection" Margin="20,16,20,0" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16" IsVisible="False">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="14" Offset="0,4" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <HorizontalStackLayout Grid.Column="0" Spacing="6" VerticalOptions="Center">
+                            <Label Text="🧩" FontSize="18" VerticalOptions="Center" />
+                            <Label Text="Tienes Necesidades Especiales" FontSize="16" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                        <Switch x:Name="SpecialNeedsSwitch" Grid.Column="1" VerticalOptions="Center"
+                                OnColor="{StaticResource ColorSecondary}"
+                                Toggled="OnSpecialNeedsToggled" />
+                    </Grid>
+                    <Label Text="Actívalo y cuéntanos qué necesitas para tu viaje (silla de ruedas, dieta especial, acceso, etc.)."
+                           FontSize="12" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                    <VerticalStackLayout x:Name="SpecialNeedsPanel" Spacing="4" IsVisible="False">
+                        <Editor x:Name="SpecialNeedsEditor" HeightRequest="90"
+                                Placeholder="Describe lo que ocupas para tu viaje"
+                                BackgroundColor="{StaticResource ColorSurfaceContainerLow}" />
+                        <Label Text="Máximo 500 caracteres." FontSize="11"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}" HorizontalOptions="End" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
             <!-- ============ SELECCIÓN DE ASIENTOS ============ -->
             <Border Margin="20,16,20,0" StrokeShape="RoundRectangle 12" Stroke="Transparent"
                     BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="16">
