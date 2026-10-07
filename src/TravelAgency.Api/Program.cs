@@ -2247,6 +2247,8 @@ static async Task EnsureTripOptionsTableAsync(AppDbContext db, string provider)
           CONSTRAINT ""FK_TripOptions_Trips_TripId"" FOREIGN KEY (""TripId"") REFERENCES ""Trips"" (""Id"") ON DELETE RESTRICT
       );");
     await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_TripOptions_TripId"" ON ""TripOptions"" (""TripId"");");
+    // Seguridad Supabase: RLS activo (el API usa el rol service/owner, que lo omite).
+    await TryExecAsync(db, @"ALTER TABLE ""TripOptions"" ENABLE ROW LEVEL SECURITY;");
 }
 
 
@@ -2286,6 +2288,8 @@ static async Task EnsureBookingItemsTableAsync(AppDbContext db, string provider)
       );");
     await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_BookingItems_BookingId"" ON ""BookingItems"" (""BookingId"");");
     await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_BookingItems_TripOptionId"" ON ""BookingItems"" (""TripOptionId"");");
+    // Seguridad Supabase: RLS activo (el API usa el rol service/owner, que lo omite).
+    await TryExecAsync(db, @"ALTER TABLE ""BookingItems"" ENABLE ROW LEVEL SECURITY;");
 }
 
 
@@ -2329,6 +2333,8 @@ static async Task EnsureDiscountsTableAsync(AppDbContext db, string provider)
       );");
     await TryExecAsync(db, @"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Discounts_Code"" ON ""Discounts"" (""Code"");");
     await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_Discounts_TripId"" ON ""Discounts"" (""TripId"");");
+    // Seguridad Supabase: RLS activo (el API usa el rol service/owner, que lo omite).
+    await TryExecAsync(db, @"ALTER TABLE ""Discounts"" ENABLE ROW LEVEL SECURITY;");
 }
 
 
