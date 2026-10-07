@@ -11,6 +11,7 @@ public class TripListItem : INotifyPropertyChanged
 
     public Trip Trip { get; }
     public Microsoft.Maui.Controls.ImageSource? Thumb { get; }
+    public bool CanManage { get; }
 
     private bool _isFavorite;
     public bool IsFavorite
@@ -26,11 +27,12 @@ public class TripListItem : INotifyPropertyChanged
         }
     }
 
-    public TripListItem(Trip trip, Microsoft.Maui.Controls.ImageSource? thumb, bool isFavorite = false)
+    public TripListItem(Trip trip, Microsoft.Maui.Controls.ImageSource? thumb, bool isFavorite = false, bool canManage = false)
     {
         Trip = trip;
         Thumb = thumb;
         _isFavorite = isFavorite;
+        CanManage = canManage;
     }
 
     public string HeartText => IsFavorite ? "♥" : "♡";
@@ -48,6 +50,8 @@ public class TripListItem : INotifyPropertyChanged
     public bool HasAvailability => AvailableSeats > 0;
 
     public bool IsPaused => !Trip.IsActive;
+
+    public string ActiveButtonText => IsPaused ? "Activar" : "Pausar";
 
     public string AvailabilityText => HasAvailability
         ? $"{AvailableSeats} asientos disponibles"

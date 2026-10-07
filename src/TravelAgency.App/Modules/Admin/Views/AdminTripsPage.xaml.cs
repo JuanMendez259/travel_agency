@@ -7,14 +7,16 @@ namespace TravelAgency.App.Modules.Admin.Views;
 public partial class AdminTripsPage : ContentPage
 {
     private readonly ApiService _api;
+    private readonly SessionService _session;
     private List<TripListItem> _allTrips = new();
     private string _statusFilter = "All";
     private string _searchText = "";
 
-    public AdminTripsPage(ApiService api)
+    public AdminTripsPage(ApiService api, SessionService session)
     {
         InitializeComponent();
         _api = api;
+        _session = session;
     }
 
     protected override async void OnAppearing()
@@ -46,7 +48,7 @@ public partial class AdminTripsPage : ContentPage
                 foreach (var trip in trips)
                 {
                     var thumb = await _api.GetTripImageAsync(trip.ImageUrl);
-                    items.Add(new TripListItem(trip, thumb));
+                    items.Add(new TripListItem(trip, thumb, canManage: _session.IsAdmin));
                 }
             }
             _allTrips = items;
@@ -136,6 +138,34 @@ public partial class AdminTripsPage : ContentPage
     {
         if ((sender as Button)?.CommandParameter is not Trip trip) return;
         await Shell.Current.GoToAsync($"admintrip?id={trip.Id}");
+    }
+
+    private async void OnToggleActiveClicked(object? sender, EventArgs e)
+    {
+        if ((sender as Button)?.CommandParameter is not Trip trip) return;
+
+        var pausing = trip.IsActive;
+        var confirm = await DisplayAlertAsync(
+            pausing ? "Pausar viaje" : "Reactivar viaje",
+            pausing
+                ? $"¿Pausar \"{trip.Title}\"? Dejará de aparecer para nuevas reservas y se avisará a los clientes con reservas vigentes."
+                : $"¿Reactivar \"{trip.Title}\"? Volverá a mostrarse para reservar y se avisará a los clientes con reservas.",
+            "Sí", "No");
+
+        if (!confirm) return;
+
+        try
+        {
+            await _api.UpdateTripActiveAsync(trip.Id, !pausing);
+            await LoadTripsAsync(false);
+            await DisplayAlertAsync("Listo",
+                pausing ? "Viaje pausado. Se notificó a los clientes con reservas." : "Viaje reactivado. Se notificó a los clientes con reservas.",
+                "OK");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
     }
 
     private async void OnLogoutClicked(object? sender, EventArgs e)

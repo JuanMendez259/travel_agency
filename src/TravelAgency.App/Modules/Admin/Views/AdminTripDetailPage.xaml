@@ -89,6 +89,10 @@
                         Clicked="OnEditClicked"
                     BackgroundColor="{StaticResource Primary}"
                         TextColor="White" />
+                <Button x:Name="PauseButton" Text="Pausar"
+                        Clicked="OnPauseClicked"
+                        BackgroundColor="#B7791F"
+                        TextColor="White" />
                 <Button Text="Eliminar"
                         Clicked="OnDeleteClicked"
                         BackgroundColor="#C53030"

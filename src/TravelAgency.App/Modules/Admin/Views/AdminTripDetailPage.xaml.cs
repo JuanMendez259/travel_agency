@@ -63,6 +63,8 @@ public partial class AdminTripDetailPage : ContentPage
             PriceLabel.Text += $" · Niño: {_trip.ChildPrice.Value:C}";
         TransportLabel.Text = $"Transporte: {TransportTypeConverter.ToDisplay(_trip.TransportType)}";
         StatusLabel.Text = _trip.IsActive ? "Estado: Publicado" : "Estado: Inactivo";
+        PauseButton.Text = _trip.IsActive ? "Pausar" : "Reactivar";
+        PauseButton.BackgroundColor = _trip.IsActive ? Color.FromArgb("#B7791F") : Color.FromArgb("#2F855A");
         if (_trip.CancellationDaysLimit.HasValue)
         {
             CancellationLabel.Text = $"Cancelación del cliente: hasta {_trip.CancellationDaysLimit.Value} día(s) antes de la salida.";
@@ -295,6 +297,36 @@ public partial class AdminTripDetailPage : ContentPage
     {
         if (_trip is null) return;
         await Shell.Current.GoToAsync($"//admin?editId={_trip.Id}");
+    }
+
+    private async void OnPauseClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+
+        var pausing = _trip.IsActive;
+        var confirm = await DisplayAlertAsync(
+            pausing ? "Pausar viaje" : "Reactivar viaje",
+            pausing
+                ? $"¿Pausar \"{_trip.Title}\"? Dejará de aparecer para nuevas reservas y se avisará a los clientes con reservas vigentes. Las reservas existentes se mantienen."
+                : $"¿Reactivar \"{_trip.Title}\"? Volverá a mostrarse para reservar y se avisará a los clientes con reservas.",
+            "Sí", "No");
+
+        if (!confirm) return;
+
+        try
+        {
+            var updated = await _api.UpdateTripActiveAsync(_trip.Id, !pausing);
+            if (updated is null) return;
+            _trip.IsActive = updated.IsActive;
+            await LoadTripAsync();
+            await DisplayAlertAsync("Listo",
+                pausing ? "Viaje pausado. Se notificó a los clientes con reservas." : "Viaje reactivado. Se notificó a los clientes con reservas.",
+                "OK");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
     }
 
     private async void OnDeleteClicked(object? sender, EventArgs e)

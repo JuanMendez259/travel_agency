@@ -359,6 +359,14 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
+    public async Task<Trip?> UpdateTripActiveAsync(int tripId, bool isActive)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/active",
+            new UpdateTripActiveRequest(isActive), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
     public async Task<TripRating?> GetMyTripRatingAsync(int tripId)
     {
         var response = await _http.GetAsync($"/api/trips/{tripId}/rating/me");
@@ -382,6 +390,7 @@ public class ApiService
     }
 
     private record UpdateFinalizeRequest(bool Finalized);
+    private record UpdateTripActiveRequest(bool IsActive);
     private record UpdateTripRatingRequest(int Rating, string? Comment);
     private record UpdateBookingStatusRequest(BookingStatus Status);
     private record UpdateBookingCheckinRequest(bool CheckedIn);

@@ -22,6 +22,10 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         CategoryPicker.SelectedIndex = 0;
         StartTimePicker.Time = new TimeSpan(8, 0, 0);
         EndTimePicker.Time = new TimeSpan(18, 0, 0);
+
+        // En modo creación el viaje nace activo; mantener switch y etiqueta consistentes.
+        ActiveSwitch.IsToggled = true;
+        ApplyActiveState();
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)

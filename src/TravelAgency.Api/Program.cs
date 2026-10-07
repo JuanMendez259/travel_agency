@@ -1534,6 +1534,46 @@ app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest requ
     return Results.Ok(trip);
 }).RequireAuthorization("StaffOnly");
 
+app.MapPut("/api/trips/{id}/active", async (int id, UpdateTripActiveRequest request, AppDbContext db) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var wasActive = trip.IsActive;
+    trip.IsActive = request.IsActive;
+    await db.SaveChangesAsync();
+
+    // Aviso a los clientes con reservas vigentes solo cuando el estado cambia.
+    if (wasActive != request.IsActive)
+    {
+        var userIds = await db.Bookings
+            .Where(b => b.TripId == id && b.Status != BookingStatus.Cancelled)
+            .Select(b => b.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        if (userIds.Count > 0)
+        {
+            var message = request.IsActive
+                ? $"El viaje \"{trip.Title}\" ya está disponible de nuevo. ¡Tu reserva sigue en pie!"
+                : $"El viaje \"{trip.Title}\" fue pausado temporalmente. Tu reserva sigue vigente; te avisaremos cuando se reactive.";
+
+            foreach (var userId in userIds)
+            {
+                db.Notifications.Add(new UserNotification
+                {
+                    UserId = userId,
+                    Message = message,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+    }
+
+    return Results.Ok(trip);
+}).RequireAuthorization("AdminOnly");
+
 app.MapGet("/api/trips/{id}/ratings", async (int id, AppDbContext db) =>
     await db.TripRatings
         .Where(r => r.TripId == id)
@@ -2995,6 +3035,7 @@ record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>?
 record CreatePassengersRequest(List<PassengerInput>? Passengers);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);
+record UpdateTripActiveRequest(bool IsActive);
 record UpdateTripRatingRequest(int Rating, string? Comment);
 record DeleteTripRequest(string? Message);
 record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);
