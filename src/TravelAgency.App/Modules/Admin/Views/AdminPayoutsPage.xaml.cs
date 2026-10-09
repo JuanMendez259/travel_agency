@@ -36,11 +36,7 @@ public partial class AdminPayoutsPage : ContentPage
         try
         {
             var payouts = await _api.GetPayoutRequestsAsync() ?? new List<PayoutRequest>();
-            var users = await _api.GetUsersAsync() ?? new List<User>();
-            var names = users
-                .GroupBy(u => u.Id)
-                .ToDictionary(g => g.Key, g => string.IsNullOrWhiteSpace(g.First().Name) ? g.First().Email : g.First().Name);
-
+            var names = await TryLoadUserNamesAsync();
             RenderPayouts(payouts, names);
         }
         catch (Exception ex)
@@ -52,6 +48,21 @@ public partial class AdminPayoutsPage : ContentPage
         {
             LoadingIndicator.IsRunning = false;
             LoadingIndicator.IsVisible = false;
+        }
+    }
+
+    private async Task<Dictionary<int, string?>> TryLoadUserNamesAsync()
+    {
+        try
+        {
+            var users = await _api.GetUsersAsync() ?? new List<User>();
+            return users
+                .GroupBy(u => u.Id)
+                .ToDictionary(g => g.Key, g => string.IsNullOrWhiteSpace(g.First().Name) ? g.First().Email : g.First().Name);
+        }
+        catch
+        {
+            return new Dictionary<int, string?>();
         }
     }
 
