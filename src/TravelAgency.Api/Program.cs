@@ -136,6 +136,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureTripCategoryColumnAsync(db, provider);
     await EnsureTripHasOptionsColumnAsync(db, provider);
     await EnsureTripHotelColumnsAsync(db, provider);
+    await EnsureTripFloorsColumnsAsync(db, provider);
     await EnsureTripOptionsTableAsync(db, provider);
     await EnsureTripOptionIsBaseColumnAsync(db, provider);
     await EnsureBookingItemsTableAsync(db, provider);
@@ -253,6 +254,8 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
 
     var capacity = Math.Max(0, trip.Capacity);
     var assigned = await GetOccupiedSeatsAsync(db, id, capacity);
+    var floor1 = trip.HasTwoFloors ? Math.Max(0, trip.Floor1Capacity ?? 0) : capacity;
+    var floor2 = trip.HasTwoFloors ? Math.Max(0, trip.Floor2Capacity ?? 0) : 0;
 
     var map = new TripSeatMap
     {
@@ -260,10 +263,13 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
         TripTitle = trip.Title,
         TransportType = trip.TransportType,
         Capacity = capacity,
-        OccupiedCount = assigned.Count
+        OccupiedCount = assigned.Count,
+        HasTwoFloors = trip.HasTwoFloors,
+        Floor1Capacity = trip.Floor1Capacity,
+        Floor2Capacity = trip.Floor2Capacity
     };
 
-    map.Rows.AddRange(BuildSeatRows(capacity, assigned));
+    map.Rows.AddRange(BuildSeatRows(floor1, floor2, assigned));
     return Results.Ok(map);
 }).RequireAuthorization("StaffOnly");
 
@@ -289,6 +295,8 @@ app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
     var capacity = Math.Max(0, trip.Capacity);
     var occupiedSeats = await GetOccupiedSeatsAsync(db, id, capacity);
     var occupied = occupiedSeats.Keys.OrderBy(n => n).ToList();
+    var floor1 = trip.HasTwoFloors ? Math.Max(0, trip.Floor1Capacity ?? 0) : capacity;
+    var floor2 = trip.HasTwoFloors ? Math.Max(0, trip.Floor2Capacity ?? 0) : 0;
 
     var map = new TripSeatAvailability
     {
@@ -297,7 +305,10 @@ app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
         TransportType = trip.TransportType,
         Capacity = capacity,
         OccupiedCount = occupied.Count,
-        OccupiedSeats = occupied
+        OccupiedSeats = occupied,
+        HasTwoFloors = trip.HasTwoFloors,
+        Floor1Capacity = trip.Floor1Capacity,
+        Floor2Capacity = trip.Floor2Capacity
     };
 
     var seats = new Dictionary<int, TripSeat>();
@@ -306,7 +317,7 @@ app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
         seats[number] = new TripSeat { Number = number, IsOccupied = true };
     }
 
-    map.Rows.AddRange(BuildSeatRows(capacity, seats));
+    map.Rows.AddRange(BuildSeatRows(floor1, floor2, seats));
     return Results.Ok(map);
 }).RequireAuthorization();
 
@@ -316,6 +327,10 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db, ImageStorageService
         return Results.BadRequest("La fecha de salida no puede estar en el pasado.");
     if (trip.EndDate <= trip.StartDate)
         return Results.BadRequest("La fecha de fin no puede ser anterior (o igual) a la de salida.");
+
+    if (NormalizeAndValidateFloors(trip) is { } floorsError)
+        return Results.BadRequest(floorsError);
+
     if (trip.Capacity < 1)
         return Results.BadRequest("La capacidad debe ser de al menos 1 asiento.");
     if (trip.Price < 0)
@@ -332,7 +347,7 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db, ImageStorageService
 
     trip.CreatedAt = DateTime.UtcNow;
     trip.Category = NormalizeCategory(trip.Category);
-    trip.AvailableSeats = trip.Capacity;
+    trip.AvailableSeats = trip.BookableCapacity;
 
     // Sin imagen elegida se usa el placeholder compartido que ya existe en el
     // bucket, para que el viaje siempre tenga una portada consistente.
@@ -436,6 +451,10 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
         return Results.BadRequest("La fecha de salida no puede estar en el pasado.");
     if (input.EndDate <= input.StartDate)
         return Results.BadRequest("La fecha de fin no puede ser anterior (o igual) a la de salida.");
+
+    if (NormalizeAndValidateFloors(input) is { } floorsError)
+        return Results.BadRequest(floorsError);
+
     if (input.Capacity < 1)
         return Results.BadRequest("La capacidad debe ser de al menos 1 asiento.");
     if (input.Price < 0)
@@ -451,6 +470,12 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
         return Results.BadRequest(hotelError);
 
     var capacityIncreased = input.Capacity > trip.Capacity;
+
+    // PUT es reemplazo total: si el request no trae info de pisos (false + null) pero el
+    // viaje actual tiene dos pisos y la capacidad total no cambió, conservar los pisos
+    // (evita perderlos por un cliente que no conoce los campos nuevos).
+    var inputHasFloorData = input.HasTwoFloors || input.Floor1Capacity is not null || input.Floor2Capacity is not null;
+    var preserveFloors = !inputHasFloorData && trip.HasTwoFloors && input.Capacity == trip.Capacity;
 
     trip.Title = input.Title;
     trip.Destination = input.Destination;
@@ -475,6 +500,9 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
     trip.IncludesHotel = input.IncludesHotel;
     trip.HotelName = string.IsNullOrWhiteSpace(input.HotelName) ? null : input.HotelName.Trim();
     trip.HotelCapacity = input.IncludesHotel ? input.HotelCapacity : null;
+    trip.HasTwoFloors = preserveFloors ? trip.HasTwoFloors : input.HasTwoFloors;
+    trip.Floor1Capacity = preserveFloors ? trip.Floor1Capacity : input.Floor1Capacity;
+    trip.Floor2Capacity = preserveFloors ? trip.Floor2Capacity : input.Floor2Capacity;
 
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
@@ -1917,6 +1945,29 @@ static string? ValidateHotelFields(Trip trip)
     return null;
 }
 
+// Dos pisos solo aplican al camion/autobus. Si aplica, Capacity = piso1 + piso2;
+// si no, se normaliza a planta unica. Devuelve mensaje de error o null.
+static string? NormalizeAndValidateFloors(Trip trip)
+{
+    if (trip.HasTwoFloors && trip.TransportType == TransportType.Camion)
+    {
+        if (!trip.Floor1Capacity.HasValue || trip.Floor1Capacity.Value < 1)
+            return "El cupo del piso 1 debe ser al menos 1.";
+        if (!trip.Floor2Capacity.HasValue || trip.Floor2Capacity.Value < 1)
+            return "El cupo del piso 2 debe ser al menos 1.";
+
+        trip.Capacity = trip.Floor1Capacity.Value + trip.Floor2Capacity.Value;
+    }
+    else
+    {
+        trip.HasTwoFloors = false;
+        trip.Floor1Capacity = null;
+        trip.Floor2Capacity = null;
+    }
+
+    return null;
+}
+
 static string? ValidateDiscountDto(DiscountDto dto)
 {
     if (string.IsNullOrWhiteSpace(dto.Code)) return "El código es obligatorio.";
@@ -2005,7 +2056,7 @@ static string? NormalizeCategory(string? category)
     return string.IsNullOrEmpty(trimmed) ? null : trimmed;
 }
 
-static List<TripSeatRow> BuildSeatRows(int capacity, Dictionary<int, TripSeat> assigned)
+static List<TripSeatRow> BuildSeatRows(int floor1Capacity, int floor2Capacity, Dictionary<int, TripSeat> assigned)
 {
     const int leftSeats = 2;
     const int rightSeats = 2;
@@ -2013,36 +2064,46 @@ static List<TripSeatRow> BuildSeatRows(int capacity, Dictionary<int, TripSeat> a
     const int slotsPerRow = leftSeats + 1 + rightSeats;
     const int seatsPerRow = leftSeats + rightSeats;
     var rows = new List<TripSeatRow>();
-    if (capacity <= 0) return rows;
 
-    var totalRows = (int)Math.Ceiling(capacity / (double)seatsPerRow);
-    for (var rowIndex = 0; rowIndex < totalRows; rowIndex++)
+    // Agrega las filas de un piso. Los asientos se numeran de forma global y continua:
+    // el piso 2 empieza en startSeat (F1 + 1) y su RowNumber reinicia en 1.
+    void AddFloor(int floor, int startSeat, int floorCapacity)
     {
-        var row = new TripSeatRow { RowNumber = rowIndex + 1 };
-        var seatIndex = rowIndex * seatsPerRow;
-
-        for (var slot = 0; slot < slotsPerRow; slot++)
+        if (floorCapacity <= 0) return;
+        var totalRows = (int)Math.Ceiling(floorCapacity / (double)seatsPerRow);
+        for (var rowIndex = 0; rowIndex < totalRows; rowIndex++)
         {
-            if (slot == aisleSlot)
-            {
-                row.Seats.Add(new TripSeat { IsAisle = true });
-                continue;
-            }
+            var row = new TripSeatRow { RowNumber = rowIndex + 1, Floor = floor };
+            var seatIndex = startSeat - 1 + rowIndex * seatsPerRow;
 
-            seatIndex++;
-            if (seatIndex > capacity) break;
+            for (var slot = 0; slot < slotsPerRow; slot++)
+            {
+                if (slot == aisleSlot)
+                {
+                    row.Seats.Add(new TripSeat { IsAisle = true });
+                    continue;
+                }
 
-            if (assigned.TryGetValue(seatIndex, out var seat))
-            {
-                row.Seats.Add(seat);
+                seatIndex++;
+                if (seatIndex > startSeat - 1 + floorCapacity) break;
+
+                if (assigned.TryGetValue(seatIndex, out var seat))
+                {
+                    row.Seats.Add(seat);
+                }
+                else
+                {
+                    row.Seats.Add(new TripSeat { Number = seatIndex });
+                }
             }
-            else
-            {
-                row.Seats.Add(new TripSeat { Number = seatIndex });
-            }
+            rows.Add(row);
         }
-        rows.Add(row);
     }
+
+    if (floor1Capacity <= 0 && floor2Capacity <= 0) return rows;
+
+    AddFloor(1, 1, floor1Capacity);
+    if (floor2Capacity > 0) AddFloor(2, floor1Capacity + 1, floor2Capacity);
 
     return rows;
 }
@@ -2239,6 +2300,31 @@ static async Task EnsureTripHotelColumnsAsync(AppDbContext db, string provider)
         await TryExecAsync(db, provider == "sqlite"
             ? @"ALTER TABLE ""Trips"" ADD COLUMN ""HotelCapacity"" INTEGER NULL;"
             : @"ALTER TABLE ""Trips"" ADD COLUMN ""HotelCapacity"" integer NULL;");
+    }
+}
+
+
+static async Task EnsureTripFloorsColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "HasTwoFloors", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""Trips"" ADD COLUMN ""HasTwoFloors"" INTEGER NOT NULL DEFAULT 0;"
+            : @"ALTER TABLE ""Trips"" ADD COLUMN ""HasTwoFloors"" boolean NOT NULL DEFAULT false;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Trips", "Floor1Capacity", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""Trips"" ADD COLUMN ""Floor1Capacity"" INTEGER NULL;"
+            : @"ALTER TABLE ""Trips"" ADD COLUMN ""Floor1Capacity"" integer NULL;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Trips", "Floor2Capacity", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""Trips"" ADD COLUMN ""Floor2Capacity"" INTEGER NULL;"
+            : @"ALTER TABLE ""Trips"" ADD COLUMN ""Floor2Capacity"" integer NULL;");
     }
 }
 

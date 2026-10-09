@@ -84,6 +84,11 @@ public partial class ClientTripDetailPage : ContentPage
         var available = Math.Max(0, _trip.AvailableSeats);
         SeatsLabel.Text = $"{_trip.Capacity - available} confirmados";
         SeatsLeftLabel.Text = $"Quedan {available} de {_trip.Capacity} asientos";
+        if (_trip.HasTwoFloors)
+        {
+            CapacityTitleLabel.Text = $"Capacidad: {TransportTypeConverter.ToDisplay(_trip.TransportType)} · Dos pisos";
+            SeatsLeftLabel.Text = $"Quedan {available} de {_trip.Capacity} · Piso 1: {_trip.Floor1Capacity ?? 0} · Piso 2: {_trip.Floor2Capacity ?? 0}";
+        }
         UrgentLabel.Text = available > 0 && available <= 3 ? $"⚡ Últimos {available} lugares" : string.Empty;
         UrgentLabel.IsVisible = available > 0 && available <= 3;
         CapacityBar.Progress = _trip.Capacity > 0

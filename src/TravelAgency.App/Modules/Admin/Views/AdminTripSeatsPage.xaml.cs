@@ -12,6 +12,10 @@ public partial class AdminTripSeatsPage : ContentPage
     private static readonly Color CheckedInColor = Color.FromArgb("#2F855A");
 
     private readonly ApiService _api;
+    private List<TripSeatRow> _rows = new();
+    private int _currentFloor = 1;
+    private bool _twoFloors;
+    private int _floor1Capacity;
 
     public string TripId { get; set; } = string.Empty;
 
@@ -67,28 +71,23 @@ public partial class AdminTripSeatsPage : ContentPage
 
     private void RenderMap(TripSeatMap map)
     {
+        _rows = map.Rows;
+        _twoFloors = map.HasTwoFloors;
+        _floor1Capacity = map.Floor1Capacity ?? 0;
+        _currentFloor = 1;
+
         TripLabel.Text = map.TripTitle;
+        var floorsText = map.HasTwoFloors
+            ? $" · Piso 1: {map.Floor1Capacity ?? 0} · Piso 2: {map.Floor2Capacity ?? 0}"
+            : string.Empty;
         SummaryLabel.Text = $"{TransportTypeConverter.ToDisplay(map.TransportType)} · "
-            + $"{map.Capacity} asientos · {map.OccupiedCount} ocupados · {map.AvailableCount} libres";
+            + $"{map.Capacity} asientos · {map.OccupiedCount} ocupados · {map.AvailableCount} libres{floorsText}";
 
-        RowsContainer.Clear();
+        FloorSelector.IsVisible = _twoFloors;
+        UpdateFloorButtons();
+
         OccupiedList.Clear();
-
-        foreach (var row in map.Rows)
-        {
-            var rowLayout = new HorizontalStackLayout
-            {
-                Spacing = 10,
-                HorizontalOptions = LayoutOptions.Center
-            };
-
-            foreach (var seat in row.Seats)
-            {
-                rowLayout.Add(BuildSeat(seat));
-            }
-
-            RowsContainer.Add(rowLayout);
-        }
+        RenderMapRows();
 
         var occupied = map.Rows
             .SelectMany(r => r.Seats)
@@ -125,7 +124,9 @@ public partial class AdminTripSeatsPage : ContentPage
                     {
                         new Label
                         {
-                            Text = $"Asiento {seat.Number}",
+                            Text = _twoFloors
+                                ? $"Piso {FloorOf(seat.Number)} · Asiento {seat.Number}"
+                                : $"Asiento {seat.Number}",
                             FontSize = 14,
                             FontAttributes = FontAttributes.Bold
                         },
@@ -184,11 +185,59 @@ public partial class AdminTripSeatsPage : ContentPage
             {
                 var status = seat.CheckedIn ? "Ocupado · check-in hecho" : seat.IsOccupied ? "Ocupado" : "Disponible";
                 var who = seat.IsOccupied ? $"\n{seat.OccupiedBy} · Reserva #{seat.BookingId}" : string.Empty;
-                await DisplayAlertAsync($"Asiento {seat.Number}", $"{status}{who}", "OK");
+                var title = _twoFloors
+                    ? $"Piso {FloorOf(seat.Number)} · Asiento {seat.Number}"
+                    : $"Asiento {seat.Number}";
+                await DisplayAlertAsync(title, $"{status}{who}", "OK");
             })
         });
 
         return border;
+    }
+
+    private void RenderMapRows()
+    {
+        RowsContainer.Clear();
+        foreach (var row in _rows.Where(r => r.Floor == _currentFloor))
+        {
+            var rowLayout = new HorizontalStackLayout
+            {
+                Spacing = 10,
+                HorizontalOptions = LayoutOptions.Center
+            };
+
+            foreach (var seat in row.Seats)
+            {
+                rowLayout.Add(BuildSeat(seat));
+            }
+
+            RowsContainer.Add(rowLayout);
+        }
+    }
+
+    private int FloorOf(int number)
+        => _floor1Capacity > 0 && number > _floor1Capacity ? 2 : 1;
+
+    private void OnFloor1Clicked(object? sender, EventArgs e) => SelectFloor(1);
+
+    private void OnFloor2Clicked(object? sender, EventArgs e) => SelectFloor(2);
+
+    private void SelectFloor(int floor)
+    {
+        if (_currentFloor == floor) return;
+        _currentFloor = floor;
+        UpdateFloorButtons();
+        RenderMapRows();
+    }
+
+    private void UpdateFloorButtons()
+    {
+        var activeBg = Color.FromArgb("#2F855A");
+        var inactiveBg = Color.FromArgb("#E0E0E0");
+        Floor1Button.BackgroundColor = _currentFloor == 1 ? activeBg : inactiveBg;
+        Floor1Button.TextColor = _currentFloor == 1 ? Colors.White : Colors.Black;
+        Floor2Button.BackgroundColor = _currentFloor == 2 ? activeBg : inactiveBg;
+        Floor2Button.TextColor = _currentFloor == 2 ? Colors.White : Colors.Black;
     }
 
     private async void OnRefreshing(object? sender, EventArgs e)

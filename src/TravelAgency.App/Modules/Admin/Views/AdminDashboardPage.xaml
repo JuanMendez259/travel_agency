@@ -40,11 +40,36 @@
                      <Label Text="Precio niño (opcional)" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                     <Entry x:Name="ChildPriceEntry" Keyboard="Numeric" />
                 </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="1">
+                <VerticalStackLayout Grid.Column="1" x:Name="SingleCapacityLayout">
                     <Label Text="Capacidad total (asientos)" />
                     <Entry x:Name="CapacityEntry" Keyboard="Numeric" />
                 </VerticalStackLayout>
             </Grid>
+
+            <VerticalStackLayout x:Name="TwoFloorsSection" Spacing="6" IsVisible="False">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                        <Label Text="Autobus de dos pisos" />
+                        <Label Text="Activalo y define el cupo de cada piso."
+                               FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                    </VerticalStackLayout>
+                    <Switch x:Name="TwoFloorsSwitch" Grid.Column="1" Toggled="OnTwoFloorsToggled" VerticalOptions="Center" />
+                </Grid>
+                <VerticalStackLayout x:Name="FloorFieldsLayout" Spacing="8" IsVisible="False">
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <VerticalStackLayout>
+                            <Label Text="Cupo piso 1" />
+                            <Entry x:Name="Floor1CapacityEntry" Keyboard="Numeric" TextChanged="OnFloorCapacityChanged" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1">
+                            <Label Text="Cupo piso 2" />
+                            <Entry x:Name="Floor2CapacityEntry" Keyboard="Numeric" TextChanged="OnFloorCapacityChanged" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Label x:Name="FloorsTotalLabel" Text="Total: 0 asientos" FontSize="12"
+                           TextColor="{StaticResource OnSurfaceVariant}" />
+                </VerticalStackLayout>
+            </VerticalStackLayout>
 
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <VerticalStackLayout Spacing="1" VerticalOptions="Center">
@@ -88,7 +113,7 @@
             <Editor x:Name="DescriptionEditor" HeightRequest="100" />
 
             <Label Text="Tipo de transporte" />
-            <Picker x:Name="TransportTypePicker" />
+            <Picker x:Name="TransportTypePicker" SelectedIndexChanged="OnTransportChanged" />
 
             <Label Text="Estado del viaje" />
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">

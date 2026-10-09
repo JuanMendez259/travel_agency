@@ -39,6 +39,14 @@
         <RefreshView x:Name="SeatsRefresh" Grid.Row="2" Refreshing="OnRefreshing">
             <ScrollView>
                 <VerticalStackLayout Spacing="12">
+                    <HorizontalStackLayout x:Name="FloorSelector" Spacing="8" HorizontalOptions="Center" IsVisible="False">
+                        <Button x:Name="Floor1Button" Text="Piso 1" Clicked="OnFloor1Clicked"
+                                FontSize="13" FontAttributes="Bold" CornerRadius="16" Padding="18,6"
+                                BackgroundColor="#2F855A" TextColor="White" />
+                        <Button x:Name="Floor2Button" Text="Piso 2" Clicked="OnFloor2Clicked"
+                                FontSize="13" FontAttributes="Bold" CornerRadius="16" Padding="18,6"
+                                BackgroundColor="#E0E0E0" TextColor="Black" />
+                    </HorizontalStackLayout>
                     <Border Stroke="#CCCCCC" StrokeShape="RoundRectangle 16" Padding="16">
                         <VerticalStackLayout Spacing="12">
                             <Label Text="🚌" FontSize="22" HorizontalOptions="End" Margin="0,0,4,0" />

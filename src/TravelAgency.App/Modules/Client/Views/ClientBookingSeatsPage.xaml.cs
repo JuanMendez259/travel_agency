@@ -39,6 +39,10 @@ public partial class ClientBookingSeatsPage : ContentPage
     private string? _discountCode;
     private DiscountType? _discountType;
     private decimal? _discountValue;
+    private List<TripSeatRow> _rows = new();
+    private int _currentFloor = 1;
+    private bool _twoFloors;
+    private int _floor1Capacity;
 
     public string TripId { get; set; } = string.Empty;
     public string Seats { get; set; } = string.Empty;
@@ -105,8 +109,16 @@ public partial class ClientBookingSeatsPage : ContentPage
                 return;
             }
 
+            _rows = availability.Rows;
+            _twoFloors = availability.HasTwoFloors;
+            _floor1Capacity = availability.Floor1Capacity ?? 0;
+            _currentFloor = 1;
+            FloorSelector.IsVisible = _twoFloors;
+            FloorBadgeLabel.Text = _twoFloors ? "Dos pisos" : "Planta única";
+            UpdateFloorButtons();
+
             BuildSlots(seats);
-            RenderMap(availability.Rows);
+            RenderMap(_rows);
             await LoadFaresAsync(tripId);
             RefreshPassengerGate();
         }
@@ -141,7 +153,7 @@ public partial class ClientBookingSeatsPage : ContentPage
         AssignedCountLabel.Text = $"{assigned} / {required} asignados";
 
         var seatList = _slots
-            .Select(s => s.Seat.HasValue ? $"#{s.Seat.Value}" : "—")
+            .Select(s => s.Seat.HasValue ? SeatLabel(s.Seat.Value) : "—")
             .ToArray();
         SelectedSeatsLabel.Text = $"Asientos: {string.Join(", ", seatList)}";
 
@@ -425,14 +437,16 @@ public partial class ClientBookingSeatsPage : ContentPage
         };
     }
 
-    private static void PaintSeatBadge(SeatSlot slot)
+    private void PaintSeatBadge(SeatSlot slot)
     {
         if (slot.Seat.HasValue)
         {
             slot.SeatBadge.BackgroundColor = SecondaryColor;
             slot.SeatBadgeIcon.Text = "💺";
             slot.SeatBadgeIcon.TextColor = Colors.White;
-            slot.SeatBadgeText.Text = $"Asiento {slot.Seat.Value}";
+            slot.SeatBadgeText.Text = _twoFloors
+                ? $"P{FloorOf(slot.Seat.Value)} #{slot.Seat.Value}"
+                : $"Asiento {slot.Seat.Value}";
             slot.SeatBadgeText.TextColor = Colors.White;
         }
         else
@@ -448,7 +462,7 @@ public partial class ClientBookingSeatsPage : ContentPage
     private void RenderMap(List<TripSeatRow> rows)
     {
         RowsContainer.Clear();
-        foreach (var row in rows)
+        foreach (var row in rows.Where(r => r.Floor == _currentFloor))
         {
             var rowLayout = new Grid { ColumnSpacing = 4 };
             rowLayout.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
@@ -631,6 +645,38 @@ public partial class ClientBookingSeatsPage : ContentPage
         UpdateSummary();
     }
 
+    private string SeatLabel(int number)
+        => _twoFloors ? $"P{FloorOf(number)} #{number}" : $"#{number}";
+
+    private int FloorOf(int number)
+        => _floor1Capacity > 0 && number > _floor1Capacity ? 2 : 1;
+
+    private void OnFloor1Clicked(object? sender, EventArgs e) => SelectFloor(1);
+
+    private void OnFloor2Clicked(object? sender, EventArgs e) => SelectFloor(2);
+
+    private void SelectFloor(int floor)
+    {
+        if (_currentFloor == floor) return;
+        _currentFloor = floor;
+        UpdateFloorButtons();
+        RenderMap(_rows);
+        UpdateSummary();
+    }
+
+    private void UpdateFloorButtons()
+    {
+        var activeBg = Color.FromArgb("#003B1B");
+        var inactiveBg = Color.FromArgb("#DAE2FD");
+        var activeText = Colors.White;
+        var inactiveText = Color.FromArgb("#131B2E");
+
+        Floor1Button.BackgroundColor = _currentFloor == 1 ? activeBg : inactiveBg;
+        Floor1Button.TextColor = _currentFloor == 1 ? activeText : inactiveText;
+        Floor2Button.BackgroundColor = _currentFloor == 2 ? activeBg : inactiveBg;
+        Floor2Button.TextColor = _currentFloor == 2 ? activeText : inactiveText;
+    }
+
     private async Task PickSlotForSeatAsync(int seatNumber)
     {
         var previous = _slots.FirstOrDefault(s => s.Seat == seatNumber);
@@ -657,7 +703,7 @@ public partial class ClientBookingSeatsPage : ContentPage
         }
 
         var options = _slots
-            .Select((s, i) => s.Seat.HasValue ? $"{names[i]} (mueve del {s.Seat.Value})" : names[i])
+            .Select((s, i) => names[i])
             .ToArray();
 
         var choice = await DisplayActionSheet($"Asiento {seatNumber}", "Cancelar", null, options);

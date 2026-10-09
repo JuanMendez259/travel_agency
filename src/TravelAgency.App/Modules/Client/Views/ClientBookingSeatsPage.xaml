@@ -154,12 +154,21 @@
                                        TextColor="{StaticResource ColorOnSurface}"
                                        VerticalOptions="Center" />
                             </HorizontalStackLayout>
-                            <Label Grid.Column="1"
+                            <Label Grid.Column="1" x:Name="FloorBadgeLabel"
                                    Text="Planta única"
                                    FontSize="11" FontAttributes="Bold"
                                    TextColor="{StaticResource ColorSecondary}"
                                    VerticalOptions="Center" />
                         </Grid>
+
+                        <HorizontalStackLayout x:Name="FloorSelector" Spacing="8" HorizontalOptions="Center" IsVisible="False">
+                            <Button x:Name="Floor1Button" Text="Piso 1" Clicked="OnFloor1Clicked"
+                                    FontSize="13" FontAttributes="Bold" CornerRadius="16" Padding="18,6"
+                                    BackgroundColor="{StaticResource ColorPrimary}" TextColor="White" />
+                            <Button x:Name="Floor2Button" Text="Piso 2" Clicked="OnFloor2Clicked"
+                                    FontSize="13" FontAttributes="Bold" CornerRadius="16" Padding="18,6"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerHighest}" TextColor="{StaticResource ColorOnSurface}" />
+                        </HorizontalStackLayout>
 
                         <!-- Silueta del autobús -->
                         <Border StrokeThickness="0"

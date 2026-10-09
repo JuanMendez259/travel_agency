@@ -8,6 +8,9 @@ public class TripSeatAvailability
     public int Capacity { get; set; }
     public int OccupiedCount { get; set; }
     public int AvailableCount => Math.Max(0, Capacity - OccupiedCount);
+    public bool HasTwoFloors { get; set; }
+    public int? Floor1Capacity { get; set; }
+    public int? Floor2Capacity { get; set; }
     public List<int> OccupiedSeats { get; set; } = new();
     public List<TripSeatRow> Rows { get; set; } = new();
 }

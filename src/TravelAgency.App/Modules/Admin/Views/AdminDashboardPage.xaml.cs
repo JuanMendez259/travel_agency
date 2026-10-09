@@ -26,6 +26,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         // En modo creación el viaje nace activo; mantener switch y etiqueta consistentes.
         ActiveSwitch.IsToggled = true;
         ApplyActiveState();
+        ApplyTransportFloorVisibility();
     }
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -59,6 +60,10 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         SaveButton.IsEnabled = false;
         try
         {
+            var twoFloors = TwoFloorsSwitch.IsToggled && TransportTypePicker.SelectedIndex == (int)TransportType.Camion;
+            var floor1 = int.TryParse(Floor1CapacityEntry.Text, out var f1) ? f1 : (int?)null;
+            var floor2 = int.TryParse(Floor2CapacityEntry.Text, out var f2) ? f2 : (int?)null;
+
             var trip = new Trip
             {
                 Title = TitleEntry.Text?.Trim(),
@@ -68,7 +73,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 EndDate = EndDatePicker.Date.GetValueOrDefault().Date + (EndTimePicker.Time ?? TimeSpan.Zero),
                 Price = decimal.TryParse(PriceEntry.Text, out var price) ? price : 0,
                 ChildPrice = decimal.TryParse(ChildPriceEntry.Text, out var childPrice) ? childPrice : (decimal?)null,
-                Capacity = int.TryParse(CapacityEntry.Text, out var capacity) ? capacity : 0,
+                Capacity = twoFloors
+                    ? (floor1 ?? 0) + (floor2 ?? 0)
+                    : (int.TryParse(CapacityEntry.Text, out var capacity) ? capacity : 0),
                 TransportType = (TransportType)Math.Max(0, TransportTypePicker.SelectedIndex),
                 Category = TripCategoryOptions.FromIndex(CategoryPicker.SelectedIndex),
                 IsActive = ActiveSwitch.IsToggled,
@@ -81,6 +88,9 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                 IncludesHotel = IncludesHotelSwitch.IsToggled,
                 HotelName = string.IsNullOrWhiteSpace(HotelNameEntry.Text) ? null : HotelNameEntry.Text.Trim(),
                 HotelCapacity = int.TryParse(HotelCapacityEntry.Text, out var hotelCap) ? hotelCap : (int?)null,
+                HasTwoFloors = twoFloors,
+                Floor1Capacity = twoFloors ? floor1 : null,
+                Floor2Capacity = twoFloors ? floor2 : null,
             };
 
             if (string.IsNullOrEmpty(trip.Title) || string.IsNullOrEmpty(trip.Destination))
@@ -92,6 +102,20 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             if (trip.EndDate <= trip.StartDate)
             {
                 await DisplayAlertAsync("Error", "La fecha y hora de fin no puede ser anterior (o igual) a la de inicio.", "OK");
+                return;
+            }
+
+            if (twoFloors && (floor1 is null || floor1 < 1))
+            {
+                await DisplayAlertAsync("Error", "El cupo del piso 1 debe ser al menos 1.", "OK");
+                Floor1CapacityEntry.Focus();
+                return;
+            }
+
+            if (twoFloors && (floor2 is null || floor2 < 1))
+            {
+                await DisplayAlertAsync("Error", "El cupo del piso 2 debe ser al menos 1.", "OK");
+                Floor2CapacityEntry.Focus();
                 return;
             }
 
@@ -239,6 +263,11 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ActiveSwitch.IsToggled = trip.IsActive;
         ApplyActiveState();
 
+        TwoFloorsSwitch.IsToggled = trip.HasTwoFloors;
+        Floor1CapacityEntry.Text = trip.Floor1Capacity?.ToString() ?? string.Empty;
+        Floor2CapacityEntry.Text = trip.Floor2Capacity?.ToString() ?? string.Empty;
+        UpdateFloorsTotal();
+
         IncludesHotelSwitch.IsToggled = trip.IncludesHotel;
         HotelNameEntry.Text = trip.HotelName ?? string.Empty;
         HotelCapacityEntry.Text = trip.HotelCapacity?.ToString() ?? string.Empty;
@@ -280,6 +309,10 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         CategoryPicker.SelectedIndex = 0;
         ActiveSwitch.IsToggled = true;
         ApplyActiveState();
+        TwoFloorsSwitch.IsToggled = false;
+        Floor1CapacityEntry.Text = string.Empty;
+        Floor2CapacityEntry.Text = string.Empty;
+        UpdateFloorsTotal();
 
         IncludesHotelSwitch.IsToggled = false;
         HotelNameEntry.Text = string.Empty;
@@ -308,6 +341,47 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ActiveHintLabel.Text = active
             ? "Los clientes podrán verlo y reservar."
             : "No aparecerá para nuevas reservas; las existentes se mantienen.";
+    }
+
+    private void OnTransportChanged(object? sender, EventArgs e)
+    {
+        ApplyTransportFloorVisibility();
+    }
+
+    private void ApplyTransportFloorVisibility()
+    {
+        var isCamion = TransportTypePicker.SelectedIndex == (int)TransportType.Camion;
+        TwoFloorsSection.IsVisible = isCamion;
+        if (!isCamion)
+        {
+            TwoFloorsSwitch.IsToggled = false;
+            FloorFieldsLayout.IsVisible = false;
+            SingleCapacityLayout.IsVisible = true;
+        }
+    }
+
+    private void OnTwoFloorsToggled(object? sender, ToggledEventArgs e)
+    {
+        FloorFieldsLayout.IsVisible = e.Value;
+        SingleCapacityLayout.IsVisible = !e.Value;
+        if (!e.Value)
+        {
+            Floor1CapacityEntry.Text = string.Empty;
+            Floor2CapacityEntry.Text = string.Empty;
+        }
+        UpdateFloorsTotal();
+    }
+
+    private void OnFloorCapacityChanged(object? sender, TextChangedEventArgs e)
+    {
+        UpdateFloorsTotal();
+    }
+
+    private void UpdateFloorsTotal()
+    {
+        var f1 = int.TryParse(Floor1CapacityEntry.Text, out var a) ? a : 0;
+        var f2 = int.TryParse(Floor2CapacityEntry.Text, out var b) ? b : 0;
+        FloorsTotalLabel.Text = $"Total: {Math.Max(0, f1 + f2)} asientos";
     }
 
     private void OnIncludesHotelToggled(object? sender, ToggledEventArgs e)

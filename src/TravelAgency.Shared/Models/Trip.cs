@@ -49,6 +49,15 @@ public class Trip
     /// <summary>Lugares confirmados con el hotel. Solo aplica si IncludesHotel.</summary>
     public int? HotelCapacity { get; set; }
 
+    /// <summary>Autobus de dos pisos (solo aplica a TransportType.Camion).</summary>
+    public bool HasTwoFloors { get; set; }
+
+    /// <summary>Cupo del piso 1 cuando HasTwoFloors. Si no, null.</summary>
+    public int? Floor1Capacity { get; set; }
+
+    /// <summary>Cupo del piso 2 cuando HasTwoFloors. Si no, null.</summary>
+    public int? Floor2Capacity { get; set; }
+
     public ICollection<TripOption> Options { get; set; } = new List<TripOption>();
 
     /// <summary>
