@@ -43,4 +43,25 @@ public static class BookingRefundPolicy
 
     public static decimal RefundFor(Booking booking, decimal paid, bool withinPolicy)
         => RefundFrom(paid, withinPolicy);
+
+    /// Precio unitario neto del boleto, sin el descuento aplicado a la reserva.
+    /// `grossUnitPrice` es el precio de lista por asiento; se le quita la parte
+    /// proporcional del descuento para pasarlo a base neta (lo realmente cobrado).
+    public static decimal NetUnitPrice(Booking booking, decimal grossUnitPrice)
+    {
+        var grossBefore = booking.TotalAmount + booking.DiscountAmount;
+        return grossBefore > 0
+            ? Math.Round(grossUnitPrice * booking.TotalAmount / grossBefore, 2)
+            : grossUnitPrice;
+    }
+
+    /// Parte de lo abonado que corresponde a un boleto segun su precio neto.
+    /// Cuando la reserva no tiene total (caso borde) se reparte por asiento.
+    public static decimal PaidShare(Booking booking, decimal paid, decimal netUnit)
+    {
+        if (booking.TotalAmount > 0)
+            return Math.Round(paid * netUnit / booking.TotalAmount, 2);
+
+        return booking.NumberOfSeats > 0 ? paid / booking.NumberOfSeats : paid;
+    }
 }

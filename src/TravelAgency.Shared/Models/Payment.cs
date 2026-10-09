@@ -24,7 +24,8 @@ public enum PaymentMethod
     BankTransfer = 2,
     Cash = 3,
     PayPal = 4,
-    MercadoPago = 5
+    MercadoPago = 5,
+    Wallet = 6
 }
 
 public enum PaymentStatus
