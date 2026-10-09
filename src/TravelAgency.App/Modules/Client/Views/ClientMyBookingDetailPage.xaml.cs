@@ -409,12 +409,13 @@ public partial class ClientMyBookingDetailPage : ContentPage
         int? bookingItemId = null;
         if (_tripHasOptions && _bookingItems.Count > 1)
         {
-            var labels = _bookingItems.Select(BookingItemChoiceLabel).ToArray();
+            // Numerar cada opcion para que la etiqueta sea unica: el ActionSheet solo
+            // devuelve el string pulsado, asi que dos entradas con el mismo texto
+            // colisionarian y se elegiria el boleto equivocado.
+            var labels = _bookingItems.Select((it, i) => $"{i + 1}) {BookingItemChoiceLabel(it)}").ToArray();
             var selected = await DisplayActionSheetAsync("Selecciona la entrada", "Cancelar", null, labels);
             if (string.IsNullOrEmpty(selected) || selected == "Cancelar") return;
 
-            // Mapeo por indice (no por texto): etiquetas duplicadas devolverian el primer
-            // match y cancelarian el boleto equivocado.
             var index = Array.IndexOf(labels, selected);
             if (index < 0 || index >= _bookingItems.Count) return;
             bookingItemId = _bookingItems[index].Id;
