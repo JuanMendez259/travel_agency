@@ -67,6 +67,7 @@ public partial class AdminBookingDetailPage : ContentPage
             }
         }
 
+            RenderPassengersCancelSection();
 
             var paid = _booking.Payments?.Sum(p => p.Amount) ?? 0;
             var remaining = _booking.TotalAmount - paid;
@@ -76,6 +77,128 @@ public partial class AdminBookingDetailPage : ContentPage
 
             PaymentButton.IsVisible = _booking.Status == BookingStatus.Pending;
             CancelButton.IsVisible = _booking.Status != BookingStatus.Cancelled;
+        }
+    }
+
+    // Lista, cuando la reserva aun no esta cancelada, una fila por acompanante con
+    // la accion de cancelar su boleto individual.
+    private void RenderPassengersCancelSection()
+    {
+        PassengersLayout.Children.Clear();
+
+        var passengers = _booking?.Passengers?.ToList() ?? new List<TripPassenger>();
+        var visible = _booking is not null
+            && _booking.Status != BookingStatus.Cancelled
+            && passengers.Count > 0;
+        PassengersHeader.IsVisible = visible;
+        if (!visible) return;
+
+        foreach (var passenger in passengers)
+        {
+            var grid = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto)
+                },
+                ColumnSpacing = 8,
+                Padding = new Thickness(12, 8)
+            };
+
+            var info = new VerticalStackLayout { Spacing = 2, VerticalOptions = LayoutOptions.Center };
+            info.Add(new Label
+            {
+                Text = string.IsNullOrWhiteSpace(passenger.Name) ? "Acompañante" : passenger.Name,
+                FontSize = 14,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#131B2E")
+            });
+            var seatText = passenger.SeatNumber is int seat
+                ? $"Asiento {seat} · {(passenger.IsChild ? "Niño" : "Adulto")}"
+                : (passenger.IsChild ? "Niño" : "Adulto");
+            info.Add(new Label { Text = seatText, FontSize = 12, TextColor = Color.FromArgb("#404941") });
+            grid.Add(info, 0, 0);
+
+            var cancelButton = new Button
+            {
+                Text = "Cancelar boleto",
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                BackgroundColor = Colors.Transparent,
+                TextColor = Color.FromArgb("#BA1A1A"),
+                BorderColor = Color.FromArgb("#BA1A1A"),
+                BorderWidth = 1,
+                CornerRadius = 10,
+                Padding = new Thickness(12, 0),
+                CommandParameter = passenger,
+                VerticalOptions = LayoutOptions.Center
+            };
+            cancelButton.Clicked += OnCancelTicketClicked;
+            grid.Add(cancelButton, 1, 0);
+
+            PassengersLayout.Children.Add(new Border
+            {
+                StrokeThickness = 0,
+                BackgroundColor = Color.FromArgb("#EEEEEE"),
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
+                Content = grid
+            });
+        }
+    }
+
+    private static string BookingItemChoiceLabel(BookingItem item)
+    {
+        var name = item.OptionName ?? item.TripOption?.Name ?? $"Opción #{item.TripOptionId}";
+        return $"{name} · {item.Adults}A/{item.Children}N · {item.LineTotal:C}";
+    }
+
+    private async void OnCancelTicketClicked(object? sender, EventArgs e)
+    {
+        if (_booking is null) return;
+        if (sender is not Button button || button.CommandParameter is not TripPassenger passenger) return;
+
+        var reason = await DisplayPromptAsync(
+            "Cancelar boleto",
+            $"Indica el motivo para cancelar el boleto de {passenger.Name ?? "este acompañante"}:",
+            accept: "Continuar",
+            cancel: "Cancelar",
+            placeholder: "Describe el motivo");
+        if (string.IsNullOrWhiteSpace(reason)) return;
+
+        // Con varias lineas de opciones hay que elegir la entrada del boleto.
+        int? bookingItemId = null;
+        var items = _booking.Items?.ToList() ?? new List<BookingItem>();
+        if (_booking.Trip?.HasOptions == true && items.Count > 1)
+        {
+            // Numerar cada opcion para que la etiqueta sea unica: el ActionSheet solo
+            // devuelve el string pulsado, asi que dos entradas con el mismo texto
+            // colisionarian y se elegiria el boleto equivocado.
+            var labels = items.Select((it, i) => $"{i + 1}) {BookingItemChoiceLabel(it)}").ToArray();
+            var selected = await DisplayActionSheetAsync("Selecciona la entrada", "Cancelar", null, labels);
+            if (string.IsNullOrEmpty(selected) || selected == "Cancelar") return;
+
+            var index = Array.IndexOf(labels, selected);
+            if (index < 0 || index >= items.Count) return;
+            bookingItemId = items[index].Id;
+        }
+
+        button.IsEnabled = false;
+        try
+        {
+            var result = await _api.CancelTicketAsync(_booking.Id, passenger.Id, bookingItemId, reason!);
+            var refund = result?.RefundAmount ?? 0m;
+            var balance = result?.WalletBalance ?? 0m;
+            await DisplayAlertAsync(
+                "Boleto cancelado",
+                $"Se canceló el boleto de {passenger.Name ?? "el acompañante"}. Reembolso: {refund:C}. Saldo a favor del cliente: {balance:C}.",
+                "OK");
+            await LoadBookingAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No fue posible cancelar", ex.Message, "OK");
+            button.IsEnabled = true;
         }
     }
 

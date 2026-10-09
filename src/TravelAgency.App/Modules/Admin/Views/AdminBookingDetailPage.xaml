@@ -32,6 +32,9 @@
 
             <Label x:Name="ItemsHeader" Text="Detalle por opciones" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" IsVisible="False" />
             <VerticalStackLayout x:Name="ItemsLayout" Spacing="4" />
+
+            <Label x:Name="PassengersHeader" Text="Acompañantes" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" IsVisible="False" />
+            <VerticalStackLayout x:Name="PassengersLayout" Spacing="4" />
             <Label Text="Pagos registrados" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" />
             <CollectionView x:Name="PaymentsList" SelectionMode="None" Footer=" ">
                 <CollectionView.ItemTemplate>
