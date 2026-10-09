@@ -1108,6 +1108,12 @@ app.MapGet("/api/bookings/{id}", async (int id, AppDbContext db, ClaimsPrincipal
     if (GetUserId(principal) != booking.UserId && !principal.IsInRole("Admin"))
         return Results.Forbid();
 
+    // Historico de reembolsos: permite mostrar el monto en cancelaciones antiguas
+    // (pagadas como Refunded, sin credito en wallet) y en las nuevas.
+    booking.RefundTotal = await db.BookingRefunds
+        .Where(r => r.BookingId == id)
+        .SumAsync(r => (decimal?)r.Amount) ?? 0m;
+
     return Results.Ok(booking);
 }).RequireAuthorization();
 
@@ -1245,14 +1251,16 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, CancelBookingRequest req
     // Dentro del limite del viaje se reembolsa el 100% de lo abonado; fuera, aplica multa del 30%.
     var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, today, limit);
 
-    var completedPayments = booking.Payments
-        .Where(p => p.Status == PaymentStatus.Completed)
-        .ToList();
-    var paid = completedPayments.Sum(p => p.Amount);
+    // Fuente unica de lo abonado (igual que /cancel-ticket): pagos Completed.
+    var paid = booking.PaidTotal();
 
     // Multa del 30% solo cuando se cancela fuera del limite de dias del viaje.
     var refund = BookingRefundPolicy.RefundFrom(paid, withinPolicy);
     var penalty = BookingRefundPolicy.PenaltyFrom(paid, withinPolicy);
+
+    // La mutacion (reserva + BookingRefund + WalletTransaction + disponibilidad) es
+    // atomica: un fallo intermedio no debe dejar el reembolso sin su credito.
+    await using var tx = await db.Database.BeginTransactionAsync();
 
     // El reembolso se acredita a la wallet del cliente; los pagos quedan como
     // Completed. Se registra un BookingRefund y su WalletTransaction asociada.
@@ -1289,6 +1297,8 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, CancelBookingRequest req
 
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
+
+    await tx.CommitAsync();
 
     var policy = withinPolicy
         ? $"dentro del límite de {limit ?? 0} día(s), sin multa"
@@ -1340,6 +1350,13 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
     if (passenger is null)
         return Results.BadRequest("El pasajero no pertenece a la reserva.");
 
+    // Los TripPassenger son solo acompanantes: el titular es booking.SeatNumber y
+    // viaja aparte (POST /api/bookings limita Passengers a NumberOfSeats - 1).
+    // Guarda defensiva: el asiento del titular solo se cancela con la total.
+    if (booking.SeatNumber.HasValue && passenger.SeatNumber.HasValue
+        && passenger.SeatNumber.Value == booking.SeatNumber.Value)
+        return Results.BadRequest("El asiento del titular solo se cancela con la cancelacion total de la reserva.");
+
     // Con opciones se elige la linea (BookingItem) a cancelar. Si hay mas de una,
     // BookingItemId es obligatorio; si hay una sola, se usa esa.
     BookingItem? item = null;
@@ -1390,6 +1407,10 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
     var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, today, trip.CancellationDaysLimit);
     var refund = BookingRefundPolicy.RefundFrom(paidShare, withinPolicy);
     var penalty = BookingRefundPolicy.PenaltyFrom(paidShare, withinPolicy);
+
+    // Baja del boleto, BookingRefund, WalletTransaction y disponibilidad en una
+    // sola transaccion: si algo falla no queda reembolso sin credito.
+    await using var tx = await db.Database.BeginTransactionAsync();
 
     // Baja de la linea elegida; si queda vacia se elimina.
     if (item is not null)
@@ -1444,6 +1465,8 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
 
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
+
+    await tx.CommitAsync();
 
     var walletBalance = await db.WalletTransactions
         .Where(t => t.UserId == booking.UserId)

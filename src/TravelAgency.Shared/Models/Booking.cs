@@ -11,6 +11,14 @@ public class Booking
     public int? SeatNumber { get; set; }
     public decimal TotalAmount { get; set; }
 
+    /// <summary>
+    /// Suma historica de los BookingRefunds de esta reserva (cancelacion total o
+    /// por boleto). Es calculado al vuelo en la API segun el detalle; no es columna
+    /// (ver AppDbContext, entity.Ignore). Permite mostrar el reembolso en reservas
+    /// canceladas aunque no tengan credito en wallet.
+    /// </summary>
+    public decimal RefundTotal { get; set; }
+
     /// <summary>Codigo de descuento aplicado (snapshot; null si no hubo).</summary>
     public string? DiscountCode { get; set; }
 

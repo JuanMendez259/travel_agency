@@ -134,17 +134,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
         SpecialNeedsLabel.Text = specialNeeds ?? string.Empty;
         if (currentBooking.Status == BookingStatus.Cancelled)
         {
-            var saldoFavor = refunded;
-            try
-            {
-                var wallet = await _api.GetWalletAsync();
-                if (wallet is not null) saldoFavor = wallet.Balance;
-            }
-            catch
-            {
-                // Si el wallet falla se usa lo reembolsado por pagos.
-            }
-            BalanceLabel!.Text = $"Saldo a favor: {saldoFavor:C}";
+            // Las cancelaciones con BookingRefund muestran su reembolso historico.
+            // Las anteriores al wallet solo tienen pagos marcados como Refunded.
+            BalanceLabel!.Text = currentBooking.RefundTotal > 0
+                ? $"Saldo a favor: {currentBooking.RefundTotal:C}"
+                : $"Reserva cancelada · Reembolsado {refunded:C}";
         }
         else
         {
