@@ -21,6 +21,8 @@ public class AppDbContext : DbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<FavoriteTrip> FavoriteTrips => Set<FavoriteTrip>();
     public DbSet<Discount> Discounts => Set<Discount>();
+    public DbSet<BookingRefund> BookingRefunds => Set<BookingRefund>();
+    public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -112,6 +114,37 @@ public class AppDbContext : DbContext
             e.Property(x => x.IsActive).IsRequired();
             e.Property(x => x.CreatedAt).IsRequired();
             e.HasOne(x => x.Trip).WithMany().HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<BookingRefund>(entity =>
+        {
+            entity.ToTable("BookingRefunds");
+            entity.Property(r => r.Amount).HasPrecision(18, 2);
+            entity.Property(r => r.PenaltyAmount).HasPrecision(18, 2);
+            entity.Property(r => r.Reason).HasMaxLength(500).IsRequired();
+            entity.Property(r => r.PassengerName).HasMaxLength(120);
+            entity.HasIndex(r => r.BookingId).HasDatabaseName("IX_BookingRefunds_BookingId");
+            entity.HasIndex(r => r.UserId).HasDatabaseName("IX_BookingRefunds_UserId");
+            entity.HasOne<Booking>()
+                  .WithMany()
+                  .HasForeignKey(r => r.BookingId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(r => r.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<WalletTransaction>(entity =>
+        {
+            entity.ToTable("WalletTransactions");
+            entity.Property(t => t.Amount).HasPrecision(18, 2);
+            entity.Property(t => t.Note).HasMaxLength(300);
+            entity.HasIndex(t => t.UserId).HasDatabaseName("IX_WalletTransactions_UserId");
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(t => t.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TripPassenger>(entity =>
