@@ -109,14 +109,14 @@ public partial class AdminBookingDetailPage : ContentPage
             var info = new VerticalStackLayout { Spacing = 2, VerticalOptions = LayoutOptions.Center };
             info.Add(new Label
             {
-                Text = string.IsNullOrWhiteSpace(passenger.Name) ? "Acompañante" : passenger.Name,
+                Text = string.IsNullOrWhiteSpace(passenger.Name) ? "Acompanante" : passenger.Name,
                 FontSize = 14,
                 FontAttributes = FontAttributes.Bold,
                 TextColor = Color.FromArgb("#131B2E")
             });
             var seatText = passenger.SeatNumber is int seat
-                ? $"Asiento {seat} · {(passenger.IsChild ? "Niño" : "Adulto")}"
-                : (passenger.IsChild ? "Niño" : "Adulto");
+                ? $"Asiento {seat} · {(passenger.IsChild ? "Nino" : "Adulto")}"
+                : (passenger.IsChild ? "Nino" : "Adulto");
             info.Add(new Label { Text = seatText, FontSize = 12, TextColor = Color.FromArgb("#404941") });
             grid.Add(info, 0, 0);
 
@@ -149,7 +149,7 @@ public partial class AdminBookingDetailPage : ContentPage
 
     private static string BookingItemChoiceLabel(BookingItem item)
     {
-        var name = item.OptionName ?? item.TripOption?.Name ?? $"Opción #{item.TripOptionId}";
+        var name = item.OptionName ?? item.TripOption?.Name ?? $"Opcion #{item.TripOptionId}";
         return $"{name} · {item.Adults}A/{item.Children}N · {item.LineTotal:C}";
     }
 
@@ -160,7 +160,7 @@ public partial class AdminBookingDetailPage : ContentPage
 
         var reason = await DisplayPromptAsync(
             "Cancelar boleto",
-            $"Indica el motivo para cancelar el boleto de {passenger.Name ?? "este acompañante"}:",
+            $"Indica el motivo para cancelar el boleto de {passenger.Name ?? "este acompanante"}:",
             accept: "Continuar",
             cancel: "Cancelar",
             placeholder: "Describe el motivo");
@@ -191,7 +191,7 @@ public partial class AdminBookingDetailPage : ContentPage
             var balance = result?.WalletBalance ?? 0m;
             await DisplayAlertAsync(
                 "Boleto cancelado",
-                $"Se canceló el boleto de {passenger.Name ?? "el acompañante"}. Reembolso: {refund:C}. Saldo a favor del cliente: {balance:C}.",
+                $"Se cancelo el boleto de {passenger.Name ?? "el acompanante"}. Reembolso: {refund:C}. Saldo a favor del cliente: {balance:C}.",
                 "OK");
             await LoadBookingAsync();
         }
