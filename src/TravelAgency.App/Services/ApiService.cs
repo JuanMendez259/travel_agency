@@ -116,6 +116,40 @@ public class ApiService
         return (await response.Content.ReadFromJsonAsync<CreatedCoordinator>(JsonOptions))!;
     }
 
+    public async Task<User?> UpdateCoordinatorAsync(int userId, string name, string email, string? phone)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/users/{userId}",
+            new UpdateCoordinatorRequest { Name = name, Email = email, Phone = phone }, JsonOptions);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo actualizar." : body.Trim().Trim('"'));
+        }
+        return await response.Content.ReadFromJsonAsync<User>(JsonOptions);
+    }
+
+    public async Task<string?> ResetCoordinatorPasswordAsync(int userId)
+    {
+        var response = await _http.PostAsync($"/api/users/{userId}/reset-password", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo resetear la contraseña." : body.Trim().Trim('"'));
+        }
+        var result = await response.Content.ReadFromJsonAsync<ResetPasswordResponse>(JsonOptions);
+        return result?.TemporaryPassword;
+    }
+
+    public async Task DeleteCoordinatorAsync(int userId)
+    {
+        var response = await _http.DeleteAsync($"/api/users/{userId}");
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "No se pudo eliminar." : body.Trim().Trim('"'));
+        }
+    }
+
     public Task<List<UserNotification>?> GetNotificationsAsync(int userId) =>
         _http.GetFromJsonAsync<List<UserNotification>>($"/api/users/{userId}/notifications", JsonOptions);
 

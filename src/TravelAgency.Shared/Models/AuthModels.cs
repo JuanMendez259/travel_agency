@@ -47,3 +47,15 @@ public class CreatedCoordinator
     public DateTime CreatedAt { get; set; }
     public string TemporaryPassword { get; set; } = string.Empty;
 }
+
+public class UpdateCoordinatorRequest
+{
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+}
+
+public class ResetPasswordResponse
+{
+    public string TemporaryPassword { get; set; } = string.Empty;
+}

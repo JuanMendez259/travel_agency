@@ -12,7 +12,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="10">
 
-            <Label Text="Registrar coordinador" FontSize="20" FontAttributes="Bold" />
+            <Label x:Name="FormTitleLabel" Text="Registrar coordinador" FontSize="20" FontAttributes="Bold" />
             <Label Text="Crea la cuenta con rol Coordinador. Al iniciar sesión verá la pestaña de viajes, las solicitudes de cupo y el control de salida."
                    FontSize="13"
                    TextColor="{StaticResource OnSurfaceVariant}" />
@@ -26,14 +26,17 @@
             <Label Text="Teléfono / celular" />
             <Entry x:Name="PhoneEntry" Placeholder="+52 55 1234 5678" Keyboard="Telephone" />
 
-            <Label Text="Contraseña temporal" />
-            <Entry x:Name="PasswordEntry" Placeholder="Mínimo 6 caracteres" IsPassword="True" />
-            <Label Text="Déjala vacía y se generará una automáticamente. Compártela con el coordinador por un canal seguro: no se vuelve a mostrar."
-                   FontSize="12"
-                   TextColor="{StaticResource OnSurfaceVariant}" />
+            <VerticalStackLayout x:Name="PasswordFieldsLayout" Spacing="10">
+                <Label Text="Contraseña temporal" />
+                <Entry x:Name="PasswordEntry" Placeholder="Mínimo 6 caracteres" IsPassword="True" />
+                <Label Text="Déjala vacía y se generará una automáticamente. Compártela con el coordinador por un canal seguro: no se vuelve a mostrar."
+                       FontSize="12"
+                       TextColor="{StaticResource OnSurfaceVariant}" />
+            </VerticalStackLayout>
 
             <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <Button Text="Generar contraseña"
+                <Button x:Name="GeneratePasswordButton"
+                        Text="Generar contraseña"
                         Clicked="OnGeneratePasswordClicked"
                          BackgroundColor="{StaticResource SurfaceContainerHigh}"
                                                  TextColor="{StaticResource OnSurface}" />
@@ -43,6 +46,13 @@
                         Clicked="OnRegisterClicked"
                                                  BackgroundColor="{StaticResource Primary}" />
             </Grid>
+
+            <Button x:Name="CancelEditButton"
+                    Text="Cancelar edición"
+                    Clicked="OnCancelEditClicked"
+                    IsVisible="False"
+                    BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                    TextColor="{StaticResource OnSurface}" />
 
             <Label x:Name="FeedbackLabel"
                    FontSize="13"

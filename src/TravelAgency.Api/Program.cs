@@ -695,6 +695,67 @@ app.MapPost("/api/users/coordinators", async (CreateCoordinatorRequest request, 
     });
 }).RequireAuthorization("AdminOnly");
 
+app.MapPut("/api/users/{id}", async (int id, UpdateCoordinatorRequest request, AppDbContext db) =>
+{
+    var user = await db.Users.FindAsync(id);
+    if (user is null) return Results.NotFound("Usuario no encontrado.");
+    if (user.Role != UserRole.Coordinador)
+        return Results.BadRequest("Solo se pueden editar coordinadores.");
+
+    var name = request.Name?.Trim();
+    var email = request.Email?.Trim().ToLowerInvariant();
+
+    if (string.IsNullOrWhiteSpace(name))
+        return Results.BadRequest("El nombre del coordinador es obligatorio.");
+    if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        return Results.BadRequest("El correo no es válido.");
+    if (await db.Users.AnyAsync(u => u.Email == email && u.Id != id))
+        return Results.Conflict("Ya existe una cuenta con ese correo.");
+
+    user.Name = name.Length <= 120 ? name : name[..120];
+    user.Email = email;
+    user.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+
+    await db.SaveChangesAsync();
+    return Results.Ok(user);
+}).RequireAuthorization("AdminOnly");
+
+app.MapPost("/api/users/{id}/reset-password", async (int id, AppDbContext db) =>
+{
+    var user = await db.Users.FindAsync(id);
+    if (user is null) return Results.NotFound("Usuario no encontrado.");
+    if (user.Role != UserRole.Coordinador)
+        return Results.BadRequest("Solo se puede resetear la contraseña de un coordinador.");
+
+    var password = GenerateTemporaryPassword();
+    user.PasswordHash = HashPassword(password);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new ResetPasswordResponse { TemporaryPassword = password });
+}).RequireAuthorization("AdminOnly");
+
+app.MapDelete("/api/users/{id}", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var user = await db.Users.FindAsync(id);
+    if (user is null) return Results.NotFound("Usuario no encontrado.");
+    if (user.Role != UserRole.Coordinador)
+        return Results.BadRequest("Solo se pueden eliminar coordinadores.");
+    if (user.Id == GetUserId(principal))
+        return Results.BadRequest("No puedes eliminar tu propia cuenta.");
+    if (await db.Bookings.AnyAsync(b => b.UserId == id))
+        return Results.BadRequest("No se puede eliminar: el coordinador tiene reservas registradas.");
+
+    // Dependencias con FK Restrict: se limpian antes de borrar el usuario.
+    db.Notifications.RemoveRange(await db.Notifications.Where(n => n.UserId == id).ToListAsync());
+    db.FavoriteTrips.RemoveRange(await db.FavoriteTrips.Where(f => f.UserId == id).ToListAsync());
+    db.CapacityRequests.RemoveRange(await db.CapacityRequests.Where(c => c.UserId == id).ToListAsync());
+    db.TripRatings.RemoveRange(await db.TripRatings.Where(r => r.UserId == id).ToListAsync());
+
+    db.Users.Remove(user);
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+}).RequireAuthorization("AdminOnly");
+
 app.MapGet("/api/users/{id}/bookings", async (int id, AppDbContext db, ClaimsPrincipal principal, string? status) =>
 {
     var tokenUserId = GetUserId(principal);
