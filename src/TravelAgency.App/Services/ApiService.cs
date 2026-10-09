@@ -281,7 +281,7 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
-    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers, List<BookingOptionInput>? options = null, string? discountCode = null, string? specialNeedsNote = null)
+    public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers, List<BookingOptionInput>? options = null, string? discountCode = null, string? specialNeedsNote = null, decimal? walletAmount = null)
     {
         var list = passengers?
             .Select(p => new PassengerInput(p.Name, p.Age, null))
@@ -291,7 +291,7 @@ public class ApiService
             .ToList();
         var useOptions = optionDtos is { Count: > 0 };
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list, null, optionDtos, useOptions, discountCode, specialNeedsNote), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, null, optionDtos, useOptions, discountCode, specialNeedsNote, walletAmount), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -303,7 +303,8 @@ public class ApiService
         IEnumerable<(string Name, int Age, int SeatNumber)> passengers,
         List<BookingOptionInput>? options = null,
         string? discountCode = null,
-        string? specialNeedsNote = null)
+        string? specialNeedsNote = null,
+        decimal? walletAmount = null)
     {
         var list = passengers
             .Select(p => new PassengerInput(p.Name, p.Age, p.SeatNumber))
@@ -313,7 +314,7 @@ public class ApiService
             .ToList();
         var useOptions = optionDtos is { Count: > 0 };
         var response = await _http.PostAsJsonAsync("/api/bookings",
-            new CreateBookingRequest(tripId, seats, list, holderSeat, optionDtos, useOptions, discountCode, specialNeedsNote), JsonOptions);
+            new CreateBookingRequest(tripId, seats, list, holderSeat, optionDtos, useOptions, discountCode, specialNeedsNote, walletAmount), JsonOptions);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
@@ -351,6 +352,39 @@ public class ApiService
 
     public Task<WalletSummary?> GetWalletAsync() =>
         _http.GetFromJsonAsync<WalletSummary>("/api/users/me/wallet", JsonOptions);
+
+    public async Task<PayoutRequestResult?> CreatePayoutRequestAsync(decimal amount, string? note)
+    {
+        var response = await _http.PostAsJsonAsync("/api/users/me/payout-requests",
+            new CreatePayoutRequest(amount, note), JsonOptions);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<PayoutRequestResult>(JsonOptions);
+    }
+
+    public Task<List<PayoutRequest>?> GetMyPayoutRequestsAsync() =>
+        _http.GetFromJsonAsync<List<PayoutRequest>>("/api/users/me/payout-requests", JsonOptions);
+
+    public Task<List<PayoutRequest>?> GetPayoutRequestsAsync(PayoutStatus? status = null) =>
+        _http.GetFromJsonAsync<List<PayoutRequest>>($"/api/payout-requests{PayoutStatusQuery(status)}", JsonOptions);
+
+    public async Task<PayoutRequest?> ResolvePayoutRequestAsync(int id, bool approve)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/payout-requests/{id}/resolve",
+            new ResolvePayoutRequest(approve), JsonOptions);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<PayoutRequest>(JsonOptions);
+    }
+
+    public async Task<Booking?> PayWithWalletAsync(int bookingId, decimal amount)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/bookings/{bookingId}/pay-with-wallet",
+            new PayWithWalletRequest(amount), JsonOptions);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
+    }
+
+    private static string PayoutStatusQuery(PayoutStatus? status) =>
+        status is null ? "" : $"?status={Uri.EscapeDataString(status.Value.ToString())}";
 
     private static async Task EnsureSuccessAsync(HttpResponseMessage response)
     {
@@ -446,10 +480,15 @@ public class ApiService
     private record UpdatePassengerCheckinRequest(bool CheckedIn);
     private record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
     private record BookingOptionInputDto(int TripOptionId, int Adults, int Children);
-    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null, string? DiscountCode = null, string? SpecialNeedsNote = null);
+    private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null, string? DiscountCode = null, string? SpecialNeedsNote = null, decimal? WalletAmount = null);
     private record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
     private record CancelTicketRequest(int PassengerId, int? BookingItemId, string? Reason);
     private record CancelBookingRequest(string? Reason);
+    private record CreatePayoutRequest(decimal Amount, string? Note);
+    private record ResolvePayoutRequest(bool Approve);
+    private record PayWithWalletRequest(decimal Amount);
+
+    public record PayoutRequestResult(PayoutRequest PayoutRequest, decimal Balance, decimal Held, decimal Available);
 
     public record DiscountValidationResult(bool Valid, string Message, decimal DiscountAmount, decimal FinalAmount, string? Code, DiscountType? Type = null, decimal? Value = null);
 
