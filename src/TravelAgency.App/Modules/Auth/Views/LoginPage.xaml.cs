@@ -18,7 +18,7 @@ public partial class LoginPage : ContentPage
         InitializeComponent();
         _api = api;
         _session = session;
-        QuickLoginPicker.ItemsSource = new[] { "Admin", "Cliente" };
+        QuickLoginPicker.ItemsSource = new[] { "Admin", "Coordinador", "Cliente" };
     }
 
     protected override async void OnAppearing()
@@ -97,6 +97,11 @@ public partial class LoginPage : ContentPage
         {
             EmailEntry.Text = "admin@travelagency.com";
             PasswordEntry.Text = "Admin123!";
+        }
+        else if (index == 1)
+        {
+            EmailEntry.Text = "coordinador@gmail.com";
+            PasswordEntry.Text = "agencia2026";
         }
         else
         {
