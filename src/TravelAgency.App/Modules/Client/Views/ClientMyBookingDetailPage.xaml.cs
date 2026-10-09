@@ -413,9 +413,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
             var selected = await DisplayActionSheetAsync("Selecciona la entrada", "Cancelar", null, labels);
             if (string.IsNullOrEmpty(selected) || selected == "Cancelar") return;
 
-            var item = _bookingItems.FirstOrDefault(i => BookingItemChoiceLabel(i) == selected);
-            if (item is null) return;
-            bookingItemId = item.Id;
+            // Mapeo por indice (no por texto): etiquetas duplicadas devolverian el primer
+            // match y cancelarian el boleto equivocado.
+            var index = Array.IndexOf(labels, selected);
+            if (index < 0 || index >= _bookingItems.Count) return;
+            bookingItemId = _bookingItems[index].Id;
         }
 
         button.IsEnabled = false;
