@@ -147,6 +147,10 @@ public class AppDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(t => t.UserId)
                   .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(t => t.Refund)
+                  .WithMany()
+                  .HasForeignKey(t => t.RefundId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TripPassenger>(entity =>

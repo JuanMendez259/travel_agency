@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace TravelAgency.Shared.Models;
 
 /// Movimiento del saldo (wallet) de un usuario.
@@ -12,6 +14,11 @@ public class WalletTransaction
     public int? RefundId { get; set; }
     public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>Reembolso asociado. Permite insertar el credito en el mismo SaveChanges
+    /// que el BookingRefund (EF resuelve el FK); no se serializa al cliente.</summary>
+    [JsonIgnore]
+    public BookingRefund? Refund { get; set; }
 }
 
 public enum WalletType

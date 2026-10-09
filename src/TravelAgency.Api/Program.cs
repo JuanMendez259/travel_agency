@@ -1258,12 +1258,12 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, CancelBookingRequest req
     var refund = BookingRefundPolicy.RefundFrom(paid, withinPolicy);
     var penalty = BookingRefundPolicy.PenaltyFrom(paid, withinPolicy);
 
-    // La mutacion (reserva + BookingRefund + WalletTransaction + disponibilidad) es
-    // atomica: un fallo intermedio no debe dejar el reembolso sin su credito.
-    await using var tx = await db.Database.BeginTransactionAsync();
-
     // El reembolso se acredita a la wallet del cliente; los pagos quedan como
-    // Completed. Se registra un BookingRefund y su WalletTransaction asociada.
+    // Completed. La reserva, el BookingRefund y el WalletTransaction se guardan en
+    // un solo SaveChangesAsync (transaccion implicita de EF), asi que un fallo no
+    // deja el reembolso sin su credito. No se usa transaccion explicita porque el
+    // AuditLogInterceptor abre su propia conexion en SavedChangesAsync y, con una
+    // transaccion abierta, eso bloquearia en SQLite y quedaria fuera de la tx en Postgres.
     var refundEntity = new BookingRefund
     {
         BookingId = booking.Id,
@@ -1282,23 +1282,21 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, CancelBookingRequest req
     booking.CancelledAt = DateTime.UtcNow;
     booking.CancelledByUserId = userId;
 
-    await db.SaveChangesAsync();
-
     db.WalletTransactions.Add(new WalletTransaction
     {
         UserId = booking.UserId,
         Amount = refund,
         Type = WalletType.CancellationCredit,
         BookingId = booking.Id,
-        RefundId = refundEntity.Id,
+        Refund = refundEntity,
         Note = "Cancelacion total",
         CreatedAt = DateTime.UtcNow
     });
 
-    await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
 
-    await tx.CommitAsync();
+    await RecomputeAvailabilityAsync(db, trip);
+    await db.SaveChangesAsync();
 
     var policy = withinPolicy
         ? $"dentro del límite de {limit ?? 0} día(s), sin multa"
@@ -1408,10 +1406,6 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
     var refund = BookingRefundPolicy.RefundFrom(paidShare, withinPolicy);
     var penalty = BookingRefundPolicy.PenaltyFrom(paidShare, withinPolicy);
 
-    // Baja del boleto, BookingRefund, WalletTransaction y disponibilidad en una
-    // sola transaccion: si algo falla no queda reembolso sin credito.
-    await using var tx = await db.Database.BeginTransactionAsync();
-
     // Baja de la linea elegida; si queda vacia se elimina.
     if (item is not null)
     {
@@ -1450,7 +1444,6 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
         CreatedAt = DateTime.UtcNow
     };
     db.BookingRefunds.Add(refundEntity);
-    await db.SaveChangesAsync();
 
     db.WalletTransactions.Add(new WalletTransaction
     {
@@ -1458,15 +1451,19 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
         Amount = refund,
         Type = WalletType.CancellationCredit,
         BookingId = booking.Id,
-        RefundId = refundEntity.Id,
+        Refund = refundEntity,
         Note = "Cancelacion de boleto",
         CreatedAt = DateTime.UtcNow
     });
 
-    await RecomputeAvailabilityAsync(db, trip);
+    // Baja del boleto + BookingRefund + WalletTransaction en un solo SaveChangesAsync
+    // (transaccion implicita de EF), atomico. Sin transaccion explicita: el
+    // AuditLogInterceptor abre su propia conexion en SavedChangesAsync y una tx
+    // abierta la bloquearia en SQLite y quedaria fuera de la tx en Postgres.
     await db.SaveChangesAsync();
 
-    await tx.CommitAsync();
+    await RecomputeAvailabilityAsync(db, trip);
+    await db.SaveChangesAsync();
 
     var walletBalance = await db.WalletTransactions
         .Where(t => t.UserId == booking.UserId)
