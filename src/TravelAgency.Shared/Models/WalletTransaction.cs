@@ -12,6 +12,7 @@ public class WalletTransaction
     public WalletType Type { get; set; }
     public int? BookingId { get; set; }
     public int? RefundId { get; set; }
+    [JsonIgnore]
     public int? PayoutRequestId { get; set; }
     public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
