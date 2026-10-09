@@ -14,6 +14,11 @@ using TravelAgency.Shared.Models;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
+// Lock in-process por usuario para las secciones de dinero del wallet. Asume una
+// sola instancia de la API; un despliegue multi-instancia requeriria bloqueo a
+// nivel base de datos o concurrencia optimista.
+var walletLocks = new System.Collections.Concurrent.ConcurrentDictionary<int, SemaphoreSlim>();
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
@@ -648,32 +653,43 @@ app.MapPost("/api/users/me/payout-requests", async (CreatePayoutRequest request,
     var userId = GetUserId(principal);
     if (userId == 0) return Results.Forbid();
 
-    if (request.Amount <= 0)
-        return Results.BadRequest("El monto debe ser mayor a cero.");
-
-    var (balance, held) = await WalletTotalsAsync(db, userId);
-    var available = balance - held;
-
-    if (request.Amount > available)
-        return Results.BadRequest("El monto supera tu saldo disponible.");
-
-    var user = await db.Users.FindAsync(userId);
-
-    var payout = new PayoutRequest
+    // Lock in-process por usuario: evita sobre-congelar el saldo con dos
+    // solicitudes concurrentes que leen el mismo disponible.
+    var gate = WalletLockFor(userId);
+    await gate.WaitAsync();
+    try
     {
-        UserId = userId,
-        Amount = request.Amount,
-        Status = PayoutStatus.Pending,
-        Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
-        CreatedAt = DateTime.UtcNow
-    };
-    db.PayoutRequests.Add(payout);
-    await db.SaveChangesAsync();
+        if (request.Amount <= 0)
+            return Results.BadRequest("El monto debe ser mayor a cero.");
 
-    await SendToStaffAsync(db, $"{user?.Name ?? "Un cliente"} solicito un reembolso de {request.Amount:C} de su saldo.");
+        var (balance, held) = await WalletTotalsAsync(db, userId);
+        var available = balance - held;
 
-    var (newBalance, newHeld) = await WalletTotalsAsync(db, userId);
-    return Results.Ok(new { PayoutRequest = payout, Balance = newBalance, Held = newHeld, Available = newBalance - newHeld });
+        if (request.Amount > available)
+            return Results.BadRequest("El monto supera tu saldo disponible.");
+
+        var user = await db.Users.FindAsync(userId);
+
+        var payout = new PayoutRequest
+        {
+            UserId = userId,
+            Amount = request.Amount,
+            Status = PayoutStatus.Pending,
+            Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+            CreatedAt = DateTime.UtcNow
+        };
+        db.PayoutRequests.Add(payout);
+        await db.SaveChangesAsync();
+
+        await SendToStaffAsync(db, $"{user?.Name ?? "Un cliente"} solicito un reembolso de {request.Amount:C} de su saldo.");
+
+        var (newBalance, newHeld) = await WalletTotalsAsync(db, userId);
+        return Results.Ok(new { PayoutRequest = payout, Balance = newBalance, Held = newHeld, Available = newBalance - newHeld });
+    }
+    finally
+    {
+        gate.Release();
+    }
 }).RequireAuthorization();
 
 app.MapGet("/api/users/me/payout-requests", async (ClaimsPrincipal principal, AppDbContext db) =>
@@ -707,44 +723,60 @@ app.MapPost("/api/payout-requests/{id}/resolve", async (int id, ResolvePayoutReq
     var payout = await db.PayoutRequests.FindAsync(id);
     if (payout is null) return Results.NotFound("Solicitud no encontrada.");
 
-    if (payout.Status != PayoutStatus.Pending)
-        return Results.BadRequest("La solicitud ya fue resuelta.");
-
-    payout.ResolvedAt = DateTime.UtcNow;
-    payout.ResolvedByUserId = GetUserId(principal);
-
-    if (request.Approve)
+    // Lock in-process por usuario dueno del payout. El lock cubre la
+    // reverificacion de estado y la escritura para no resolver (y debitar) dos
+    // veces la misma solicitud.
+    var gate = WalletLockFor(payout.UserId);
+    await gate.WaitAsync();
+    try
     {
-        payout.Status = PayoutStatus.Paid;
-        db.WalletTransactions.Add(new WalletTransaction
-        {
-            UserId = payout.UserId,
-            Amount = -payout.Amount,
-            Type = WalletType.PayoutRequest,
-            PayoutRequestId = payout.Id,
-            Note = "Payout",
-            CreatedAt = DateTime.UtcNow
-        });
-        db.Notifications.Add(new UserNotification
-        {
-            UserId = payout.UserId,
-            Message = $"Tu reembolso de {payout.Amount:C} fue pagado.",
-            CreatedAt = DateTime.UtcNow
-        });
-    }
-    else
-    {
-        payout.Status = PayoutStatus.Rejected;
-        db.Notifications.Add(new UserNotification
-        {
-            UserId = payout.UserId,
-            Message = "Tu solicitud de reembolso fue rechazada; el saldo sigue disponible.",
-            CreatedAt = DateTime.UtcNow
-        });
-    }
+        // Recargar dentro del lock: la copia cargada arriba puede estar
+        // desactualizada si otra request la resolvio mientras esperabamos.
+        await db.Entry(payout).ReloadAsync();
 
-    await db.SaveChangesAsync();
-    return Results.Ok(payout);
+        if (payout.Status != PayoutStatus.Pending)
+            return Results.BadRequest("La solicitud ya fue resuelta.");
+
+        payout.ResolvedAt = DateTime.UtcNow;
+        payout.ResolvedByUserId = GetUserId(principal);
+
+        if (request.Approve)
+        {
+            payout.Status = PayoutStatus.Paid;
+            db.WalletTransactions.Add(new WalletTransaction
+            {
+                UserId = payout.UserId,
+                Amount = -payout.Amount,
+                Type = WalletType.PayoutRequest,
+                PayoutRequestId = payout.Id,
+                Note = "Payout",
+                CreatedAt = DateTime.UtcNow
+            });
+            db.Notifications.Add(new UserNotification
+            {
+                UserId = payout.UserId,
+                Message = $"Tu reembolso de {payout.Amount:C} fue pagado.",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            payout.Status = PayoutStatus.Rejected;
+            db.Notifications.Add(new UserNotification
+            {
+                UserId = payout.UserId,
+                Message = "Tu solicitud de reembolso fue rechazada; el saldo sigue disponible.",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await db.SaveChangesAsync();
+        return Results.Ok(payout);
+    }
+    finally
+    {
+        gate.Release();
+    }
 }).RequireAuthorization("AdminOnly");
 
 app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request, AppDbContext db, ClaimsPrincipal principal) =>
@@ -1085,83 +1117,95 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         TotalAmount = Math.Max(0, Math.Round(baseTotal - discountAmount, 2))
     };
 
-    // Saldo de wallet aplicado al checkout. Se valida antes de crear la reserva.
-    var walletAmount = request.WalletAmount is > 0 ? Math.Round(request.WalletAmount.Value, 2) : 0m;
-    if (walletAmount > 0)
+    // Lock in-process por usuario: cubre la lectura del saldo hasta el guardado
+    // de la reserva y el pago con saldo, para no sobre-gastar el wallet. Los
+    // return de validacion pasan por el finally.
+    var walletGate = WalletLockFor(booking.UserId);
+    await walletGate.WaitAsync();
+    try
     {
-        var (walletBalance, walletHeld) = await WalletTotalsAsync(db, booking.UserId);
-        var walletMax = Math.Min(walletBalance - walletHeld, booking.TotalAmount);
-        if (walletAmount > walletMax)
-            return Results.BadRequest("El saldo aplicado supera tu saldo disponible o el total de la reserva.");
-    }
-
-    db.Bookings.Add(booking);
-    await db.SaveChangesAsync();
-
-    if (walletAmount > 0)
-    {
-        var walletPayment = new Payment
+        // Saldo de wallet aplicado al checkout. Se valida antes de crear la reserva.
+        var walletAmount = request.WalletAmount is > 0 ? Math.Round(request.WalletAmount.Value, 2) : 0m;
+        if (walletAmount > 0)
         {
-            BookingId = booking.Id,
-            Amount = walletAmount,
-            Method = PaymentMethod.Wallet,
-            Status = PaymentStatus.Completed,
-            PaymentDate = DateTime.UtcNow
-        };
-        db.Payments.Add(walletPayment);
-        booking.Payments.Add(walletPayment);
+            var (walletBalance, walletHeld) = await WalletTotalsAsync(db, booking.UserId);
+            var walletMax = Math.Min(walletBalance - walletHeld, booking.TotalAmount);
+            if (walletAmount > walletMax)
+                return Results.BadRequest("El saldo aplicado supera tu saldo disponible o el total de la reserva.");
+        }
 
-        db.WalletTransactions.Add(new WalletTransaction
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+
+        if (walletAmount > 0)
         {
-            UserId = booking.UserId,
-            Amount = -walletAmount,
-            Type = WalletType.BookingPayment,
-            BookingId = booking.Id,
-            Note = "Pago de reserva con saldo",
-            CreatedAt = DateTime.UtcNow
-        });
-
-        if (walletAmount >= booking.TotalAmount)
-            booking.Status = BookingStatus.Confirmed;
-    }
-
-    // Guardar los items de opcion (multi-item) si aplica.
-    var bookingItems = new List<TravelAgency.Shared.Models.BookingItem>();
-    if (itemsMode)
-    {
-        foreach (var oi in request.Options!)
-        {
-            var opt = optionsLookup![oi.TripOptionId];
-            bookingItems.Add(new TravelAgency.Shared.Models.BookingItem
+            var walletPayment = new Payment
             {
                 BookingId = booking.Id,
-                TripOptionId = opt.Id,
-                Adults = Math.Max(0, oi.Adults),
-                Children = Math.Max(0, oi.Children),
-                UnitPriceAdult = opt.PriceAdult,
-                UnitPriceChild = opt.PriceChild,
-                OptionName = opt.Name
+                Amount = walletAmount,
+                Method = PaymentMethod.Wallet,
+                Status = PaymentStatus.Completed,
+                PaymentDate = DateTime.UtcNow
+            };
+            db.Payments.Add(walletPayment);
+            booking.Payments.Add(walletPayment);
+
+            db.WalletTransactions.Add(new WalletTransaction
+            {
+                UserId = booking.UserId,
+                Amount = -walletAmount,
+                Type = WalletType.BookingPayment,
+                BookingId = booking.Id,
+                Note = "Pago de reserva con saldo",
+                CreatedAt = DateTime.UtcNow
             });
+
+            if (walletAmount >= booking.TotalAmount)
+                booking.Status = BookingStatus.Confirmed;
         }
-        if (bookingItems.Count > 0)
+
+        // Guardar los items de opcion (multi-item) si aplica.
+        var bookingItems = new List<TravelAgency.Shared.Models.BookingItem>();
+        if (itemsMode)
         {
-            booking.NumberOfSeats = bookingItems.Sum(i => i.Adults + i.Children);
-            db.Bookings.Update(booking);
-            db.BookingItems.AddRange(bookingItems);
+            foreach (var oi in request.Options!)
+            {
+                var opt = optionsLookup![oi.TripOptionId];
+                bookingItems.Add(new TravelAgency.Shared.Models.BookingItem
+                {
+                    BookingId = booking.Id,
+                    TripOptionId = opt.Id,
+                    Adults = Math.Max(0, oi.Adults),
+                    Children = Math.Max(0, oi.Children),
+                    UnitPriceAdult = opt.PriceAdult,
+                    UnitPriceChild = opt.PriceChild,
+                    OptionName = opt.Name
+                });
+            }
+            if (bookingItems.Count > 0)
+            {
+                booking.NumberOfSeats = bookingItems.Sum(i => i.Adults + i.Children);
+                db.Bookings.Update(booking);
+                db.BookingItems.AddRange(bookingItems);
+                await db.SaveChangesAsync();
+            }
+        }
+
+        if (passengers.Count > 0)
+        {
+            await AssignFreeSeatsAsync(db, trip, passengers, booking.Id);
+            foreach (var p in passengers) p.BookingId = booking.Id;
+            db.TripPassengers.AddRange(passengers);
             await db.SaveChangesAsync();
         }
-    }
 
-    if (passengers.Count > 0)
-    {
-        await AssignFreeSeatsAsync(db, trip, passengers, booking.Id);
-        foreach (var p in passengers) p.BookingId = booking.Id;
-        db.TripPassengers.AddRange(passengers);
+        await RecomputeAvailabilityAsync(db, trip);
         await db.SaveChangesAsync();
     }
-
-    await RecomputeAvailabilityAsync(db, trip);
-    await db.SaveChangesAsync();
+    finally
+    {
+        walletGate.Release();
+    }
 
     var userName = await db.Users
         .Where(u => u.Id == booking.UserId)
@@ -1338,51 +1382,67 @@ app.MapPost("/api/bookings/{id}/pay-with-wallet", async (int id, PayWithWalletRe
     if (request.Amount <= 0)
         return Results.BadRequest("Indica un monto valido.");
 
-    var amount = Math.Round(request.Amount, 2);
-    var pending = Math.Max(0m, Math.Round(booking.TotalAmount - booking.PaidTotal(), 2));
-    if (pending <= 0)
-        return Results.BadRequest("La reserva ya esta liquidada.");
-
-    var (balance, held) = await WalletTotalsAsync(db, booking.UserId);
-    var available = balance - held;
-
-    if (amount > Math.Min(available, pending))
-        return Results.BadRequest("El monto supera tu saldo disponible o el saldo pendiente de la reserva.");
-
-    var walletPayment = new Payment
+    // Lock in-process por usuario: cubre la lectura del saldo, la verificacion
+    // del pendiente y la escritura, para no debitar dos veces el mismo saldo.
+    var gate = WalletLockFor(booking.UserId);
+    await gate.WaitAsync();
+    try
     {
-        BookingId = booking.Id,
-        Amount = amount,
-        Method = PaymentMethod.Wallet,
-        Status = PaymentStatus.Completed,
-        PaymentDate = DateTime.UtcNow
-    };
-    db.Payments.Add(walletPayment);
-    booking.Payments.Add(walletPayment);
+        var amount = Math.Round(request.Amount, 2);
+        // Recalcular el pendiente contra la base dentro del lock: la copia con
+        // Include cargada antes puede no ver un pago concurrente.
+        var paidTotal = await db.Payments
+            .Where(p => p.BookingId == booking.Id)
+            .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+        var pending = Math.Max(0m, Math.Round(booking.TotalAmount - paidTotal, 2));
+        if (pending <= 0)
+            return Results.BadRequest("La reserva ya esta liquidada.");
 
-    db.WalletTransactions.Add(new WalletTransaction
+        var (balance, held) = await WalletTotalsAsync(db, booking.UserId);
+        var available = balance - held;
+
+        if (amount > Math.Min(available, pending))
+            return Results.BadRequest("El monto supera tu saldo disponible o el saldo pendiente de la reserva.");
+
+        var walletPayment = new Payment
+        {
+            BookingId = booking.Id,
+            Amount = amount,
+            Method = PaymentMethod.Wallet,
+            Status = PaymentStatus.Completed,
+            PaymentDate = DateTime.UtcNow
+        };
+        db.Payments.Add(walletPayment);
+        booking.Payments.Add(walletPayment);
+
+        db.WalletTransactions.Add(new WalletTransaction
+        {
+            UserId = booking.UserId,
+            Amount = -amount,
+            Type = WalletType.BookingPayment,
+            BookingId = booking.Id,
+            Note = "Pago de reserva con saldo",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        if (amount >= pending)
+            booking.Status = BookingStatus.Confirmed;
+
+        db.Notifications.Add(new UserNotification
+        {
+            UserId = booking.UserId,
+            Message = $"Pago de {amount:C} con saldo recibido. Saldo pendiente: {Math.Max(0m, pending - amount):C}.",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(booking);
+    }
+    finally
     {
-        UserId = booking.UserId,
-        Amount = -amount,
-        Type = WalletType.BookingPayment,
-        BookingId = booking.Id,
-        Note = "Pago de reserva con saldo",
-        CreatedAt = DateTime.UtcNow
-    });
-
-    if (amount >= pending)
-        booking.Status = BookingStatus.Confirmed;
-
-    db.Notifications.Add(new UserNotification
-    {
-        UserId = booking.UserId,
-        Message = $"Pago de {amount:C} con saldo recibido. Saldo pendiente: {Math.Max(0m, pending - amount):C}.",
-        CreatedAt = DateTime.UtcNow
-    });
-
-    await db.SaveChangesAsync();
-
-    return Results.Ok(booking);
+        gate.Release();
+    }
 }).RequireAuthorization();
 
 app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusRequest request, AppDbContext db, ClaimsPrincipal principal) =>
@@ -2494,6 +2554,9 @@ static async Task<(decimal Balance, decimal Held)> WalletTotalsAsync(AppDbContex
 
     return (balance, held);
 }
+
+SemaphoreSlim WalletLockFor(int userId) =>
+    walletLocks.GetOrAdd(userId, _ => new SemaphoreSlim(1, 1));
 
 static async Task SendToStaffAsync(AppDbContext db, string message)
 {
