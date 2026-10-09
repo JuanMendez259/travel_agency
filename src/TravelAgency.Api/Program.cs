@@ -1499,27 +1499,33 @@ app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusReques
 
 app.MapPost("/api/bookings/{id}/cancel", async (int id, CancelBookingRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
-    var booking = await db.Bookings
-        .Include(b => b.Trip)
-        .Include(b => b.User)
-        .Include(b => b.Payments)
-        .FirstOrDefaultAsync(b => b.Id == id);
-    if (booking is null) return Results.NotFound("Reserva no encontrada.");
+    var ownerId = await db.Bookings
+        .Where(b => b.Id == id)
+        .Select(b => (int?)b.UserId)
+        .FirstOrDefaultAsync();
+    if (ownerId is null) return Results.NotFound("Reserva no encontrada.");
 
     var userId = GetUserId(principal);
-    if (userId == 0 || booking.UserId != userId) return Results.Forbid();
+    if (userId == 0 || ownerId.Value != userId) return Results.Forbid();
 
-    if (string.IsNullOrWhiteSpace(request.Reason))
-        return Results.BadRequest("Indica el motivo de la cancelacion.");
-
-    // Lock in-process por usuario dueno del wallet: cubre la validacion de
-    // estado/politica, la creacion del BookingRefund y del WalletTransaction
-    // (acreditacion) y el recompute de disponibilidad, para no acreditar dos
-    // veces la misma cancelacion.
-    var gate = WalletLockFor(booking.UserId);
+    // Lock in-process por usuario dueno del wallet: cubre la carga fresca de la
+    // reserva, la validacion de estado/politica, la creacion del BookingRefund y
+    // del WalletTransaction (acreditacion) y el recompute de disponibilidad, para
+    // no acreditar dos veces la misma cancelacion.
+    var gate = WalletLockFor(ownerId.Value);
     await gate.WaitAsync();
     try
     {
+        var booking = await db.Bookings
+            .Include(b => b.Trip)
+            .Include(b => b.User)
+            .Include(b => b.Payments)
+            .FirstOrDefaultAsync(b => b.Id == id);
+        if (booking is null) return Results.NotFound("Reserva no encontrada.");
+
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            return Results.BadRequest("Indica el motivo de la cancelacion.");
+
         if (booking.Status == BookingStatus.Cancelled)
             return Results.BadRequest("La reserva ya está cancelada.");
 
@@ -1607,26 +1613,33 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, CancelBookingRequest req
 // a la wallet del cliente. El total, el descuento y los asientos se prorratean por boleto.
 app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
-    var booking = await db.Bookings
-        .Include(b => b.Trip)
-        .Include(b => b.User)
-        .Include(b => b.Payments)
-        .Include(b => b.Passengers)
-        .Include(b => b.Items)
-        .FirstOrDefaultAsync(b => b.Id == id);
-    if (booking is null) return Results.NotFound("Reserva no encontrada.");
+    var ownerId = await db.Bookings
+        .Where(b => b.Id == id)
+        .Select(b => (int?)b.UserId)
+        .FirstOrDefaultAsync();
+    if (ownerId is null) return Results.NotFound("Reserva no encontrada.");
 
     var userId = GetUserId(principal);
     if (userId == 0) return Results.Forbid();
-    if (booking.UserId != userId && !principal.IsInRole("Admin")) return Results.Forbid();
+    if (ownerId.Value != userId && !principal.IsInRole("Admin")) return Results.Forbid();
 
-    // Lock in-process por usuario dueno del wallet: cubre la validacion de
-    // estado/politica, la baja del boleto, la acreditacion y el recompute de
-    // disponibilidad, para no acreditar dos veces el mismo boleto.
-    var gate = WalletLockFor(booking.UserId);
+    // Lock in-process por usuario dueno del wallet: cubre la carga fresca de la
+    // reserva, la validacion de estado/politica, la baja del boleto, la
+    // acreditacion y el recompute de disponibilidad, para no acreditar dos veces
+    // el mismo boleto.
+    var gate = WalletLockFor(ownerId.Value);
     await gate.WaitAsync();
     try
     {
+        var booking = await db.Bookings
+            .Include(b => b.Trip)
+            .Include(b => b.User)
+            .Include(b => b.Payments)
+            .Include(b => b.Passengers)
+            .Include(b => b.Items)
+            .FirstOrDefaultAsync(b => b.Id == id);
+        if (booking is null) return Results.NotFound("Reserva no encontrada.");
+
         if (booking.Status == BookingStatus.Cancelled)
             return Results.BadRequest("La reserva ya esta cancelada.");
 
