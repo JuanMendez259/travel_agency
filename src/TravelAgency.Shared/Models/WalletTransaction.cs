@@ -21,3 +21,7 @@ public enum WalletType
     PayoutRequest = 2,
     Adjustment = 3
 }
+
+/// Saldo y movimientos del wallet del usuario. Lo deserializa el cliente,
+/// por eso vive en Shared junto a WalletTransaction.
+public record WalletSummary(decimal Balance, List<WalletTransaction> Transactions);

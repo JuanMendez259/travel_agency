@@ -626,6 +626,23 @@ app.MapGet("/api/users/me/stats", async (ClaimsPrincipal principal, AppDbContext
     return Results.Ok(new ProfileStats { Trips = trips, Reviews = reviews });
 }).RequireAuthorization();
 
+app.MapGet("/api/users/me/wallet", async (ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var userId = GetUserId(principal);
+    if (userId == 0) return Results.Forbid();
+
+    var balance = await db.WalletTransactions
+        .Where(t => t.UserId == userId)
+        .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+
+    var transactions = await db.WalletTransactions
+        .Where(t => t.UserId == userId)
+        .OrderByDescending(t => t.CreatedAt)
+        .ToListAsync();
+
+    return Results.Ok(new WalletSummary(balance, transactions));
+}).RequireAuthorization();
+
 app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
     var user = await db.Users.FindAsync(id);
@@ -1193,7 +1210,7 @@ app.MapPut("/api/bookings/{id}/status", async (int id, UpdateBookingStatusReques
     return Results.Ok(booking);
 }).RequireAuthorization("AdminOnly");
 
-app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
+app.MapPost("/api/bookings/{id}/cancel", async (int id, CancelBookingRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
     var booking = await db.Bookings
         .Include(b => b.Trip)
@@ -1204,6 +1221,9 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsP
 
     var userId = GetUserId(principal);
     if (userId == 0 || booking.UserId != userId) return Results.Forbid();
+
+    if (string.IsNullOrWhiteSpace(request.Reason))
+        return Results.BadRequest("Indica el motivo de la cancelacion.");
 
     if (booking.Status == BookingStatus.Cancelled)
         return Results.BadRequest("La reserva ya está cancelada.");
@@ -1234,26 +1254,39 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsP
     var refund = BookingRefundPolicy.RefundFrom(paid, withinPolicy);
     var penalty = BookingRefundPolicy.PenaltyFrom(paid, withinPolicy);
 
-    // El reembolso se reparte entre los pagos en proporcion a su monto. El ultimo
-    // absorbe el redondeo para que la suma coincida exactamente con el total.
-    var pending = refund;
-    for (var i = 0; i < completedPayments.Count; i++)
+    // El reembolso se acredita a la wallet del cliente; los pagos quedan como
+    // Completed. Se registra un BookingRefund y su WalletTransaction asociada.
+    var refundEntity = new BookingRefund
     {
-        var payment = completedPayments[i];
-        var share = i == completedPayments.Count - 1
-            ? pending
-            : Math.Min(payment.Amount, Math.Round(refund * (payment.Amount / paid), 2));
-
-        payment.Status = PaymentStatus.Refunded;
-        payment.RefundedAmount = share;
-        pending -= share;
-    }
+        BookingId = booking.Id,
+        UserId = booking.UserId,
+        Amount = refund,
+        PenaltyAmount = penalty,
+        Reason = request.Reason.Trim(),
+        PassengerName = null,
+        SeatNumber = null,
+        BookingItemId = null,
+        CreatedAt = DateTime.UtcNow
+    };
+    db.BookingRefunds.Add(refundEntity);
 
     booking.Status = BookingStatus.Cancelled;
     booking.CancelledAt = DateTime.UtcNow;
     booking.CancelledByUserId = userId;
 
     await db.SaveChangesAsync();
+
+    db.WalletTransactions.Add(new WalletTransaction
+    {
+        UserId = booking.UserId,
+        Amount = refund,
+        Type = WalletType.CancellationCredit,
+        BookingId = booking.Id,
+        RefundId = refundEntity.Id,
+        Note = "Cancelacion total",
+        CreatedAt = DateTime.UtcNow
+    });
+
     await RecomputeAvailabilityAsync(db, trip);
     await db.SaveChangesAsync();
 
@@ -3426,6 +3459,7 @@ record UpdatePassengerCheckinRequest(bool CheckedIn);
 record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
 record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInput>? Options = null, bool? UseOptions = null, string? DiscountCode = null, string? SpecialNeedsNote = null);
 record CreatePassengersRequest(List<PassengerInput>? Passengers);
+record CancelBookingRequest(string? Reason);
 record CancelTicketRequest(int PassengerId, int? BookingItemId, string? Reason);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);
