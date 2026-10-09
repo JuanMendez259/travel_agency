@@ -164,6 +164,8 @@ public partial class ClientMyBookingDetailPage : ContentPage
         QrImage!.Source = qrImage;
         QrSection!.IsVisible = qrImage is not null && currentBooking.Status != BookingStatus.Cancelled;
 
+        HolderSeatLabel.Text = $"{(currentBooking.User?.Name ?? "Titular")}\nAsiento Reservado: {SeatLabels.Format(trip, currentBooking.SeatNumber)}";
+
         var hasPassengers = passengers.Count > 0;
         PassengersQrButton.IsVisible = hasPassengers && currentBooking.Status != BookingStatus.Cancelled;
         if (hasPassengers)

@@ -67,6 +67,12 @@
                         <Label Text="Mi código QR" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
                     </HorizontalStackLayout>
 
+                    <Label x:Name="HolderSeatLabel"
+                           FontSize="13"
+                           TextColor="#E6FFFFFF"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center" />
+
                     <Border StrokeShape="RoundRectangle 14" BackgroundColor="White" Padding="12" HorizontalOptions="Center">
                         <Image x:Name="QrImage" HeightRequest="220" WidthRequest="220" HorizontalOptions="Center"
                                SemanticProperties.Description="Código QR de tu reserva" />

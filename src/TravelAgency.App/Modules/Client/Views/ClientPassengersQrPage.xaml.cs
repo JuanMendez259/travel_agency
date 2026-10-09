@@ -1,4 +1,5 @@
 using Microsoft.Maui.Controls;
+using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
 
@@ -69,7 +70,7 @@ public partial class ClientPassengersQrPage : ContentPage
             var layout = new VerticalStackLayout { Spacing = 8 };
             layout.Children.Add(new Label
             {
-                Text = passenger.Name + (passenger.IsChild ? " (Niño)" : " (Adulto)"),
+                Text = $"{passenger.Name}{(passenger.IsChild ? " (Niño)" : " (Adulto)")}\nAsiento Reservado: {SeatLabels.Format(booking.Trip, passenger.SeatNumber)}",
                 FontSize = 17,
                 FontAttributes = FontAttributes.Bold,
                 TextColor = isCancelled ? Colors.Gray : null,
