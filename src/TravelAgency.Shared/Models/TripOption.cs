@@ -61,7 +61,6 @@ public class BookingItem
     [JsonIgnore]
     public Booking? Booking { get; set; }
 
-    [JsonIgnore]
     public TripOption? TripOption { get; set; }
 
     public int Seats => Adults + Children;

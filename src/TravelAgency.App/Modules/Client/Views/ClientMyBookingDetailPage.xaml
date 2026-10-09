@@ -250,13 +250,16 @@
             </Border>
 
             <!-- ============ DETALLE POR OPCIONES ============ -->
-            <VerticalStackLayout x:Name="ItemsSection" Spacing="8" IsVisible="False">
-                <HorizontalStackLayout Spacing="6">
-                    <Label Text="🧾" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
-                    <Label Text="Detalle por opciones" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
-                </HorizontalStackLayout>
-                <VerticalStackLayout x:Name="ItemsLayout" Spacing="4" />
-            </VerticalStackLayout>
+            <Border x:Name="ItemsSection" IsVisible="False" StrokeShape="RoundRectangle 16"
+                    Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
+                <VerticalStackLayout Spacing="8">
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="🧾" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Detalle por opciones" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
+                    </HorizontalStackLayout>
+                    <VerticalStackLayout x:Name="ItemsLayout" Spacing="8" />
+                </VerticalStackLayout>
+            </Border>
 
             <!-- ============ MIS PAGOS ============ -->
             <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">

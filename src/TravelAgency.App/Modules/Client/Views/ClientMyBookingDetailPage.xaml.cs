@@ -140,23 +140,56 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         BindableLayout.SetItemsSource(PaymentsLayout, payments);
         NoPaymentsLabel.IsVisible = payments.Count == 0;
-        if (currentBooking.HasOptionItems && currentBooking.Items is not null && currentBooking.Items.Count > 0)
+        // Solo tiene sentido desglosar cuando la reserva abarca mas de una opcion distinta.
+        var distinctOptions = currentBooking.Items?.Select(i => i.TripOptionId).Distinct().Count() ?? 0;
+        if (distinctOptions >= 2)
         {
             ItemsSection.IsVisible = true;
             ItemsLayout.Children.Clear();
-            foreach (var it in currentBooking.Items)
+            var optionTextColor = Token("OnSurface", "#131B2E");
+            var benefitTextColor = Token("OnSurfaceVariant", "#404941");
+            var subCardBg = Token("SurfaceContainerLow", "#F2F3FF");
+            var subCardStroke = Token("SurfaceContainerHigh", "#E2E7FF");
+            var secondaryColor = Token("Secondary", "#006C49");
+
+            foreach (var it in currentBooking.Items!)
             {
-                var optName = it.TripOption?.Name ?? $"Opción #{it.TripOptionId}";
-                var row = new Grid
+                var optName = it.OptionName ?? it.TripOption?.Name ?? $"Opción #{it.TripOptionId}";
+                var sub = new VerticalStackLayout { Spacing = 4 };
+
+                var header = new Grid
                 {
                     ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
-                    Padding = new Thickness(0, 4, 0, 4)
+                    ColumnSpacing = 8
                 };
-                var optionTextColor = Token("OnSurface", "#131B2E");
-                row.Add(new Label { Text = $"{optName} · {it.Adults}A/{it.Children}N", FontSize = 12, TextColor = optionTextColor }, 0, 0);
-                row.Add(new Label { Text = it.LineTotal.ToString("C"), FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = optionTextColor, HorizontalOptions = LayoutOptions.End }, 1, 0);
-                ItemsLayout.Children.Add(row);
+                header.Add(new Label { Text = optName, FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = optionTextColor }, 0, 0);
+                header.Add(new Label { Text = it.LineTotal.ToString("C"), FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = optionTextColor, HorizontalOptions = LayoutOptions.End }, 1, 0);
+                sub.Add(header);
+
+                sub.Add(new Label { Text = $"{it.Adults}A / {it.Children}N", FontSize = 12, TextColor = benefitTextColor });
+
+                var benefits = it.TripOption?.BenefitLines ?? new List<string>();
+                if (benefits.Count > 0)
+                {
+                    sub.Add(new Label { Text = "Incluye:", FontSize = 12, FontAttributes = FontAttributes.Bold, TextColor = secondaryColor, Margin = new Thickness(0, 2, 0, 0) });
+                    foreach (var benefit in benefits)
+                        sub.Add(new Label { Text = $"• {benefit}", FontSize = 12, TextColor = benefitTextColor });
+                }
+
+                ItemsLayout.Children.Add(new Border
+                {
+                    StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+                    Stroke = subCardStroke,
+                    StrokeThickness = 1,
+                    BackgroundColor = subCardBg,
+                    Padding = new Thickness(12),
+                    Content = sub
+                });
             }
+        }
+        else
+        {
+            ItemsSection.IsVisible = false;
         }
 
 
