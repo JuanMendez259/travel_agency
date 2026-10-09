@@ -303,6 +303,27 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- ============ ACOMPAÑANTES (cancelar boleto) ============ -->
+            <Border x:Name="PassengersCancelSection"
+                    IsVisible="False"
+                    StrokeShape="RoundRectangle 16"
+                    Stroke="{StaticResource SurfaceContainerHigh}"
+                    BackgroundColor="{StaticResource SurfaceContainerLowest}"
+                    Padding="14">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="8">
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="🧑‍🤝‍🧑" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Acompañantes" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
+                    </HorizontalStackLayout>
+                    <Label Text="Puedes cancelar el boleto de un acompañante por separado. El reembolso se abona a tu saldo a favor."
+                           FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                    <VerticalStackLayout x:Name="PassengersCancelLayout" Spacing="8" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- ============ CANCELACIÓN ============ -->
             <Border x:Name="CancelSection"
                     StrokeShape="RoundRectangle 16"

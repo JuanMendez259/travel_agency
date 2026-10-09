@@ -33,6 +33,17 @@ public partial class ClientProfilePage : ContentPage
         {
             await DisplayAlertAsync("Error", $"No se pudo cargar tu perfil: {ex.Message}", "OK");
         }
+
+        try
+        {
+            var wallet = await _api.GetWalletAsync();
+            SaldoLabel.Text = (wallet?.Balance ?? 0m).ToString("C");
+        }
+        catch
+        {
+            // Si el endpoint de saldo falla se muestra el saldo en cero.
+            SaldoLabel.Text = "$0.00 MXN";
+        }
     }
 
     private async Task LoadProfileAsync()

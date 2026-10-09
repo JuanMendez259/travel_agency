@@ -122,6 +122,38 @@
                 </Border>
             </Grid>
 
+            <!-- ============ MI SALDO ============ -->
+            <Border StrokeShape="RoundRectangle 16"
+                    Stroke="Transparent"
+                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                    Padding="16">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.06" Radius="12" Offset="0,3" />
+                </Border.Shadow>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border WidthRequest="44" HeightRequest="44"
+                            StrokeThickness="0"
+                            BackgroundColor="{StaticResource ColorSecondaryContainer}"
+                            StrokeShape="RoundRectangle 14">
+                        <Label Text="💰" FontSize="20"
+                               HorizontalOptions="Center" VerticalOptions="Center" />
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                        <Label Text="Mi saldo" FontSize="16" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOnSurface}" />
+                        <Label Text="Saldo a favor por cancelaciones"
+                               FontSize="11"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                    </VerticalStackLayout>
+                    <Label x:Name="SaldoLabel"
+                           Grid.Column="2"
+                           Text="$0.00 MXN"
+                           FontSize="18" FontAttributes="Bold"
+                           TextColor="{StaticResource ColorSecondary}"
+                           VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
             <!-- ============ PASE / QR ============ -->
             <Border StrokeShape="RoundRectangle 18" Padding="16">
                 <Border.Background>

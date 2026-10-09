@@ -333,7 +333,7 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
 
-    public async Task<CancelBookingResult?> CancelBookingAsync(int bookingId, string? reason = null)
+    public async Task<CancelBookingResult?> CancelBookingAsync(int bookingId, string reason)
     {
         var response = await _http.PostAsJsonAsync($"/api/bookings/{bookingId}/cancel",
             new CancelBookingRequest(reason), JsonOptions);

@@ -11,12 +11,15 @@ namespace TravelAgency.App.Modules.Client.Views;
 public partial class ClientMyBookingDetailPage : ContentPage
 {
     private readonly ApiService _api;
+    private readonly List<BookingItem> _bookingItems = new();
     private int? _tripId;
     private int _remainingSlots;
     private decimal _cancelRefund;
     private decimal _cancelPenalty;
     private decimal _paidTotal;
     private bool _withinPolicy = true;
+    private bool _tripHasOptions;
+    private bool _canCancel;
 
     public string BookingId { get; set; } = string.Empty;
 
@@ -59,6 +62,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         var currentBooking = booking ?? throw new InvalidOperationException("No se encontró la reserva.");
         var trip = currentBooking.Trip;
+
+        _tripHasOptions = trip?.HasOptions ?? false;
+        _bookingItems.Clear();
+        if (currentBooking.Items is not null)
+            _bookingItems.AddRange(currentBooking.Items);
 
         // Id del viaje para el boton de mapa (siempre disponible, aunque la reserva no este finalizada).
         _tripId = trip?.Id;
@@ -124,15 +132,29 @@ public partial class ClientMyBookingDetailPage : ContentPage
         var specialNeeds = currentBooking.SpecialNeedsNote?.Trim();
         SpecialNeedsSection.IsVisible = !string.IsNullOrEmpty(specialNeeds);
         SpecialNeedsLabel.Text = specialNeeds ?? string.Empty;
-        BalanceLabel!.Text = currentBooking.Status == BookingStatus.Cancelled
-            ? refunded > 0
-                ? $"Reserva cancelada · Reembolsado {refunded:C}"
-                : "Reserva cancelada"
-            : paid >= total
+        if (currentBooking.Status == BookingStatus.Cancelled)
+        {
+            var saldoFavor = refunded;
+            try
+            {
+                var wallet = await _api.GetWalletAsync();
+                if (wallet is not null) saldoFavor = wallet.Balance;
+            }
+            catch
+            {
+                // Si el wallet falla se usa lo reembolsado por pagos.
+            }
+            BalanceLabel!.Text = $"Saldo a favor: {saldoFavor:C}";
+        }
+        else
+        {
+            BalanceLabel!.Text = paid >= total
                 ? "Liquidado · ¡Reserva confirmada!"
                 : $"Pagado {paid:C} de {total:C} · Saldo pendiente {remaining:C}";
+        }
 
         RenderCancellationSection(currentBooking, trip, paid);
+        RenderPassengersCancelSection(passengers);
 
         var saldoPendiente = currentBooking.TotalAmount - paid;
         if (PagoSaldoLabel is not null)
@@ -243,6 +265,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
             && !trip.Finalized
             && trip.StartDate.Date > DateTime.Today;
 
+        _canCancel = canCancel;
         CancelSection.IsVisible = canCancel;
         if (!canCancel) return;
 
@@ -268,9 +291,163 @@ public partial class ClientMyBookingDetailPage : ContentPage
         CancelButton.IsVisible = true;
     }
 
+    // Muestra, cuando la reserva aun se puede cancelar, una fila por acompanante
+    // con la accion de cancelar su boleto individual.
+    private void RenderPassengersCancelSection(List<TripPassenger> passengers)
+    {
+        PassengersCancelLayout.Children.Clear();
+
+        var visible = _canCancel && passengers.Count > 0;
+        PassengersCancelSection.IsVisible = visible;
+        if (!visible) return;
+
+        var nameColor = Token("OnSurface", "#131B2E");
+        var metaColor = Token("OnSurfaceVariant", "#404941");
+        var rowBg = Token("SurfaceContainerLow", "#F2F3FF");
+        var strokeColor = Token("SurfaceContainerHigh", "#E2E7FF");
+        var errorColor = Token("Error", "#BA1A1A");
+
+        foreach (var passenger in passengers)
+        {
+            var row = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Auto),
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Auto)
+                },
+                ColumnSpacing = 10
+            };
+
+            var avatar = new Border
+            {
+                WidthRequest = 38,
+                HeightRequest = 38,
+                StrokeThickness = 0,
+                BackgroundColor = rowBg,
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+                VerticalOptions = LayoutOptions.Center
+            };
+            avatar.Content = new Label
+            {
+                Text = passenger.IsChild ? "🧒" : "🧑",
+                FontSize = 18,
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            };
+            row.Add(avatar, 0, 0);
+
+            var info = new VerticalStackLayout { Spacing = 1, VerticalOptions = LayoutOptions.Center };
+            info.Add(new Label
+            {
+                Text = string.IsNullOrWhiteSpace(passenger.Name) ? "Acompañante" : passenger.Name,
+                FontSize = 14,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = nameColor
+            });
+            info.Add(new Label
+            {
+                Text = passenger.SeatNumber is int seat
+                    ? $"Asiento {seat} · {(passenger.IsChild ? "Niño" : "Adulto")}"
+                    : (passenger.IsChild ? "Niño" : "Adulto"),
+                FontSize = 11,
+                TextColor = metaColor
+            });
+            row.Add(info, 1, 0);
+
+            var cancelButton = new Button
+            {
+                Text = "Cancelar boleto",
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                BackgroundColor = Colors.Transparent,
+                TextColor = errorColor,
+                BorderColor = errorColor,
+                BorderWidth = 1,
+                CornerRadius = 10,
+                HeightRequest = 38,
+                Padding = new Thickness(12, 0),
+                CommandParameter = passenger,
+                VerticalOptions = LayoutOptions.Center
+            };
+            cancelButton.Clicked += OnCancelTicketClicked;
+            row.Add(cancelButton, 2, 0);
+
+            PassengersCancelLayout.Children.Add(new Border
+            {
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+                Stroke = strokeColor,
+                StrokeThickness = 1,
+                BackgroundColor = rowBg,
+                Padding = new Thickness(10),
+                Content = row
+            });
+        }
+    }
+
+    private static string BookingItemChoiceLabel(BookingItem item)
+    {
+        var name = item.OptionName ?? item.TripOption?.Name ?? $"Opción #{item.TripOptionId}";
+        return $"{name} · {item.Adults}A/{item.Children}N · {item.LineTotal:C}";
+    }
+
+    private async void OnCancelTicketClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button button || button.CommandParameter is not TripPassenger passenger) return;
+        if (!int.TryParse(BookingId, out var id) || id <= 0) return;
+
+        var reason = await DisplayPromptAsync(
+            "Cancelar boleto",
+            $"Indica el motivo para cancelar el boleto de {passenger.Name ?? "este acompañante"}:",
+            accept: "Continuar",
+            cancel: "Cancelar",
+            placeholder: "Describe el motivo");
+        if (string.IsNullOrWhiteSpace(reason)) return;
+
+        // Con varias lineas de opciones hay que elegir la entrada del boleto.
+        int? bookingItemId = null;
+        if (_tripHasOptions && _bookingItems.Count > 1)
+        {
+            var labels = _bookingItems.Select(BookingItemChoiceLabel).ToArray();
+            var selected = await DisplayActionSheetAsync("Selecciona la entrada", "Cancelar", null, labels);
+            if (string.IsNullOrEmpty(selected) || selected == "Cancelar") return;
+
+            var item = _bookingItems.FirstOrDefault(i => BookingItemChoiceLabel(i) == selected);
+            if (item is null) return;
+            bookingItemId = item.Id;
+        }
+
+        button.IsEnabled = false;
+        try
+        {
+            var result = await _api.CancelTicketAsync(id, passenger.Id, bookingItemId, reason!);
+            var refund = result?.RefundAmount ?? 0m;
+            var balance = result?.WalletBalance ?? 0m;
+            await DisplayAlertAsync(
+                "Boleto cancelado",
+                $"Se canceló el boleto de {passenger.Name ?? "el acompañante"}. Reembolso a tu saldo: {refund:C}. Saldo a favor actual: {balance:C}.",
+                "OK");
+            await LoadBookingAsync(id);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No fue posible cancelar", ex.Message, "OK");
+            button.IsEnabled = true;
+        }
+    }
+
     private async void OnCancelClicked(object? sender, EventArgs e)
     {
         if (!int.TryParse(BookingId, out var id) || id <= 0) return;
+
+        var reason = await DisplayPromptAsync(
+            "Cancelar reserva",
+            "Indica el motivo de la cancelación de la reserva:",
+            accept: "Continuar",
+            cancel: "Cancelar",
+            placeholder: "Describe el motivo");
+        if (string.IsNullOrWhiteSpace(reason)) return;
 
         string message;
         if (_paidTotal <= 0)
@@ -279,11 +456,11 @@ public partial class ClientMyBookingDetailPage : ContentPage
         }
         else if (_withinPolicy)
         {
-            message = $"Cancelas dentro del límite de días del viaje, así que no hay multa: se reembolsa el 100% de {_paidTotal:C} por tu forma de pago original. Esta acción no puede deshacerse.";
+            message = $"Cancelas dentro del límite de días del viaje, así que no hay multa: se reembolsa el 100% de {_paidTotal:C} a tu saldo a favor. Esta acción no puede deshacerse.";
         }
         else
         {
-            message = $"Cancelas fuera del límite de días del viaje, así que se aplica una multa del 30%: se retienen {_cancelPenalty:C} de {_paidTotal:C} abonados y se reembolsan {_cancelRefund:C} por tu forma de pago original. Esta acción no puede deshacerse.";
+            message = $"Cancelas fuera del límite de días del viaje, así que se aplica una multa del 30%: se retienen {_cancelPenalty:C} de {_paidTotal:C} abonados y se reembolsan {_cancelRefund:C} a tu saldo a favor. Esta acción no puede deshacerse.";
         }
 
         var confirmed = await DisplayAlertAsync("Cancelar reserva", message, "Cancelar reserva", "Seguir en la reserva");
@@ -292,10 +469,10 @@ public partial class ClientMyBookingDetailPage : ContentPage
         CancelButton.IsEnabled = false;
         try
         {
-            var result = await _api.CancelBookingAsync(id);
+            var result = await _api.CancelBookingAsync(id, reason!);
             var refund = result?.RefundAmount ?? 0;
             var success = refund > 0
-                ? $"Reserva cancelada. {(result?.WithinPolicy == true ? "Sin multa." : "Multa 30% aplicada.")} Se reembolsarán {refund:C} por tu forma de pago original."
+                ? $"Reserva cancelada. {(result?.WithinPolicy == true ? "Sin multa." : "Multa 30% aplicada.")} Se abonarán {refund:C} a tu saldo a favor."
                 : "Reserva cancelada. No había pagos que reembolsar.";
             await DisplayAlertAsync("Reserva cancelada", success, "OK");
             await LoadBookingAsync(id);
