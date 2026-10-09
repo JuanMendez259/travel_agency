@@ -633,17 +633,119 @@ app.MapGet("/api/users/me/wallet", async (ClaimsPrincipal principal, AppDbContex
     var userId = GetUserId(principal);
     if (userId == 0) return Results.Forbid();
 
-    var balance = await db.WalletTransactions
-        .Where(t => t.UserId == userId)
-        .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+    var (balance, held) = await WalletTotalsAsync(db, userId);
 
     var transactions = await db.WalletTransactions
         .Where(t => t.UserId == userId)
         .OrderByDescending(t => t.CreatedAt)
         .ToListAsync();
 
-    return Results.Ok(new WalletSummary(balance, 0m, balance, transactions));
+    return Results.Ok(new WalletSummary(balance, held, balance - held, transactions));
 }).RequireAuthorization();
+
+app.MapPost("/api/users/me/payout-requests", async (CreatePayoutRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var userId = GetUserId(principal);
+    if (userId == 0) return Results.Forbid();
+
+    if (request.Amount <= 0)
+        return Results.BadRequest("El monto debe ser mayor a cero.");
+
+    var (balance, held) = await WalletTotalsAsync(db, userId);
+    var available = balance - held;
+
+    if (request.Amount > available)
+        return Results.BadRequest("El monto supera tu saldo disponible.");
+
+    var user = await db.Users.FindAsync(userId);
+
+    var payout = new PayoutRequest
+    {
+        UserId = userId,
+        Amount = request.Amount,
+        Status = PayoutStatus.Pending,
+        Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
+        CreatedAt = DateTime.UtcNow
+    };
+    db.PayoutRequests.Add(payout);
+    await db.SaveChangesAsync();
+
+    await SendToStaffAsync(db, $"{user?.Name ?? "Un cliente"} solicito un reembolso de {request.Amount:C} de su saldo.");
+
+    var (newBalance, newHeld) = await WalletTotalsAsync(db, userId);
+    return Results.Ok(new { PayoutRequest = payout, Balance = newBalance, Held = newHeld, Available = newBalance - newHeld });
+}).RequireAuthorization();
+
+app.MapGet("/api/users/me/payout-requests", async (ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var userId = GetUserId(principal);
+    if (userId == 0) return Results.Forbid();
+
+    var payouts = await db.PayoutRequests
+        .Where(p => p.UserId == userId)
+        .OrderByDescending(p => p.CreatedAt)
+        .ToListAsync();
+
+    return Results.Ok(payouts);
+}).RequireAuthorization();
+
+app.MapGet("/api/payout-requests", async (PayoutStatus? status, AppDbContext db) =>
+{
+    var query = db.PayoutRequests.AsQueryable();
+    if (status.HasValue)
+        query = query.Where(p => p.Status == status.Value);
+
+    var payouts = await query
+        .OrderByDescending(p => p.CreatedAt)
+        .ToListAsync();
+
+    return Results.Ok(payouts);
+}).RequireAuthorization("StaffOnly");
+
+app.MapPost("/api/payout-requests/{id}/resolve", async (int id, ResolvePayoutRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var payout = await db.PayoutRequests.FindAsync(id);
+    if (payout is null) return Results.NotFound("Solicitud no encontrada.");
+
+    if (payout.Status != PayoutStatus.Pending)
+        return Results.BadRequest("La solicitud ya fue resuelta.");
+
+    payout.ResolvedAt = DateTime.UtcNow;
+    payout.ResolvedByUserId = GetUserId(principal);
+
+    if (request.Approve)
+    {
+        payout.Status = PayoutStatus.Paid;
+        db.WalletTransactions.Add(new WalletTransaction
+        {
+            UserId = payout.UserId,
+            Amount = -payout.Amount,
+            Type = WalletType.PayoutRequest,
+            PayoutRequestId = payout.Id,
+            Note = "Payout",
+            CreatedAt = DateTime.UtcNow
+        });
+        db.Notifications.Add(new UserNotification
+        {
+            UserId = payout.UserId,
+            Message = $"Tu reembolso de {payout.Amount:C} fue pagado.",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+    else
+    {
+        payout.Status = PayoutStatus.Rejected;
+        db.Notifications.Add(new UserNotification
+        {
+            UserId = payout.UserId,
+            Message = "Tu solicitud de reembolso fue rechazada; el saldo sigue disponible.",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(payout);
+}).RequireAuthorization("AdminOnly");
 
 app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request, AppDbContext db, ClaimsPrincipal principal) =>
 {
@@ -2275,6 +2377,19 @@ static string PaymentMethodName(PaymentMethod method) => method switch
     _ => "otro medio"
 };
 
+static async Task<(decimal Balance, decimal Held)> WalletTotalsAsync(AppDbContext db, int userId)
+{
+    var balance = await db.WalletTransactions
+        .Where(t => t.UserId == userId)
+        .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+
+    var held = await db.PayoutRequests
+        .Where(p => p.UserId == userId && p.Status == PayoutStatus.Pending)
+        .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+    return (balance, held);
+}
+
 static async Task SendToStaffAsync(AppDbContext db, string message)
 {
     var adminIds = await db.Users
@@ -3545,3 +3660,5 @@ record DiscountDto(string Code, DiscountType Type, decimal Value, DateTime? Star
 record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
 record DiscountValidationResult(bool Valid, string Message, decimal DiscountAmount, decimal FinalAmount, string? Code, DiscountType? Type = null, decimal? Value = null);
 record UpsertPoiRequest(string? Name, string? Description, double Latitude, double Longitude);
+record CreatePayoutRequest(decimal Amount, string? Note);
+record ResolvePayoutRequest(bool Approve);
