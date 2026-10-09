@@ -311,6 +311,47 @@
                 <Label x:Name="DiscountStatusLabel" FontSize="12"
                        TextColor="{StaticResource ColorSecondary}" IsVisible="False" />
 
+                <Border StrokeThickness="0"
+                        StrokeShape="RoundRectangle 12"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                        Padding="12,10">
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+                                <Label Text="💰" FontSize="16" VerticalOptions="Center" />
+                                <VerticalStackLayout Spacing="0">
+                                    <Label Text="Usar mi saldo" FontSize="14" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorOnSurface}" />
+                                    <Label x:Name="WalletAvailableLabel"
+                                           Text="Saldo disponible: —"
+                                           FontSize="11"
+                                           TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                                </VerticalStackLayout>
+                            </HorizontalStackLayout>
+                            <Switch x:Name="UseWalletSwitch"
+                                    Grid.Column="1"
+                                    Toggled="OnUseWalletToggled"
+                                    OnColor="{StaticResource ColorSecondary}"
+                                    VerticalOptions="Center" />
+                        </Grid>
+                        <VerticalStackLayout x:Name="WalletAmountRow" Spacing="4" IsVisible="False">
+                            <Border StrokeShape="RoundRectangle 10" Stroke="Transparent"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}" Padding="10,0">
+                                <Entry x:Name="WalletAmountEntry"
+                                       Placeholder="Monto a usar"
+                                       Keyboard="Numeric"
+                                       BackgroundColor="Transparent"
+                                       TextColor="{StaticResource ColorOnSurface}"
+                                       PlaceholderColor="{StaticResource ColorOnSurfaceVariant}"
+                                       TextChanged="OnWalletAmountChanged"
+                                       HeightRequest="42" />
+                            </Border>
+                            <Label x:Name="WalletAppliedLabel" FontSize="12" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}" IsVisible="False" />
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
                 <Button x:Name="ConfirmButton"
                         Text="Elige los asientos"
                         Clicked="OnConfirmClicked"

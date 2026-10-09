@@ -36,6 +36,9 @@ public partial class ClientBookingSeatsPage : ContentPage
     private decimal? _childPrice;
     private decimal _baseTotal;
     private decimal _discountAmount;
+    private decimal _totalPayable;
+    private decimal _walletAvailable;
+    private decimal _walletApplied;
     private string? _discountCode;
     private DiscountType? _discountType;
     private decimal? _discountValue;
@@ -120,6 +123,7 @@ public partial class ClientBookingSeatsPage : ContentPage
             BuildSlots(seats);
             RenderMap(_rows);
             await LoadFaresAsync(tripId);
+            await LoadWalletAsync();
             RefreshPassengerGate();
         }
         catch (Exception ex)
@@ -144,6 +148,32 @@ public partial class ClientBookingSeatsPage : ContentPage
         {
             // sin precios, el total se muestra como no disponible
         }
+    }
+
+    private async Task LoadWalletAsync()
+    {
+        try
+        {
+            var wallet = await _api.GetWalletAsync();
+            _walletAvailable = wallet?.Available ?? 0m;
+        }
+        catch
+        {
+            _walletAvailable = 0m;
+        }
+
+        if (_walletAvailable <= 0)
+        {
+            UseWalletSwitch.IsEnabled = false;
+            UseWalletSwitch.IsToggled = false;
+            WalletAvailableLabel.Text = "Sin saldo disponible";
+        }
+        else
+        {
+            WalletAvailableLabel.Text = $"Saldo disponible: {_walletAvailable:C}";
+        }
+
+        UpdateTotal();
     }
 
     private void UpdateSummary()
@@ -237,6 +267,55 @@ public partial class ClientBookingSeatsPage : ContentPage
 
         TotalLabel.Text = total.ToString("C");
         FareBreakdownLabel.Text = string.Join("  ·  ", parts);
+        _totalPayable = total;
+        ApplyWalletToTotal();
+    }
+
+    private void ApplyWalletToTotal()
+    {
+        if (_adultPrice <= 0) return;
+
+        if (!UseWalletSwitch.IsToggled || _walletAvailable <= 0 || _totalPayable <= 0)
+        {
+            _walletApplied = 0;
+            WalletAmountRow.IsVisible = false;
+            WalletAppliedLabel.IsVisible = false;
+            TotalLabel.Text = _totalPayable.ToString("C");
+            return;
+        }
+
+        var cap = Math.Min(_walletAvailable, _totalPayable);
+        var amount = cap;
+        if (WalletAmountEntry.Text is { Length: > 0 } text && decimal.TryParse(text, out var parsed))
+            amount = Math.Clamp(parsed, 0m, cap);
+
+        _walletApplied = amount;
+        WalletAmountRow.IsVisible = true;
+        WalletAppliedLabel.IsVisible = amount > 0;
+        WalletAppliedLabel.Text = amount > 0
+            ? $"Saldo aplicado: −{amount:C}"
+            : "Escribe cuanto saldo quieres usar.";
+        TotalLabel.Text = (_totalPayable - amount).ToString("C");
+    }
+
+    private void OnUseWalletToggled(object? sender, ToggledEventArgs e)
+    {
+        if (e.Value && _walletAvailable > 0)
+        {
+            var cap = Math.Min(_walletAvailable, _totalPayable);
+            WalletAmountEntry.Text = cap > 0 ? cap.ToString("0.##") : string.Empty;
+        }
+        else if (!e.Value)
+        {
+            WalletAmountEntry.Text = string.Empty;
+        }
+
+        ApplyWalletToTotal();
+    }
+
+    private void OnWalletAmountChanged(object? sender, TextChangedEventArgs e)
+    {
+        ApplyWalletToTotal();
     }
 
     private static int ReadAge(SeatSlot slot)
@@ -836,7 +915,8 @@ public partial class ClientBookingSeatsPage : ContentPage
             }
             var created = await _api.CreateBookingWithSeatsAsync(
                 int.Parse(TripId), _slots.Count, holderSeat, passengers, optList, _discountCode,
-                sameTrip ? storeSel.SpecialNeedsNote : null);
+                sameTrip ? storeSel.SpecialNeedsNote : null,
+                _walletApplied > 0 ? _walletApplied : null);
 
             if (created is not null && created.Id > 0)
             {

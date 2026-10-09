@@ -17,6 +17,9 @@ public partial class ClientMyBookingDetailPage : ContentPage
     private decimal _cancelRefund;
     private decimal _cancelPenalty;
     private decimal _paidTotal;
+    private decimal _pendingAmount;
+    private decimal _walletAvailable;
+    private bool _isCancelled;
     private bool _withinPolicy = true;
     private bool _tripHasOptions;
     private bool _canCancel;
@@ -153,6 +156,10 @@ public partial class ClientMyBookingDetailPage : ContentPage
         var saldoPendiente = currentBooking.TotalAmount - paid;
         if (PagoSaldoLabel is not null)
             PagoSaldoLabel.Text = saldoPendiente > 0 ? $"Saldo Pendiente: {saldoPendiente:C}" : "Saldo Pendiente: $0.00 MXN";
+
+        _pendingAmount = saldoPendiente;
+        _isCancelled = currentBooking.Status == BookingStatus.Cancelled;
+        await RefreshPaySectionAsync();
 
         BindableLayout.SetItemsSource(PaymentsLayout, payments);
         NoPaymentsLabel.IsVisible = payments.Count == 0;
@@ -377,6 +384,81 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 Padding = new Thickness(10),
                 Content = row
             });
+        }
+    }
+
+    private async Task RefreshPaySectionAsync()
+    {
+        var show = _pendingAmount > 0 && !_isCancelled;
+        PaySection.IsVisible = show;
+        if (!show) return;
+
+        PayPendingLabel.Text = $"Saldo pendiente: {_pendingAmount:C}";
+
+        try
+        {
+            var wallet = await _api.GetWalletAsync();
+            _walletAvailable = wallet?.Available ?? 0m;
+        }
+        catch
+        {
+            _walletAvailable = 0m;
+        }
+
+        PayAvailableLabel.Text = _walletAvailable > 0
+            ? $"Saldo disponible: {_walletAvailable:C}"
+            : "No tienes saldo disponible para pagar esta reserva.";
+        RealizarPagoButton.IsEnabled = _walletAvailable > 0;
+    }
+
+    private async void OnRealizarPagoClicked(object? sender, EventArgs e)
+    {
+        if (!int.TryParse(BookingId, out var id) || id <= 0) return;
+        if (_pendingAmount <= 0) return;
+
+        if (_walletAvailable <= 0)
+        {
+            await DisplayAlertAsync("Realizar pago",
+                "No tienes saldo disponible para pagar esta reserva.", "OK");
+            return;
+        }
+
+        var cap = Math.Min(_walletAvailable, _pendingAmount);
+        var input = await DisplayPromptAsync(
+            "Realizar pago",
+            $"Saldo disponible: {_walletAvailable:C}\nSaldo pendiente: {_pendingAmount:C}\n¿Cuanto deseas pagar?",
+            accept: "Pagar con saldo",
+            cancel: "Cancelar",
+            placeholder: "Monto en MXN",
+            keyboard: Keyboard.Numeric,
+            initialValue: cap.ToString("0.##"));
+        if (string.IsNullOrWhiteSpace(input)) return;
+
+        if (!decimal.TryParse(input, out var amount) || amount <= 0)
+        {
+            await DisplayAlertAsync("Monto invalido", "Escribe un monto mayor a cero.", "OK");
+            return;
+        }
+
+        if (amount > cap)
+        {
+            await DisplayAlertAsync("Monto invalido",
+                $"El monto supera el maximo permitido de {cap:C}.", "OK");
+            return;
+        }
+
+        RealizarPagoButton.IsEnabled = false;
+        try
+        {
+            await _api.PayWithWalletAsync(id, amount);
+            await DisplayAlertAsync("Pago realizado",
+                $"Aplicamos {amount:C} de tu saldo a favor a esta reserva.", "OK");
+            await LoadBookingAsync(id);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No se pudo pagar", ex.Message, "OK");
+            RealizarPagoButton.IsEnabled = true;
         }
     }
 

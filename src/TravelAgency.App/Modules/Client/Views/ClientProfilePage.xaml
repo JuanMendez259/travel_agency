@@ -130,28 +130,54 @@
                 <Border.Shadow>
                     <Shadow Brush="Black" Opacity="0.06" Radius="12" Offset="0,3" />
                 </Border.Shadow>
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                    <Border WidthRequest="44" HeightRequest="44"
-                            StrokeThickness="0"
-                            BackgroundColor="{StaticResource ColorSecondaryContainer}"
-                            StrokeShape="RoundRectangle 14">
-                        <Label Text="💰" FontSize="20"
-                               HorizontalOptions="Center" VerticalOptions="Center" />
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border WidthRequest="44" HeightRequest="44"
+                                StrokeThickness="0"
+                                BackgroundColor="{StaticResource ColorSecondaryContainer}"
+                                StrokeShape="RoundRectangle 14">
+                            <Label Text="💰" FontSize="20"
+                                   HorizontalOptions="Center" VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label Text="Mi saldo" FontSize="16" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorOnSurface}" />
+                            <Label Text="Saldo a favor por cancelaciones"
+                                   FontSize="11"
+                                   TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                            <Label x:Name="HeldLabel"
+                                   IsVisible="False"
+                                   FontSize="11" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorOutline}" />
+                        </VerticalStackLayout>
+                        <Label x:Name="SaldoLabel"
+                               Grid.Column="2"
+                               Text="$0.00 MXN"
+                               FontSize="18" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorSecondary}"
+                               VerticalOptions="Center" />
+                    </Grid>
+
+                    <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainerHigh}" />
+
+                    <Border StrokeThickness="0"
+                            BackgroundColor="Transparent"
+                            Padding="0,2">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnPayoutRequested" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                            <Label Text="💸" FontSize="16" VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="Pedir Reembolso"
+                                   FontSize="14" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="2" Text="›" FontSize="20"
+                                   TextColor="{StaticResource ColorOutline}"
+                                   VerticalOptions="Center" />
+                        </Grid>
                     </Border>
-                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-                        <Label Text="Mi saldo" FontSize="16" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorOnSurface}" />
-                        <Label Text="Saldo a favor por cancelaciones"
-                               FontSize="11"
-                               TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                    </VerticalStackLayout>
-                    <Label x:Name="SaldoLabel"
-                           Grid.Column="2"
-                           Text="$0.00 MXN"
-                           FontSize="18" FontAttributes="Bold"
-                           TextColor="{StaticResource ColorSecondary}"
-                           VerticalOptions="Center" />
-                </Grid>
+                </VerticalStackLayout>
             </Border>
 
             <!-- ============ PASE / QR ============ -->
