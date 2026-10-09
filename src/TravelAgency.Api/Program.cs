@@ -1268,6 +1268,167 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, AppDbContext db, ClaimsP
     return Results.Ok(new CancelBookingResult(booking, refund, penalty, withinPolicy));
 }).RequireAuthorization();
 
+// Cancelacion parcial: da de baja un boleto (acompanante) y acredita el reembolso
+// a la wallet del cliente. El total, el descuento y los asientos se prorratean por boleto.
+app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketRequest request, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var booking = await db.Bookings
+        .Include(b => b.Trip)
+        .Include(b => b.User)
+        .Include(b => b.Payments)
+        .Include(b => b.Passengers)
+        .Include(b => b.Items)
+        .FirstOrDefaultAsync(b => b.Id == id);
+    if (booking is null) return Results.NotFound("Reserva no encontrada.");
+
+    var userId = GetUserId(principal);
+    if (userId == 0) return Results.Forbid();
+    if (booking.UserId != userId && !principal.IsInRole("Admin")) return Results.Forbid();
+
+    if (booking.Status == BookingStatus.Cancelled)
+        return Results.BadRequest("La reserva ya esta cancelada.");
+
+    var trip = booking.Trip;
+    if (trip is null) return Results.NotFound("El viaje de esta reserva ya no existe.");
+
+    if (trip.DepartureCompleted)
+        return Results.BadRequest("La salida ya se realizo, no es posible cancelar.");
+    if (trip.Finalized)
+        return Results.BadRequest("El viaje ya finalizo, no es posible cancelar.");
+
+    var today = DateTime.UtcNow.Date;
+    if (trip.StartDate.Date <= today)
+        return Results.BadRequest("El viaje ya comenzo, no es posible cancelar.");
+
+    if (string.IsNullOrWhiteSpace(request.Reason))
+        return Results.BadRequest("Indica el motivo de la cancelacion.");
+
+    var passenger = booking.Passengers.FirstOrDefault(p => p.Id == request.PassengerId);
+    if (passenger is null)
+        return Results.BadRequest("El pasajero no pertenece a la reserva.");
+
+    // Con opciones se elige la linea (BookingItem) a cancelar. Si hay mas de una,
+    // BookingItemId es obligatorio; si hay una sola, se usa esa.
+    BookingItem? item = null;
+    if (trip.HasOptions)
+    {
+        if (booking.Items.Count > 1)
+        {
+            if (request.BookingItemId is not int itemId)
+                return Results.BadRequest("Selecciona la entrada del boleto a cancelar.");
+            item = booking.Items.FirstOrDefault(i => i.Id == itemId);
+            if (item is null)
+                return Results.BadRequest("La entrada no pertenece a la reserva.");
+        }
+        else
+        {
+            item = booking.Items.FirstOrDefault();
+            if (request.BookingItemId is int singleId && item is not null && item.Id != singleId)
+                return Results.BadRequest("La entrada no pertenece a la reserva.");
+        }
+    }
+
+    if (item is not null)
+    {
+        if (passenger.IsChild && item.Children <= 0)
+            return Results.BadRequest("La entrada seleccionada no tiene boletos de nino.");
+        if (!passenger.IsChild && item.Adults <= 0)
+            return Results.BadRequest("La entrada seleccionada no tiene boletos de adulto.");
+    }
+
+    var paid = booking.PaidTotal();
+    var grossBefore = booking.TotalAmount + booking.DiscountAmount;
+
+    decimal grossUnitPrice;
+    if (item is not null)
+        grossUnitPrice = passenger.IsChild
+            ? (item.UnitPriceChild ?? item.UnitPriceAdult)
+            : item.UnitPriceAdult;
+    else
+        grossUnitPrice = booking.NumberOfSeats > 0
+            ? booking.TotalAmount / booking.NumberOfSeats
+            : booking.TotalAmount;
+
+    var netUnit = BookingRefundPolicy.NetUnitPrice(booking, grossUnitPrice);
+    var paidShare = BookingRefundPolicy.PaidShare(booking, paid, netUnit);
+    var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, today, trip.CancellationDaysLimit);
+    var refund = BookingRefundPolicy.RefundFrom(paidShare, withinPolicy);
+    var penalty = BookingRefundPolicy.PenaltyFrom(paidShare, withinPolicy);
+
+    // Baja de la linea elegida; si queda vacia se elimina.
+    if (item is not null)
+    {
+        if (passenger.IsChild) item.Children--;
+        else item.Adults--;
+        if (item.Seats <= 0) db.BookingItems.Remove(item);
+    }
+
+    db.TripPassengers.Remove(passenger);
+    if (booking.NumberOfSeats > 0) booking.NumberOfSeats--;
+
+    if (grossBefore > 0)
+    {
+        var discountShare = Math.Round(booking.DiscountAmount * grossUnitPrice / grossBefore, 2);
+        booking.DiscountAmount = Math.Max(0m, booking.DiscountAmount - discountShare);
+    }
+    booking.TotalAmount = Math.Max(0m, booking.TotalAmount - netUnit);
+
+    if (booking.NumberOfSeats == 0)
+    {
+        booking.Status = BookingStatus.Cancelled;
+        booking.CancelledAt = DateTime.UtcNow;
+        booking.CancelledByUserId = userId;
+    }
+
+    var refundEntity = new BookingRefund
+    {
+        BookingId = booking.Id,
+        UserId = booking.UserId,
+        Amount = refund,
+        PenaltyAmount = penalty,
+        Reason = request.Reason.Trim(),
+        PassengerName = passenger.Name,
+        SeatNumber = passenger.SeatNumber,
+        BookingItemId = item?.Id,
+        CreatedAt = DateTime.UtcNow
+    };
+    db.BookingRefunds.Add(refundEntity);
+    await db.SaveChangesAsync();
+
+    db.WalletTransactions.Add(new WalletTransaction
+    {
+        UserId = booking.UserId,
+        Amount = refund,
+        Type = WalletType.CancellationCredit,
+        BookingId = booking.Id,
+        RefundId = refundEntity.Id,
+        Note = "Cancelacion de boleto",
+        CreatedAt = DateTime.UtcNow
+    });
+
+    await RecomputeAvailabilityAsync(db, trip);
+    await db.SaveChangesAsync();
+
+    var walletBalance = await db.WalletTransactions
+        .Where(t => t.UserId == booking.UserId)
+        .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+
+    var seatLabel = passenger.SeatNumber.HasValue ? $"asiento {passenger.SeatNumber}" : "boleto";
+    db.Notifications.Add(new UserNotification
+    {
+        UserId = booking.UserId,
+        Message = $"Se cancelo el {seatLabel} y se acreditaron {refund:C} a tu saldo.",
+        CreatedAt = DateTime.UtcNow
+    });
+    await db.SaveChangesAsync();
+
+    if (booking.User is not null)
+        await SendToStaffAsync(db,
+            $"El cliente {booking.User.Name} cancelo el {seatLabel} de su reserva para \"{trip.Title}\". Reembolso {refund:C}.");
+
+    return Results.Ok(new CancelTicketResult(booking, refund, penalty, withinPolicy, walletBalance));
+}).RequireAuthorization();
+
 app.MapGet("/api/favorites", async (AppDbContext db, ClaimsPrincipal principal) =>
 {
     var userId = GetUserId(principal);
@@ -3262,6 +3423,7 @@ record UpdatePassengerCheckinRequest(bool CheckedIn);
 record PassengerInput(string? Name, int? Age, int? SeatNumber = null);
 record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInput>? Options = null, bool? UseOptions = null, string? DiscountCode = null, string? SpecialNeedsNote = null);
 record CreatePassengersRequest(List<PassengerInput>? Passengers);
+record CancelTicketRequest(int PassengerId, int? BookingItemId, string? Reason);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);
 record UpdateTripActiveRequest(bool IsActive);

@@ -49,3 +49,7 @@ public enum BookingStatus
 }
 
 public record CancelBookingResult(Booking Booking, decimal RefundAmount, decimal PenaltyAmount, bool WithinPolicy);
+
+/// Resultado de cancelar un boleto individual (acompanante). Lo deserializa el
+/// cliente, por eso vive en Shared junto a CancelBookingResult.
+public record CancelTicketResult(Booking Booking, decimal RefundAmount, decimal PenaltyAmount, bool WithinPolicy, decimal WalletBalance);
