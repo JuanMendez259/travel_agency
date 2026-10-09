@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<Discount> Discounts => Set<Discount>();
     public DbSet<BookingRefund> BookingRefunds => Set<BookingRefund>();
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
+    public DbSet<PayoutRequest> PayoutRequests => Set<PayoutRequest>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -143,6 +144,7 @@ public class AppDbContext : DbContext
             entity.Property(t => t.Amount).HasPrecision(18, 2);
             entity.Property(t => t.Note).HasMaxLength(300);
             entity.HasIndex(t => t.UserId).HasDatabaseName("IX_WalletTransactions_UserId");
+            entity.HasIndex(t => t.PayoutRequestId).HasDatabaseName("IX_WalletTransactions_PayoutRequestId");
             entity.HasOne<User>()
                   .WithMany()
                   .HasForeignKey(t => t.UserId)
@@ -150,6 +152,19 @@ public class AppDbContext : DbContext
             entity.HasOne(t => t.Refund)
                   .WithMany()
                   .HasForeignKey(t => t.RefundId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PayoutRequest>(entity =>
+        {
+            entity.ToTable("PayoutRequests");
+            entity.Property(p => p.Amount).HasPrecision(18, 2);
+            entity.Property(p => p.Note).HasMaxLength(300);
+            entity.HasIndex(p => p.UserId).HasDatabaseName("IX_PayoutRequests_UserId");
+            entity.HasIndex(p => p.Status).HasDatabaseName("IX_PayoutRequests_Status");
+            entity.HasOne<User>()
+                  .WithMany()
+                  .HasForeignKey(p => p.UserId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
