@@ -12,6 +12,7 @@ public class WalletTransaction
     public WalletType Type { get; set; }
     public int? BookingId { get; set; }
     public int? RefundId { get; set; }
+    public int? PayoutRequestId { get; set; }
     public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
 
@@ -31,4 +32,4 @@ public enum WalletType
 
 /// Saldo y movimientos del wallet del usuario. Lo deserializa el cliente,
 /// por eso vive en Shared junto a WalletTransaction.
-public record WalletSummary(decimal Balance, List<WalletTransaction> Transactions);
+public record WalletSummary(decimal Balance, decimal Held, decimal Available, List<WalletTransaction> Transactions);

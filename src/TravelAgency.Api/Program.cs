@@ -640,7 +640,7 @@ app.MapGet("/api/users/me/wallet", async (ClaimsPrincipal principal, AppDbContex
         .OrderByDescending(t => t.CreatedAt)
         .ToListAsync();
 
-    return Results.Ok(new WalletSummary(balance, transactions));
+    return Results.Ok(new WalletSummary(balance, 0m, balance, transactions));
 }).RequireAuthorization();
 
 app.MapPut("/api/users/{id}/role", async (int id, UpdateUserRoleRequest request, AppDbContext db, ClaimsPrincipal principal) =>
