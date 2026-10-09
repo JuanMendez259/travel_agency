@@ -333,12 +333,24 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Booking>(JsonOptions);
     }
 
-    public async Task<CancelBookingResult?> CancelBookingAsync(int bookingId)
+    public async Task<CancelBookingResult?> CancelBookingAsync(int bookingId, string? reason = null)
     {
-        var response = await _http.PostAsync($"/api/bookings/{bookingId}/cancel", null);
+        var response = await _http.PostAsJsonAsync($"/api/bookings/{bookingId}/cancel",
+            new CancelBookingRequest(reason), JsonOptions);
         await EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<CancelBookingResult>(JsonOptions);
     }
+
+    public async Task<CancelTicketResult?> CancelTicketAsync(int bookingId, int passengerId, int? bookingItemId, string reason)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/bookings/{bookingId}/cancel-ticket",
+            new CancelTicketRequest(passengerId, bookingItemId, reason), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CancelTicketResult>(JsonOptions);
+    }
+
+    public Task<WalletSummary?> GetWalletAsync() =>
+        _http.GetFromJsonAsync<WalletSummary>("/api/users/me/wallet", JsonOptions);
 
     private static async Task EnsureSuccessAsync(HttpResponseMessage response)
     {
@@ -436,6 +448,8 @@ public class ApiService
     private record BookingOptionInputDto(int TripOptionId, int Adults, int Children);
     private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null, string? DiscountCode = null, string? SpecialNeedsNote = null);
     private record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
+    private record CancelTicketRequest(int PassengerId, int? BookingItemId, string? Reason);
+    private record CancelBookingRequest(string? Reason);
 
     public record DiscountValidationResult(bool Valid, string Message, decimal DiscountAmount, decimal FinalAmount, string? Code, DiscountType? Type = null, decimal? Value = null);
 
