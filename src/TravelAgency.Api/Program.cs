@@ -1315,50 +1315,62 @@ app.MapPost("/api/bookings/{id}/payments", async (int id, Payment payment, AppDb
     if (booking.Status == BookingStatus.Cancelled)
         return Results.BadRequest("No se puede registrar el pago de una reserva cancelada.");
 
-    var paid = await db.Payments
-        .Where(p => p.BookingId == id)
-        .SumAsync(p => p.Amount);
-    var remaining = booking.TotalAmount - paid;
-
-    if (payment.Amount <= 0)
-        return Results.BadRequest("Indica un monto válido.");
-
-    if (payment.Amount > remaining)
-        return Results.BadRequest($"El monto supera el saldo pendiente ({remaining:C}).");
-
-    payment.Amount = Math.Round(payment.Amount, 2);
-    payment.BookingId = id;
-    payment.PaymentDate = DateTime.UtcNow;
-    payment.Status = PaymentStatus.Completed;
-
-    db.Payments.Add(payment);
-    paid += payment.Amount;
-
-    var liquidated = paid >= booking.TotalAmount;
-    if (liquidated)
-        booking.Status = BookingStatus.Confirmed;
-
-    await db.SaveChangesAsync();
-
-    db.Notifications.Add(new UserNotification
+    // Lock in-process por usuario dueno de la reserva: cubre la lectura del
+    // pendiente y la creacion del Payment para que dos pagos concurrentes no
+    // excedan el saldo pendiente. La clave es el cliente, no el admin que cobra.
+    var gate = WalletLockFor(booking.UserId);
+    await gate.WaitAsync();
+    try
     {
-        UserId = booking.UserId,
-        Message = $"Pago de {payment.Amount:C} recibido. Su pago fue por medio de {PaymentMethodName(payment.Method)}.",
-        CreatedAt = DateTime.UtcNow
-    });
+        var paid = await db.Payments
+            .Where(p => p.BookingId == id)
+            .SumAsync(p => p.Amount);
+        var remaining = booking.TotalAmount - paid;
 
-    if (liquidated)
-    {
+        if (payment.Amount <= 0)
+            return Results.BadRequest("Indica un monto válido.");
+
+        if (payment.Amount > remaining)
+            return Results.BadRequest($"El monto supera el saldo pendiente ({remaining:C}).");
+
+        payment.Amount = Math.Round(payment.Amount, 2);
+        payment.BookingId = id;
+        payment.PaymentDate = DateTime.UtcNow;
+        payment.Status = PaymentStatus.Completed;
+
+        db.Payments.Add(payment);
+        paid += payment.Amount;
+
+        var liquidated = paid >= booking.TotalAmount;
+        if (liquidated)
+            booking.Status = BookingStatus.Confirmed;
+
+        await db.SaveChangesAsync();
+
         db.Notifications.Add(new UserNotification
         {
             UserId = booking.UserId,
-            Message = $"Su reserva para \"{booking.Trip?.Title}\" ha sido liquidada y confirmada.",
+            Message = $"Pago de {payment.Amount:C} recibido. Su pago fue por medio de {PaymentMethodName(payment.Method)}.",
             CreatedAt = DateTime.UtcNow
         });
-    }
 
-    await db.SaveChangesAsync();
-    return Results.Created($"/api/bookings/{id}/payments/{payment.Id}", payment);
+        if (liquidated)
+        {
+            db.Notifications.Add(new UserNotification
+            {
+                UserId = booking.UserId,
+                Message = $"Su reserva para \"{booking.Trip?.Title}\" ha sido liquidada y confirmada.",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await db.SaveChangesAsync();
+        return Results.Created($"/api/bookings/{id}/payments/{payment.Id}", payment);
+    }
+    finally
+    {
+        gate.Release();
+    }
 }).RequireAuthorization("AdminOnly");
 
 // Pago de una reserva existente con el saldo de la wallet. Lo puede hacer el
@@ -1500,82 +1512,95 @@ app.MapPost("/api/bookings/{id}/cancel", async (int id, CancelBookingRequest req
     if (string.IsNullOrWhiteSpace(request.Reason))
         return Results.BadRequest("Indica el motivo de la cancelacion.");
 
-    if (booking.Status == BookingStatus.Cancelled)
-        return Results.BadRequest("La reserva ya está cancelada.");
-
-    var trip = booking.Trip;
-    if (trip is null) return Results.NotFound("El viaje de esta reserva ya no existe.");
-
-    if (trip.DepartureCompleted)
-        return Results.BadRequest("La salida ya se realizó, no es posible cancelar.");
-    if (trip.Finalized)
-        return Results.BadRequest("El viaje ya finalizó, no es posible cancelar.");
-
-    var today = DateTime.UtcNow.Date;
-    if (trip.StartDate.Date <= today)
-        return Results.BadRequest("El viaje ya comenzó, no es posible cancelar.");
-
-    var limit = trip.CancellationDaysLimit;
-    var remainingDays = (trip.StartDate.Date - today).Days;
-    // Dentro del limite del viaje se reembolsa el 100% de lo abonado; fuera, aplica multa del 30%.
-    var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, today, limit);
-
-    // Fuente unica de lo abonado (igual que /cancel-ticket): pagos Completed.
-    var paid = booking.PaidTotal();
-
-    // Multa del 30% solo cuando se cancela fuera del limite de dias del viaje.
-    var refund = BookingRefundPolicy.RefundFrom(paid, withinPolicy);
-    var penalty = BookingRefundPolicy.PenaltyFrom(paid, withinPolicy);
-
-    // El reembolso se acredita a la wallet del cliente; los pagos quedan como
-    // Completed. La reserva, el BookingRefund y el WalletTransaction se guardan en
-    // un solo SaveChangesAsync (transaccion implicita de EF), asi que un fallo no
-    // deja el reembolso sin su credito. No se usa transaccion explicita porque el
-    // AuditLogInterceptor abre su propia conexion en SavedChangesAsync y, con una
-    // transaccion abierta, eso bloquearia en SQLite y quedaria fuera de la tx en Postgres.
-    var refundEntity = new BookingRefund
+    // Lock in-process por usuario dueno del wallet: cubre la validacion de
+    // estado/politica, la creacion del BookingRefund y del WalletTransaction
+    // (acreditacion) y el recompute de disponibilidad, para no acreditar dos
+    // veces la misma cancelacion.
+    var gate = WalletLockFor(booking.UserId);
+    await gate.WaitAsync();
+    try
     {
-        BookingId = booking.Id,
-        UserId = booking.UserId,
-        Amount = refund,
-        PenaltyAmount = penalty,
-        Reason = request.Reason.Trim(),
-        PassengerName = null,
-        SeatNumber = null,
-        BookingItemId = null,
-        CreatedAt = DateTime.UtcNow
-    };
-    db.BookingRefunds.Add(refundEntity);
+        if (booking.Status == BookingStatus.Cancelled)
+            return Results.BadRequest("La reserva ya está cancelada.");
 
-    booking.Status = BookingStatus.Cancelled;
-    booking.CancelledAt = DateTime.UtcNow;
-    booking.CancelledByUserId = userId;
+        var trip = booking.Trip;
+        if (trip is null) return Results.NotFound("El viaje de esta reserva ya no existe.");
 
-    db.WalletTransactions.Add(new WalletTransaction
+        if (trip.DepartureCompleted)
+            return Results.BadRequest("La salida ya se realizó, no es posible cancelar.");
+        if (trip.Finalized)
+            return Results.BadRequest("El viaje ya finalizó, no es posible cancelar.");
+
+        var today = DateTime.UtcNow.Date;
+        if (trip.StartDate.Date <= today)
+            return Results.BadRequest("El viaje ya comenzó, no es posible cancelar.");
+
+        var limit = trip.CancellationDaysLimit;
+        var remainingDays = (trip.StartDate.Date - today).Days;
+        // Dentro del limite del viaje se reembolsa el 100% de lo abonado; fuera, aplica multa del 30%.
+        var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, today, limit);
+
+        // Fuente unica de lo abonado (igual que /cancel-ticket): pagos Completed.
+        var paid = booking.PaidTotal();
+
+        // Multa del 30% solo cuando se cancela fuera del limite de dias del viaje.
+        var refund = BookingRefundPolicy.RefundFrom(paid, withinPolicy);
+        var penalty = BookingRefundPolicy.PenaltyFrom(paid, withinPolicy);
+
+        // El reembolso se acredita a la wallet del cliente; los pagos quedan como
+        // Completed. La reserva, el BookingRefund y el WalletTransaction se guardan en
+        // un solo SaveChangesAsync (transaccion implicita de EF), asi que un fallo no
+        // deja el reembolso sin su credito. No se usa transaccion explicita porque el
+        // AuditLogInterceptor abre su propia conexion en SavedChangesAsync y, con una
+        // transaccion abierta, eso bloquearia en SQLite y quedaria fuera de la tx en Postgres.
+        var refundEntity = new BookingRefund
+        {
+            BookingId = booking.Id,
+            UserId = booking.UserId,
+            Amount = refund,
+            PenaltyAmount = penalty,
+            Reason = request.Reason.Trim(),
+            PassengerName = null,
+            SeatNumber = null,
+            BookingItemId = null,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.BookingRefunds.Add(refundEntity);
+
+        booking.Status = BookingStatus.Cancelled;
+        booking.CancelledAt = DateTime.UtcNow;
+        booking.CancelledByUserId = userId;
+
+        db.WalletTransactions.Add(new WalletTransaction
+        {
+            UserId = booking.UserId,
+            Amount = refund,
+            Type = WalletType.CancellationCredit,
+            BookingId = booking.Id,
+            Refund = refundEntity,
+            Note = "Cancelacion total",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await db.SaveChangesAsync();
+
+        await RecomputeAvailabilityAsync(db, trip);
+        await db.SaveChangesAsync();
+
+        var policy = withinPolicy
+            ? $"dentro del límite de {limit ?? 0} día(s), sin multa"
+            : $"fuera del límite de {limit} día(s) (faltan {remainingDays}), multa 30%: {penalty:C}";
+
+        if (booking.User is not null)
+            await SendToStaffAsync(db,
+                $"El cliente {booking.User.Name} canceló su reserva para \"{trip.Title}\". Reembolso {refund:C} ({policy}).");
+
+        return Results.Ok(new CancelBookingResult(booking, refund, penalty, withinPolicy));
+    }
+    finally
     {
-        UserId = booking.UserId,
-        Amount = refund,
-        Type = WalletType.CancellationCredit,
-        BookingId = booking.Id,
-        Refund = refundEntity,
-        Note = "Cancelacion total",
-        CreatedAt = DateTime.UtcNow
-    });
-
-    await db.SaveChangesAsync();
-
-    await RecomputeAvailabilityAsync(db, trip);
-    await db.SaveChangesAsync();
-
-    var policy = withinPolicy
-        ? $"dentro del límite de {limit ?? 0} día(s), sin multa"
-        : $"fuera del límite de {limit} día(s) (faltan {remainingDays}), multa 30%: {penalty:C}";
-
-    if (booking.User is not null)
-        await SendToStaffAsync(db,
-            $"El cliente {booking.User.Name} canceló su reserva para \"{trip.Title}\". Reembolso {refund:C} ({policy}).");
-
-    return Results.Ok(new CancelBookingResult(booking, refund, penalty, withinPolicy));
+        gate.Release();
+    }
 }).RequireAuthorization();
 
 // Cancelacion parcial: da de baja un boleto (acompanante) y acredita el reembolso
@@ -1595,163 +1620,175 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
     if (userId == 0) return Results.Forbid();
     if (booking.UserId != userId && !principal.IsInRole("Admin")) return Results.Forbid();
 
-    if (booking.Status == BookingStatus.Cancelled)
-        return Results.BadRequest("La reserva ya esta cancelada.");
-
-    var trip = booking.Trip;
-    if (trip is null) return Results.NotFound("El viaje de esta reserva ya no existe.");
-
-    if (trip.DepartureCompleted)
-        return Results.BadRequest("La salida ya se realizo, no es posible cancelar.");
-    if (trip.Finalized)
-        return Results.BadRequest("El viaje ya finalizo, no es posible cancelar.");
-
-    var today = DateTime.UtcNow.Date;
-    if (trip.StartDate.Date <= today)
-        return Results.BadRequest("El viaje ya comenzo, no es posible cancelar.");
-
-    if (string.IsNullOrWhiteSpace(request.Reason))
-        return Results.BadRequest("Indica el motivo de la cancelacion.");
-
-    var passenger = booking.Passengers.FirstOrDefault(p => p.Id == request.PassengerId);
-    if (passenger is null)
-        return Results.BadRequest("El pasajero no pertenece a la reserva.");
-
-    // Los TripPassenger son solo acompanantes: el titular es booking.SeatNumber y
-    // viaja aparte (POST /api/bookings limita Passengers a NumberOfSeats - 1).
-    // Guarda defensiva: el asiento del titular solo se cancela con la total.
-    if (booking.SeatNumber.HasValue && passenger.SeatNumber.HasValue
-        && passenger.SeatNumber.Value == booking.SeatNumber.Value)
-        return Results.BadRequest("El asiento del titular solo se cancela con la cancelacion total de la reserva.");
-
-    // Con opciones se elige la linea (BookingItem) a cancelar. Si hay mas de una,
-    // BookingItemId es obligatorio; si hay una sola, se usa esa.
-    BookingItem? item = null;
-    if (trip.HasOptions)
+    // Lock in-process por usuario dueno del wallet: cubre la validacion de
+    // estado/politica, la baja del boleto, la acreditacion y el recompute de
+    // disponibilidad, para no acreditar dos veces el mismo boleto.
+    var gate = WalletLockFor(booking.UserId);
+    await gate.WaitAsync();
+    try
     {
-        if (booking.Items.Count > 1)
+        if (booking.Status == BookingStatus.Cancelled)
+            return Results.BadRequest("La reserva ya esta cancelada.");
+
+        var trip = booking.Trip;
+        if (trip is null) return Results.NotFound("El viaje de esta reserva ya no existe.");
+
+        if (trip.DepartureCompleted)
+            return Results.BadRequest("La salida ya se realizo, no es posible cancelar.");
+        if (trip.Finalized)
+            return Results.BadRequest("El viaje ya finalizo, no es posible cancelar.");
+
+        var today = DateTime.UtcNow.Date;
+        if (trip.StartDate.Date <= today)
+            return Results.BadRequest("El viaje ya comenzo, no es posible cancelar.");
+
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            return Results.BadRequest("Indica el motivo de la cancelacion.");
+
+        var passenger = booking.Passengers.FirstOrDefault(p => p.Id == request.PassengerId);
+        if (passenger is null)
+            return Results.BadRequest("El pasajero no pertenece a la reserva.");
+
+        // Los TripPassenger son solo acompanantes: el titular es booking.SeatNumber y
+        // viaja aparte (POST /api/bookings limita Passengers a NumberOfSeats - 1).
+        // Guarda defensiva: el asiento del titular solo se cancela con la total.
+        if (booking.SeatNumber.HasValue && passenger.SeatNumber.HasValue
+            && passenger.SeatNumber.Value == booking.SeatNumber.Value)
+            return Results.BadRequest("El asiento del titular solo se cancela con la cancelacion total de la reserva.");
+
+        // Con opciones se elige la linea (BookingItem) a cancelar. Si hay mas de una,
+        // BookingItemId es obligatorio; si hay una sola, se usa esa.
+        BookingItem? item = null;
+        if (trip.HasOptions)
         {
-            if (request.BookingItemId is not int itemId)
-                return Results.BadRequest("Selecciona la entrada del boleto a cancelar.");
-            item = booking.Items.FirstOrDefault(i => i.Id == itemId);
-            if (item is null)
-                return Results.BadRequest("La entrada no pertenece a la reserva.");
+            if (booking.Items.Count > 1)
+            {
+                if (request.BookingItemId is not int itemId)
+                    return Results.BadRequest("Selecciona la entrada del boleto a cancelar.");
+                item = booking.Items.FirstOrDefault(i => i.Id == itemId);
+                if (item is null)
+                    return Results.BadRequest("La entrada no pertenece a la reserva.");
+            }
+            else
+            {
+                item = booking.Items.FirstOrDefault();
+                if (request.BookingItemId is int singleId && item is not null && item.Id != singleId)
+                    return Results.BadRequest("La entrada no pertenece a la reserva.");
+            }
         }
+
+        if (item is not null)
+        {
+            if (passenger.IsChild && item.Children <= 0)
+                return Results.BadRequest("La entrada seleccionada no tiene boletos de nino.");
+            if (!passenger.IsChild && item.Adults <= 0)
+                return Results.BadRequest("La entrada seleccionada no tiene boletos de adulto.");
+        }
+
+        var paid = booking.PaidTotal();
+        var grossBefore = booking.TotalAmount + booking.DiscountAmount;
+
+        decimal grossUnitPrice;
+        if (item is not null)
+            grossUnitPrice = passenger.IsChild
+                ? (item.UnitPriceChild ?? item.UnitPriceAdult)
+                : item.UnitPriceAdult;
         else
+            // Sin opciones el precio por asiento debe ser BRUTO (lista): TotalAmount
+            // ya trae el descuento aplicado, asi que se reparte el subtotal con descuento.
+            // Pasar un neto a NetUnitPrice descontaria dos veces.
+            grossUnitPrice = booking.NumberOfSeats > 0
+                ? grossBefore / booking.NumberOfSeats
+                : grossBefore;
+
+        var netUnit = BookingRefundPolicy.NetUnitPrice(booking, grossUnitPrice);
+        var paidShare = BookingRefundPolicy.PaidShare(booking, paid, netUnit);
+        var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, today, trip.CancellationDaysLimit);
+        var refund = BookingRefundPolicy.RefundFrom(paidShare, withinPolicy);
+        var penalty = BookingRefundPolicy.PenaltyFrom(paidShare, withinPolicy);
+
+        // Baja de la linea elegida; si queda vacia se elimina.
+        if (item is not null)
         {
-            item = booking.Items.FirstOrDefault();
-            if (request.BookingItemId is int singleId && item is not null && item.Id != singleId)
-                return Results.BadRequest("La entrada no pertenece a la reserva.");
+            if (passenger.IsChild) item.Children--;
+            else item.Adults--;
+            if (item.Seats <= 0) db.BookingItems.Remove(item);
         }
+
+        db.TripPassengers.Remove(passenger);
+        if (booking.NumberOfSeats > 0) booking.NumberOfSeats--;
+
+        if (grossBefore > 0)
+        {
+            var discountShare = Math.Round(booking.DiscountAmount * grossUnitPrice / grossBefore, 2);
+            booking.DiscountAmount = Math.Max(0m, booking.DiscountAmount - discountShare);
+        }
+        booking.TotalAmount = Math.Max(0m, booking.TotalAmount - netUnit);
+
+        if (booking.NumberOfSeats == 0)
+        {
+            booking.Status = BookingStatus.Cancelled;
+            booking.CancelledAt = DateTime.UtcNow;
+            booking.CancelledByUserId = userId;
+        }
+
+        var refundEntity = new BookingRefund
+        {
+            BookingId = booking.Id,
+            UserId = booking.UserId,
+            Amount = refund,
+            PenaltyAmount = penalty,
+            Reason = request.Reason.Trim(),
+            PassengerName = passenger.Name,
+            SeatNumber = passenger.SeatNumber,
+            BookingItemId = item?.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.BookingRefunds.Add(refundEntity);
+
+        db.WalletTransactions.Add(new WalletTransaction
+        {
+            UserId = booking.UserId,
+            Amount = refund,
+            Type = WalletType.CancellationCredit,
+            BookingId = booking.Id,
+            Refund = refundEntity,
+            Note = "Cancelacion de boleto",
+            CreatedAt = DateTime.UtcNow
+        });
+
+        // Baja del boleto + BookingRefund + WalletTransaction en un solo SaveChangesAsync
+        // (transaccion implicita de EF), atomico. Sin transaccion explicita: el
+        // AuditLogInterceptor abre su propia conexion en SavedChangesAsync y una tx
+        // abierta la bloquearia en SQLite y quedaria fuera de la tx en Postgres.
+        await db.SaveChangesAsync();
+
+        await RecomputeAvailabilityAsync(db, trip);
+        await db.SaveChangesAsync();
+
+        var walletBalance = await db.WalletTransactions
+            .Where(t => t.UserId == booking.UserId)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+
+        var seatLabel = passenger.SeatNumber.HasValue ? $"asiento {passenger.SeatNumber}" : "boleto";
+        db.Notifications.Add(new UserNotification
+        {
+            UserId = booking.UserId,
+            Message = $"Se cancelo el {seatLabel} y se acreditaron {refund:C} a tu saldo.",
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        if (booking.User is not null)
+            await SendToStaffAsync(db,
+                $"El cliente {booking.User.Name} cancelo el {seatLabel} de su reserva para \"{trip.Title}\". Reembolso {refund:C}.");
+
+        return Results.Ok(new CancelTicketResult(booking, refund, penalty, withinPolicy, walletBalance));
     }
-
-    if (item is not null)
+    finally
     {
-        if (passenger.IsChild && item.Children <= 0)
-            return Results.BadRequest("La entrada seleccionada no tiene boletos de nino.");
-        if (!passenger.IsChild && item.Adults <= 0)
-            return Results.BadRequest("La entrada seleccionada no tiene boletos de adulto.");
+        gate.Release();
     }
-
-    var paid = booking.PaidTotal();
-    var grossBefore = booking.TotalAmount + booking.DiscountAmount;
-
-    decimal grossUnitPrice;
-    if (item is not null)
-        grossUnitPrice = passenger.IsChild
-            ? (item.UnitPriceChild ?? item.UnitPriceAdult)
-            : item.UnitPriceAdult;
-    else
-        // Sin opciones el precio por asiento debe ser BRUTO (lista): TotalAmount
-        // ya trae el descuento aplicado, asi que se reparte el subtotal con descuento.
-        // Pasar un neto a NetUnitPrice descontaria dos veces.
-        grossUnitPrice = booking.NumberOfSeats > 0
-            ? grossBefore / booking.NumberOfSeats
-            : grossBefore;
-
-    var netUnit = BookingRefundPolicy.NetUnitPrice(booking, grossUnitPrice);
-    var paidShare = BookingRefundPolicy.PaidShare(booking, paid, netUnit);
-    var withinPolicy = BookingRefundPolicy.IsWithinPolicy(trip.StartDate, today, trip.CancellationDaysLimit);
-    var refund = BookingRefundPolicy.RefundFrom(paidShare, withinPolicy);
-    var penalty = BookingRefundPolicy.PenaltyFrom(paidShare, withinPolicy);
-
-    // Baja de la linea elegida; si queda vacia se elimina.
-    if (item is not null)
-    {
-        if (passenger.IsChild) item.Children--;
-        else item.Adults--;
-        if (item.Seats <= 0) db.BookingItems.Remove(item);
-    }
-
-    db.TripPassengers.Remove(passenger);
-    if (booking.NumberOfSeats > 0) booking.NumberOfSeats--;
-
-    if (grossBefore > 0)
-    {
-        var discountShare = Math.Round(booking.DiscountAmount * grossUnitPrice / grossBefore, 2);
-        booking.DiscountAmount = Math.Max(0m, booking.DiscountAmount - discountShare);
-    }
-    booking.TotalAmount = Math.Max(0m, booking.TotalAmount - netUnit);
-
-    if (booking.NumberOfSeats == 0)
-    {
-        booking.Status = BookingStatus.Cancelled;
-        booking.CancelledAt = DateTime.UtcNow;
-        booking.CancelledByUserId = userId;
-    }
-
-    var refundEntity = new BookingRefund
-    {
-        BookingId = booking.Id,
-        UserId = booking.UserId,
-        Amount = refund,
-        PenaltyAmount = penalty,
-        Reason = request.Reason.Trim(),
-        PassengerName = passenger.Name,
-        SeatNumber = passenger.SeatNumber,
-        BookingItemId = item?.Id,
-        CreatedAt = DateTime.UtcNow
-    };
-    db.BookingRefunds.Add(refundEntity);
-
-    db.WalletTransactions.Add(new WalletTransaction
-    {
-        UserId = booking.UserId,
-        Amount = refund,
-        Type = WalletType.CancellationCredit,
-        BookingId = booking.Id,
-        Refund = refundEntity,
-        Note = "Cancelacion de boleto",
-        CreatedAt = DateTime.UtcNow
-    });
-
-    // Baja del boleto + BookingRefund + WalletTransaction en un solo SaveChangesAsync
-    // (transaccion implicita de EF), atomico. Sin transaccion explicita: el
-    // AuditLogInterceptor abre su propia conexion en SavedChangesAsync y una tx
-    // abierta la bloquearia en SQLite y quedaria fuera de la tx en Postgres.
-    await db.SaveChangesAsync();
-
-    await RecomputeAvailabilityAsync(db, trip);
-    await db.SaveChangesAsync();
-
-    var walletBalance = await db.WalletTransactions
-        .Where(t => t.UserId == booking.UserId)
-        .SumAsync(t => (decimal?)t.Amount) ?? 0m;
-
-    var seatLabel = passenger.SeatNumber.HasValue ? $"asiento {passenger.SeatNumber}" : "boleto";
-    db.Notifications.Add(new UserNotification
-    {
-        UserId = booking.UserId,
-        Message = $"Se cancelo el {seatLabel} y se acreditaron {refund:C} a tu saldo.",
-        CreatedAt = DateTime.UtcNow
-    });
-    await db.SaveChangesAsync();
-
-    if (booking.User is not null)
-        await SendToStaffAsync(db,
-            $"El cliente {booking.User.Name} cancelo el {seatLabel} de su reserva para \"{trip.Title}\". Reembolso {refund:C}.");
-
-    return Results.Ok(new CancelTicketResult(booking, refund, penalty, withinPolicy, walletBalance));
 }).RequireAuthorization();
 
 app.MapGet("/api/favorites", async (AppDbContext db, ClaimsPrincipal principal) =>
