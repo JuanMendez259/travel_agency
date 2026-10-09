@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Admin.Views.AdminPayoutsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="Reembolsos">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
+    </ContentPage.ToolbarItems>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="10">
+
+            <Label Text="Reembolsos" FontSize="20" FontAttributes="Bold" />
+            <Label Text="Solicitudes de retiro del saldo de los clientes. Marca como pagado cuando entregues el dinero o rechaza para liberar el saldo."
+                   FontSize="13"
+                   TextColor="{StaticResource OnSurfaceVariant}" />
+
+            <BoxView HeightRequest="1" Color="{StaticResource OutlineVariant}" Margin="0,14,0,4" />
+
+            <Label Text="Solicitudes" FontSize="17" FontAttributes="Bold" />
+            <Label x:Name="CountLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+
+            <VerticalStackLayout x:Name="PayoutsLayout" Spacing="8" Margin="0,6,0,0" />
+
+            <Label x:Name="EmptyLabel"
+                   Text="Todavia no hay solicitudes de reembolso."
+                   FontSize="13"
+                   TextColor="{StaticResource OnSurfaceVariant}"
+                   IsVisible="False" />
+
+            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" />
+
+            <Label x:Name="ErrorLabel"
+                   FontSize="13"
+                   TextColor="{StaticResource Error}"
+                   IsVisible="False" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
