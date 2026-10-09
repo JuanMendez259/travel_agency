@@ -1345,9 +1345,12 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
             ? (item.UnitPriceChild ?? item.UnitPriceAdult)
             : item.UnitPriceAdult;
     else
+        // Sin opciones el precio por asiento debe ser BRUTO (lista): TotalAmount
+        // ya trae el descuento aplicado, asi que se reparte el subtotal con descuento.
+        // Pasar un neto a NetUnitPrice descontaria dos veces.
         grossUnitPrice = booking.NumberOfSeats > 0
-            ? booking.TotalAmount / booking.NumberOfSeats
-            : booking.TotalAmount;
+            ? grossBefore / booking.NumberOfSeats
+            : grossBefore;
 
     var netUnit = BookingRefundPolicy.NetUnitPrice(booking, grossUnitPrice);
     var paidShare = BookingRefundPolicy.PaidShare(booking, paid, netUnit);
