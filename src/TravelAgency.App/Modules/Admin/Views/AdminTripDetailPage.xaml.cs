@@ -132,7 +132,9 @@ public partial class AdminTripDetailPage : ContentPage
 
         TransportUnitPlateLabel.Text = hasPlate ? $"Placas: {info!.Plate}" : string.Empty;
         TransportUnitPlateLabel.IsVisible = hasPlate;
-        TransportUnitEmptyLabel.IsVisible = !hasImage && !hasPlate;
+        // Estado vacio segun el resultado efectivo de la carga (no solo la URL): si la
+        // imagen no se pudo descargar y no hay placas, mostrar el aviso.
+        TransportUnitEmptyLabel.IsVisible = TransportUnitImage.Source is null && !hasPlate;
     }
 
     private void OnAddTransportUnitClicked(object? sender, EventArgs e)
