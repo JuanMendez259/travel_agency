@@ -281,6 +281,29 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
+    public Task<TripTransportInfo?> GetTripTransportAsync(int tripId) =>
+        _http.GetFromJsonAsync<TripTransportInfo>($"/api/trips/{tripId}/transport", JsonOptions);
+
+    public async Task<TripTransportInfo?> UploadTripTransportAsync(int tripId, FileResult? file, string? plate)
+    {
+        using var content = new MultipartFormDataContent();
+
+        if (file is not null)
+        {
+            using var stream = await file.OpenReadAsync();
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
+            content.Add(fileContent, "file", Path.GetFileName(file.FileName));
+        }
+
+        if (!string.IsNullOrWhiteSpace(plate))
+            content.Add(new StringContent(plate), "plate");
+
+        var response = await _http.PostAsync($"/api/trips/{tripId}/transport", content);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripTransportInfo>(JsonOptions);
+    }
+
     public async Task<Booking?> CreateBookingAsync(int tripId, int seats, IEnumerable<(string Name, int Age)>? passengers, List<BookingOptionInput>? options = null, string? discountCode = null, string? specialNeedsNote = null, decimal? walletAmount = null)
     {
         var list = passengers?
