@@ -167,6 +167,33 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- ============ INFORMACIÓN DEL TRANSPORTE ============ -->
+            <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}"
+                    BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
+                <Border.Shadow>
+                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="8">
+                    <HorizontalStackLayout Spacing="6">
+                        <Label Text="🚌" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Informacion del Transporte" FontSize="15" FontAttributes="Bold"
+                               TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
+                    </HorizontalStackLayout>
+
+                    <Border x:Name="TransportImageBorder" StrokeShape="RoundRectangle 12" Stroke="Transparent"
+                            Padding="0" IsVisible="False">
+                        <Image x:Name="TransportImage" HeightRequest="170" Aspect="AspectFill"
+                               SemanticProperties.Description="Foto de la unidad de transporte" />
+                    </Border>
+
+                    <Label x:Name="TransportPlateLabel" FontSize="13" FontAttributes="Bold"
+                           TextColor="{StaticResource OnSurface}" IsVisible="False" />
+
+                    <Label x:Name="TransportSoonLabel" Text="Se Actualizara Pronto" FontSize="13"
+                           TextColor="{StaticResource OnSurfaceVariant}" IsVisible="True" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- ============ ITINERARIO Y PUNTOS DE INTERÉS ============ -->
             <VerticalStackLayout Spacing="8">
                 <Label x:Name="ItineraryHeader" Text="Itinerario y puntos de interés" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" IsVisible="False" SemanticProperties.HeadingLevel="Level2" />

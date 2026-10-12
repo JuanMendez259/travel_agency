@@ -256,6 +256,43 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         if (!string.IsNullOrEmpty(trip?.ImageUrl))
             TripImage.Source = await _api.GetTripImageAsync(trip.ImageUrl);
+
+        if (trip?.Id is int transportTripId && transportTripId > 0)
+            await RenderTransportSectionAsync(transportTripId);
+    }
+
+    // Muestra la unidad asignada al viaje (foto + placas) o el aviso de que
+    // se actualizara pronto cuando aun no hay informacion publicada.
+    private async Task RenderTransportSectionAsync(int tripId)
+    {
+        try
+        {
+            var info = await _api.GetTripTransportAsync(tripId);
+            var hasImage = !string.IsNullOrWhiteSpace(info?.ImageUrl);
+            var hasPlate = !string.IsNullOrWhiteSpace(info?.Plate);
+
+            if (hasImage)
+            {
+                TransportImage.Source = await _api.GetTripImageAsync(info!.ImageUrl);
+                TransportImageBorder.IsVisible = TransportImage.Source is not null;
+            }
+            else
+            {
+                TransportImage.Source = null;
+                TransportImageBorder.IsVisible = false;
+            }
+
+            TransportPlateLabel.Text = hasPlate ? $"Placas: {info!.Plate}" : string.Empty;
+            TransportPlateLabel.IsVisible = hasPlate;
+            TransportSoonLabel.IsVisible = !hasImage && !hasPlate;
+        }
+        catch
+        {
+            TransportImage.Source = null;
+            TransportImageBorder.IsVisible = false;
+            TransportPlateLabel.IsVisible = false;
+            TransportSoonLabel.IsVisible = true;
+        }
     }
 
     private void RenderCancellationSection(Booking booking, Trip? trip, decimal paid)
