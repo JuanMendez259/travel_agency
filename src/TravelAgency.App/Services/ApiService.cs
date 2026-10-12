@@ -290,7 +290,7 @@ public class ApiService
 
         if (file is not null)
         {
-            using var stream = await file.OpenReadAsync();
+            var stream = await file.OpenReadAsync();
             var fileContent = new StreamContent(stream);
             fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType ?? "application/octet-stream");
             content.Add(fileContent, "file", Path.GetFileName(file.FileName));
