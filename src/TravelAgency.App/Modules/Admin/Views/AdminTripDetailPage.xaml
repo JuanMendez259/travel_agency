@@ -99,6 +99,28 @@
                         TextColor="White" />
             </HorizontalStackLayout>
 
+            <Label x:Name="TransportUnitHeader" Text="Informacion de la unidad" FontSize="16" FontAttributes="Bold" Margin="0,15,0,0" />
+            <Image x:Name="TransportUnitImage" HeightRequest="160" Aspect="AspectFill" IsVisible="False" />
+            <Label x:Name="TransportUnitPlateLabel" FontSize="14" Margin="0,4,0,0" IsVisible="False" />
+            <Label x:Name="TransportUnitEmptyLabel" Text="Sin informacion" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
+
+            <Button x:Name="AddTransportUnitButton" Text="Agregar Informacion de la Unidad"
+                    Clicked="OnAddTransportUnitClicked"
+                    Margin="0,10,0,0"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White" />
+
+            <VerticalStackLayout x:Name="TransportUnitEditor" Spacing="8" IsVisible="False" Margin="0,10,0,0">
+                <Button Text="Seleccionar foto" Clicked="OnPickTransportImageClicked" />
+                <Image x:Name="TransportImagePreview" HeightRequest="140" Aspect="AspectFill" IsVisible="False" />
+                <Label x:Name="TransportImageNameLabel" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
+                <Entry x:Name="TransportPlateEntry" Placeholder="Placas de la unidad" />
+                <HorizontalStackLayout Spacing="10">
+                    <Button Text="Guardar" Clicked="OnSaveTransportUnitClicked" BackgroundColor="{StaticResource Primary}" TextColor="White" />
+                    <Button Text="Cancelar" Clicked="OnCancelTransportUnitClicked" />
+                </HorizontalStackLayout>
+            </VerticalStackLayout>
+
             <Label x:Name="RatingsHeader" Text="Opiniones de clientes" FontSize="16" FontAttributes="Bold" Margin="0,15,0,0" IsVisible="False" />
             <Label x:Name="RatingsAverageLabel" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
             <VerticalStackLayout x:Name="RatingsLayout" Spacing="8" />

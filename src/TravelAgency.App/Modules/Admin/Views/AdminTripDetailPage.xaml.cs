@@ -10,6 +10,8 @@ public partial class AdminTripDetailPage : ContentPage
     private readonly ApiService _api;
     private readonly SessionService _session;
     private Trip? _trip;
+    private TripTransportInfo? _transportInfo;
+    private FileResult? _selectedImage;
 
     public string TripId { get; set; } = string.Empty;
 
@@ -26,6 +28,7 @@ public partial class AdminTripDetailPage : ContentPage
             CheckinButton.IsVisible = false;
             AuditButton.IsVisible = false;
             EditActions.IsVisible = false;
+            AddTransportUnitButton.IsVisible = false;
         }
     }
 
@@ -90,6 +93,126 @@ public partial class AdminTripDetailPage : ContentPage
 
         TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
         TripImage.IsVisible = TripImage.Source is not null;
+
+        await RenderTransportUnitAsync();
+    }
+
+    private async Task RenderTransportUnitAsync()
+    {
+        if (_trip is null) return;
+
+        try
+        {
+            _transportInfo = await _api.GetTripTransportAsync(_trip.Id);
+        }
+        catch
+        {
+            _transportInfo = null;
+        }
+
+        var hasImage = !string.IsNullOrWhiteSpace(_transportInfo?.ImageUrl);
+        var hasPlate = !string.IsNullOrWhiteSpace(_transportInfo?.Plate);
+
+        if (hasImage)
+        {
+            TransportUnitImage.Source = await _api.GetTripImageAsync(_transportInfo!.ImageUrl);
+            TransportUnitImage.IsVisible = TransportUnitImage.Source is not null;
+        }
+        else
+        {
+            TransportUnitImage.Source = null;
+            TransportUnitImage.IsVisible = false;
+        }
+
+        TransportUnitPlateLabel.Text = hasPlate ? $"Placas: {_transportInfo!.Plate}" : string.Empty;
+        TransportUnitPlateLabel.IsVisible = hasPlate;
+        TransportUnitEmptyLabel.IsVisible = !hasImage && !hasPlate;
+    }
+
+    private void OnAddTransportUnitClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+
+        _selectedImage = null;
+        TransportImagePreview.Source = null;
+        TransportImagePreview.IsVisible = false;
+        TransportImageNameLabel.Text = string.Empty;
+        TransportImageNameLabel.IsVisible = false;
+        TransportPlateEntry.Text = _transportInfo?.Plate ?? string.Empty;
+
+        TransportUnitEditor.IsVisible = true;
+        AddTransportUnitButton.IsVisible = false;
+    }
+
+    private async void OnPickTransportImageClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            var results = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
+            {
+                Title = "Selecciona una foto de la unidad"
+            });
+
+            var result = results?.FirstOrDefault();
+            if (result is null) return;
+
+            using var stream = await result.OpenReadAsync();
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+
+            TransportImagePreview.Source = ImageSource.FromStream(() => new MemoryStream(memory.ToArray()));
+            TransportImagePreview.IsVisible = true;
+
+            TransportImageNameLabel.Text = result.FileName;
+            TransportImageNameLabel.IsVisible = true;
+
+            _selectedImage = result;
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
+
+    private async void OnSaveTransportUnitClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+
+        var plate = TransportPlateEntry.Text?.Trim();
+        if (_selectedImage is null && string.IsNullOrWhiteSpace(plate))
+        {
+            await DisplayAlertAsync("Falta informacion", "Agrega una foto o las placas de la unidad.", "OK");
+            return;
+        }
+
+        try
+        {
+            var info = await _api.UploadTripTransportAsync(_trip.Id, _selectedImage, plate);
+            if (info is null)
+            {
+                await DisplayAlertAsync("Error", "No se pudo guardar la informacion de la unidad.", "OK");
+                return;
+            }
+
+            _transportInfo = info;
+            _selectedImage = null;
+            TransportUnitEditor.IsVisible = false;
+            AddTransportUnitButton.IsVisible = _session.IsAdmin;
+
+            await RenderTransportUnitAsync();
+            await DisplayAlertAsync("Listo", "Informacion de la unidad guardada.", "OK");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
+
+    private void OnCancelTransportUnitClicked(object? sender, EventArgs e)
+    {
+        _selectedImage = null;
+        TransportUnitEditor.IsVisible = false;
+        AddTransportUnitButton.IsVisible = _session.IsAdmin;
     }
 
     private void RenderPassengers()
