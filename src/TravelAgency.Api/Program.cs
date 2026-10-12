@@ -452,6 +452,125 @@ app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbCo
     }
 }).RequireAuthorization("AdminOnly");
 
+app.MapGet("/api/trips/{id}/transport", async (int id, AppDbContext db) =>
+{
+    var transport = await db.TripTransports.FirstOrDefaultAsync(t => t.TripId == id);
+    return transport is null
+        ? Results.Ok((TripTransportInfo?)null)
+        : Results.Ok(new TripTransportInfo(transport.ImageUrl, transport.Plate));
+}).RequireAuthorization();
+
+app.MapPost("/api/trips/{id}/transport", async (int id, HttpRequest request, AppDbContext db, ImageStorageService storage) =>
+{
+    var trip = await db.Trips.FindAsync(id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var plate = request.Form["plate"].ToString().Trim();
+    var file = request.Form.Files.FirstOrDefault();
+    var hasFile = file is not null && file.Length > 0;
+
+    if (!hasFile && string.IsNullOrWhiteSpace(plate))
+        return Results.BadRequest("Agrega una fotografia o las placas.");
+
+    var transport = await db.TripTransports.FirstOrDefaultAsync(t => t.TripId == id);
+    var wasEmpty = transport is null ||
+        (string.IsNullOrWhiteSpace(transport.ImageUrl) && string.IsNullOrWhiteSpace(transport.Plate));
+
+    if (transport is null)
+    {
+        transport = new TripTransport { TripId = id, CreatedAt = DateTime.UtcNow };
+        db.TripTransports.Add(transport);
+    }
+
+    if (hasFile)
+    {
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        var extension = Path.GetExtension(file!.FileName).ToLowerInvariant();
+        if (!allowed.Contains(extension)) return Results.BadRequest("Formato no permitido. Usa JPG, PNG o WebP.");
+
+        if (file.Length > TripImageProcessor.MaxInputBytes)
+            return Results.BadRequest($"La imagen no puede superar los {TripImageProcessor.MaxInputBytes / (1024 * 1024)} MB.");
+
+        await using var input = new MemoryStream();
+        await file.CopyToAsync(input);
+
+        Stream uploadStream;
+        var ownStream = false;
+        string contentType;
+        try
+        {
+            var prepared = TripImageProcessor.Prepare(input, extension);
+            uploadStream = prepared.Stream;
+            ownStream = prepared.Owned;
+            contentType = prepared.ContentType;
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
+
+        try
+        {
+            var imageUrl = await storage.UploadAsync(uploadStream, extension, contentType);
+
+            var previousImageUrl = transport.ImageUrl;
+            transport.ImageUrl = imageUrl;
+            transport.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+
+            // La BD ya apunta a la nueva imagen, asi que ahora es seguro borrar la anterior.
+            if (!string.IsNullOrEmpty(previousImageUrl) &&
+                !string.Equals(previousImageUrl, imageUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    await storage.DeleteAsync(previousImageUrl);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(
+                        $"[ImageStorage] No se pudo borrar la imagen anterior del transporte del viaje {id}: {ex.Message}");
+                }
+            }
+        }
+        finally
+        {
+            if (ownStream && uploadStream is not null) await uploadStream.DisposeAsync();
+        }
+    }
+
+    if (!string.IsNullOrWhiteSpace(plate))
+        transport.Plate = plate.Length <= 30 ? plate : plate[..30];
+
+    transport.UpdatedAt = DateTime.UtcNow;
+    await db.SaveChangesAsync();
+
+    if (wasEmpty && (!string.IsNullOrWhiteSpace(transport.ImageUrl) || !string.IsNullOrWhiteSpace(transport.Plate)))
+    {
+        var userIds = await db.Bookings
+            .Where(b => b.TripId == id && b.Status != BookingStatus.Cancelled)
+            .Select(b => b.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        if (userIds.Count > 0)
+        {
+            foreach (var userId in userIds)
+            {
+                db.Notifications.Add(new UserNotification
+                {
+                    UserId = userId,
+                    Message = $"Ya esta disponible la informacion del transporte para tu proximo viaje a {trip.Destination}.",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+    }
+
+    return Results.Ok(new TripTransportInfo(transport.ImageUrl, transport.Plate));
+}).RequireAuthorization("AdminOnly");
+
 app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
 {
     var trip = await db.Trips.FindAsync(id);
@@ -606,12 +725,21 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
     var tripDiscounts = await db.Discounts.Where(d => d.TripId == id).ToListAsync();
     db.Discounts.RemoveRange(tripDiscounts);
 
+    // La fila de transporte cae por cascade al borrar el viaje, pero su imagen
+    // en el storage hay que borrarla de forma explicita.
+    var tripTransport = await db.TripTransports.FirstOrDefaultAsync(t => t.TripId == id);
+
     db.Trips.Remove(trip);
     await db.SaveChangesAsync();
 
     if (!string.IsNullOrEmpty(trip.ImageUrl))
     {
         await storage.DeleteAsync(trip.ImageUrl);
+    }
+
+    if (!string.IsNullOrEmpty(tripTransport?.ImageUrl))
+    {
+        await storage.DeleteAsync(tripTransport.ImageUrl);
     }
 
     return Results.Ok(new { Notified = notified });
@@ -2128,7 +2256,7 @@ app.MapPut("/api/trips/{id}/departure", async (int id, UpdateDepartureRequest re
     return Results.Ok(trip);
 }).RequireAuthorization("AdminOnly");
 
-app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest request, AppDbContext db) =>
+app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest request, AppDbContext db, ImageStorageService storage) =>
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
@@ -2138,6 +2266,26 @@ app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest requ
 
     if (request.Finalized)
     {
+        // Al finalizar el viaje la informacion de transporte ya no es util: se
+        // borra su imagen del storage y la fila asociada.
+        var transport = await db.TripTransports.FirstOrDefaultAsync(t => t.TripId == id);
+        if (transport is not null)
+        {
+            if (!string.IsNullOrEmpty(transport.ImageUrl))
+            {
+                try
+                {
+                    await storage.DeleteAsync(transport.ImageUrl);
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(
+                        $"[ImageStorage] No se pudo borrar la imagen del transporte del viaje {id}: {ex.Message}");
+                }
+            }
+            db.TripTransports.Remove(transport);
+        }
+
         var userIds = await db.Bookings
             .Where(b => b.TripId == id && b.Status != BookingStatus.Cancelled)
             .Select(b => b.UserId)
@@ -2155,8 +2303,9 @@ app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest requ
                     CreatedAt = DateTime.UtcNow
                 });
             }
-            await db.SaveChangesAsync();
         }
+
+        await db.SaveChangesAsync();
     }
 
     return Results.Ok(trip);
