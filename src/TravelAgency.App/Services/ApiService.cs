@@ -300,7 +300,7 @@ public class ApiService
             content.Add(new StringContent(plate), "plate");
 
         var response = await _http.PostAsync($"/api/trips/{tripId}/transport", content);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<TripTransportInfo>(JsonOptions);
     }
 

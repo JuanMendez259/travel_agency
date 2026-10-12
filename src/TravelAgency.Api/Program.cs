@@ -464,6 +464,7 @@ app.MapPost("/api/trips/{id}/transport", async (int id, HttpRequest request, App
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.Finalized) return Results.BadRequest("El viaje ya finalizo; no se puede publicar informacion de la unidad.");
 
     var plate = request.Form["plate"].ToString().Trim();
     var file = request.Form.Files.FirstOrDefault();
@@ -482,6 +483,7 @@ app.MapPost("/api/trips/{id}/transport", async (int id, HttpRequest request, App
         db.TripTransports.Add(transport);
     }
 
+    string? previousImageUrl = null;
     if (hasFile)
     {
         var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
@@ -513,25 +515,8 @@ app.MapPost("/api/trips/{id}/transport", async (int id, HttpRequest request, App
         {
             var imageUrl = await storage.UploadAsync(uploadStream, extension, contentType);
 
-            var previousImageUrl = transport.ImageUrl;
+            previousImageUrl = transport.ImageUrl;
             transport.ImageUrl = imageUrl;
-            transport.UpdatedAt = DateTime.UtcNow;
-            await db.SaveChangesAsync();
-
-            // La BD ya apunta a la nueva imagen, asi que ahora es seguro borrar la anterior.
-            if (!string.IsNullOrEmpty(previousImageUrl) &&
-                !string.Equals(previousImageUrl, imageUrl, StringComparison.OrdinalIgnoreCase))
-            {
-                try
-                {
-                    await storage.DeleteAsync(previousImageUrl);
-                }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine(
-                        $"[ImageStorage] No se pudo borrar la imagen anterior del transporte del viaje {id}: {ex.Message}");
-                }
-            }
         }
         finally
         {
@@ -544,6 +529,21 @@ app.MapPost("/api/trips/{id}/transport", async (int id, HttpRequest request, App
 
     transport.UpdatedAt = DateTime.UtcNow;
     await db.SaveChangesAsync();
+
+    // La BD ya apunta a la nueva imagen, asi que ahora es seguro borrar la anterior.
+    if (!string.IsNullOrEmpty(previousImageUrl) &&
+        !string.Equals(previousImageUrl, transport.ImageUrl, StringComparison.OrdinalIgnoreCase))
+    {
+        try
+        {
+            await storage.DeleteAsync(previousImageUrl);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(
+                $"[ImageStorage] No se pudo borrar la imagen anterior del transporte del viaje {id}: {ex.Message}");
+        }
+    }
 
     if (wasEmpty && (!string.IsNullOrWhiteSpace(transport.ImageUrl) || !string.IsNullOrWhiteSpace(transport.Plate)))
     {
@@ -2267,24 +2267,13 @@ app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest requ
     if (request.Finalized)
     {
         // Al finalizar el viaje la informacion de transporte ya no es util: se
-        // borra su imagen del storage y la fila asociada.
+        // borra su imagen del storage y la fila asociada. Primero se quita la
+        // fila y se confirma, y recien despues se borra la imagen: asi el commit
+        // nunca deja la fila apuntando a un objeto ya borrado.
         var transport = await db.TripTransports.FirstOrDefaultAsync(t => t.TripId == id);
+        var transportImageUrl = transport?.ImageUrl;
         if (transport is not null)
-        {
-            if (!string.IsNullOrEmpty(transport.ImageUrl))
-            {
-                try
-                {
-                    await storage.DeleteAsync(transport.ImageUrl);
-                }
-                catch (Exception ex)
-                {
-                    Console.Error.WriteLine(
-                        $"[ImageStorage] No se pudo borrar la imagen del transporte del viaje {id}: {ex.Message}");
-                }
-            }
             db.TripTransports.Remove(transport);
-        }
 
         var userIds = await db.Bookings
             .Where(b => b.TripId == id && b.Status != BookingStatus.Cancelled)
@@ -2306,6 +2295,19 @@ app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest requ
         }
 
         await db.SaveChangesAsync();
+
+        if (!string.IsNullOrEmpty(transportImageUrl))
+        {
+            try
+            {
+                await storage.DeleteAsync(transportImageUrl);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(
+                    $"[ImageStorage] No se pudo borrar la imagen del transporte del viaje {id}: {ex.Message}");
+            }
+        }
     }
 
     return Results.Ok(trip);

@@ -284,7 +284,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
             TransportPlateLabel.Text = hasPlate ? $"Placas: {info!.Plate}" : string.Empty;
             TransportPlateLabel.IsVisible = hasPlate;
-            TransportSoonLabel.IsVisible = !hasImage && !hasPlate;
+            TransportSoonLabel.IsVisible = TransportImage.Source is null && !hasPlate;
         }
         catch
         {

@@ -28,8 +28,9 @@ public partial class AdminTripDetailPage : ContentPage
             CheckinButton.IsVisible = false;
             AuditButton.IsVisible = false;
             EditActions.IsVisible = false;
-            AddTransportUnitButton.IsVisible = false;
         }
+
+        AddTransportUnitButton.IsVisible = _session.IsAdmin;
     }
 
     protected override async void OnAppearing()
@@ -110,12 +111,17 @@ public partial class AdminTripDetailPage : ContentPage
             _transportInfo = null;
         }
 
-        var hasImage = !string.IsNullOrWhiteSpace(_transportInfo?.ImageUrl);
-        var hasPlate = !string.IsNullOrWhiteSpace(_transportInfo?.Plate);
+        await ApplyTransportUnitAsync(_transportInfo);
+    }
+
+    private async Task ApplyTransportUnitAsync(TripTransportInfo? info)
+    {
+        var hasImage = !string.IsNullOrWhiteSpace(info?.ImageUrl);
+        var hasPlate = !string.IsNullOrWhiteSpace(info?.Plate);
 
         if (hasImage)
         {
-            TransportUnitImage.Source = await _api.GetTripImageAsync(_transportInfo!.ImageUrl);
+            TransportUnitImage.Source = await _api.GetTripImageAsync(info!.ImageUrl);
             TransportUnitImage.IsVisible = TransportUnitImage.Source is not null;
         }
         else
@@ -124,7 +130,7 @@ public partial class AdminTripDetailPage : ContentPage
             TransportUnitImage.IsVisible = false;
         }
 
-        TransportUnitPlateLabel.Text = hasPlate ? $"Placas: {_transportInfo!.Plate}" : string.Empty;
+        TransportUnitPlateLabel.Text = hasPlate ? $"Placas: {info!.Plate}" : string.Empty;
         TransportUnitPlateLabel.IsVisible = hasPlate;
         TransportUnitEmptyLabel.IsVisible = !hasImage && !hasPlate;
     }
@@ -199,7 +205,7 @@ public partial class AdminTripDetailPage : ContentPage
             TransportUnitEditor.IsVisible = false;
             AddTransportUnitButton.IsVisible = _session.IsAdmin;
 
-            await RenderTransportUnitAsync();
+            await ApplyTransportUnitAsync(info);
             await DisplayAlertAsync("Listo", "Informacion de la unidad guardada.", "OK");
         }
         catch (Exception ex)
