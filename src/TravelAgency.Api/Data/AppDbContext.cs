@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
     public DbSet<PayoutRequest> PayoutRequests => Set<PayoutRequest>();
     public DbSet<TripTransport> TripTransports => Set<TripTransport>();
+    public DbSet<TripExpense> TripExpenses => Set<TripExpense>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -175,6 +176,16 @@ public class AppDbContext : DbContext
             e.Property(x => x.ImageUrl).HasMaxLength(500);
             e.Property(x => x.Plate).HasMaxLength(30);
             e.HasIndex(x => x.TripId).IsUnique().HasDatabaseName("IX_TripTransports_TripId");
+            e.HasOne<Trip>().WithMany().HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TripExpense>(e =>
+        {
+            e.ToTable("TripExpenses");
+            e.Property(x => x.Concept).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.CreatedAt).IsRequired();
+            e.HasIndex(x => x.TripId).HasDatabaseName("IX_TripExpenses_TripId");
             e.HasOne<Trip>().WithMany().HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Cascade);
         });
 

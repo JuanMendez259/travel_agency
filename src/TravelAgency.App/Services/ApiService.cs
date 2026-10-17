@@ -538,6 +538,31 @@ public class ApiService
         response.EnsureSuccessStatusCode();
     }
 
+    public Task<List<TripExpense>?> GetTripExpensesAsync(int tripId) =>
+        _http.GetFromJsonAsync<List<TripExpense>>($"/api/trips/{tripId}/expenses", JsonOptions);
+
+    public async Task<TripExpense?> CreateTripExpenseAsync(int tripId, string concept, decimal amount)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/trips/{tripId}/expenses",
+            new TripExpense { Concept = concept, Amount = amount }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripExpense>(JsonOptions);
+    }
+
+    public async Task<TripExpense?> UpdateTripExpenseAsync(int expenseId, string concept, decimal amount)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/expenses/{expenseId}",
+            new TripExpense { Concept = concept, Amount = amount }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TripExpense>(JsonOptions);
+    }
+
+    public async Task DeleteTripExpenseAsync(int expenseId)
+    {
+        var response = await _http.DeleteAsync($"/api/expenses/{expenseId}");
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<DiscountValidationResult?> ValidateDiscountAsync(string code, int tripId, decimal baseAmount)
     {
         var response = await _http.PostAsJsonAsync("/api/discounts/validate",
