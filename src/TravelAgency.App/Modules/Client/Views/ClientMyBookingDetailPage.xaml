@@ -90,7 +90,7 @@
                             TextColor="{StaticResource OnSecondaryFixed}"
                             FontAttributes="Bold"
                             CornerRadius="12"
-                            HeightRequest="46" />
+                            MinimumWidthRequest="48" />
 
                     <Button x:Name="PassengersQrButton"
                             Text="Ver QR de acompañantes"
@@ -100,7 +100,7 @@
                             TextColor="White"
                             FontAttributes="Bold"
                             CornerRadius="12"
-                            HeightRequest="46" />
+                            MinimumWidthRequest="48" />
                 </VerticalStackLayout>
             </Border>
 
@@ -239,8 +239,7 @@
                             BackgroundColor="{StaticResource Primary}"
                             TextColor="White"
                             FontAttributes="Bold"
-                            CornerRadius="12"
-                            HeightRequest="48" />
+                            CornerRadius="12" />
                 </VerticalStackLayout>
             </Border>
 
@@ -353,8 +352,7 @@
                             BackgroundColor="{StaticResource Secondary}"
                             TextColor="White"
                             FontAttributes="Bold"
-                            CornerRadius="12"
-                            HeightRequest="46" />
+                            CornerRadius="12" />
                 </VerticalStackLayout>
             </Border>
 
@@ -400,7 +398,7 @@
                             TextColor="White"
                             FontAttributes="Bold"
                             CornerRadius="12"
-                            HeightRequest="46" />
+                            MinimumWidthRequest="48" />
                 </VerticalStackLayout>
             </Border>
 
@@ -413,8 +411,7 @@
                         BackgroundColor="{StaticResource Secondary}"
                         TextColor="White"
                         FontAttributes="Bold"
-                        CornerRadius="12"
-                        HeightRequest="48" />
+                        CornerRadius="12" />
             </VerticalStackLayout>
 
         </VerticalStackLayout>

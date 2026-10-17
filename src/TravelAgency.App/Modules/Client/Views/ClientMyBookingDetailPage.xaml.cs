@@ -216,7 +216,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
         }
 
 
-        var qrImage = QrCodeService.FromToken(currentBooking.QrToken);
+        var qrImage = await Task.Run(() => QrCodeService.FromToken(currentBooking.QrToken));
         QrImage!.Source = qrImage;
         QrSection!.IsVisible = qrImage is not null && currentBooking.Status != BookingStatus.Cancelled;
 
