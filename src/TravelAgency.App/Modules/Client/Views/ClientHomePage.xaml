@@ -35,7 +35,11 @@
     <ContentPage.ToolbarItems>
     </ContentPage.ToolbarItems>
 
-    <Grid RowDefinitions="Auto,*" BackgroundColor="{StaticResource ColorSurface}">
+    <Grid BackgroundColor="{StaticResource ColorSurface}">
+        <Grid x:Name="ContentColumn"
+              RowDefinitions="Auto,*"
+              MaximumWidthRequest="700"
+              HorizontalOptions="Center">
 
         <!-- ============ ENCABEZADO: SALUDO + BUSCADOR + CHIPS + TRUST STRIP ============ -->
         <VerticalStackLayout Grid.Row="0" Spacing="12" Padding="16,12,16,4">
@@ -263,6 +267,7 @@
                     </CollectionView.ItemTemplate>
                 </CollectionView>
             </RefreshView>
+        </Grid>
         </Grid>
     </Grid>
 </ContentPage>

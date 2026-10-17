@@ -25,6 +25,12 @@ public static class MauiProgram
 				fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
 			});
 
+		var apiBaseUrl = Environment.GetEnvironmentVariable("TRAVELAGENCY_API_BASEURL");
+		if (!string.IsNullOrWhiteSpace(apiBaseUrl))
+		{
+			ApiService.BaseUrl = apiBaseUrl;
+		}
+
 		builder.Services.AddSingleton<ApiService>();
 		builder.Services.AddSingleton<NominatimGeocoder>();
 		builder.Services.AddSingleton<SessionService>();

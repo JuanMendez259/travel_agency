@@ -147,7 +147,7 @@
                         <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
                             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
                                 <Label Text="✉️" FontSize="16" VerticalOptions="Center" />
-                                <Entry x:Name="EmailEntry" Grid.Column="1" Placeholder="ejemplo@correo.com" Keyboard="Email" Style="{StaticResource FieldEntry}" />
+                                <Entry x:Name="EmailEntry" AutomationId="LoginEmail" Grid.Column="1" Placeholder="ejemplo@correo.com" Keyboard="Email" Style="{StaticResource FieldEntry}" />
                             </Grid>
                         </Border>
                     </VerticalStackLayout>
@@ -158,7 +158,7 @@
                         <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
                             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
                                 <Label Text="🔒" FontSize="16" VerticalOptions="Center" />
-                                <Entry x:Name="PasswordEntry" Grid.Column="1" Placeholder="••••••••" IsPassword="True" Style="{StaticResource FieldEntry}" />
+                                <Entry x:Name="PasswordEntry" AutomationId="LoginPassword" Grid.Column="1" Placeholder="••••••••" IsPassword="True" Style="{StaticResource FieldEntry}" />
                                 <Button x:Name="TogglePasswordButton"
                                         Grid.Column="2"
                                         Text="Mostrar"
@@ -201,6 +201,7 @@
 
                     <!-- Botón principal -->
                     <Button x:Name="SubmitButton"
+                            AutomationId="LoginSubmit"
                             Text="Entrar"
                             Clicked="OnSubmitClicked"
                             BackgroundColor="{StaticResource ColorPrimary}"
@@ -264,6 +265,7 @@
                        TextColor="{StaticResource ColorOutline}"
                        Margin="0,0,0,4" />
                 <Picker x:Name="QuickLoginPicker"
+                        AutomationId="LoginQuickProfile"
                         Title="Seleccionar perfil de prueba"
                         SelectedIndexChanged="OnQuickLoginSelected"
                         TextColor="{StaticResource ColorOnSurfaceVariant}"
