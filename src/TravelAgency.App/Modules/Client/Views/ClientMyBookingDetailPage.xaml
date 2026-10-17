@@ -6,13 +6,21 @@
     xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
     Title="Detalle de Mi Reserva">
 
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="ColorOverlayWhite20">#33FFFFFF</Color>
+            <Color x:Key="ColorOverlayWhite87">#DEFFFFFF</Color>
+            <Color x:Key="ColorOverlayWhite90">#E6FFFFFF</Color>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
     <ScrollView BackgroundColor="{StaticResource Surface}">
         <VerticalStackLayout Padding="16" Spacing="14">
 
             <!-- ============ FOTO + TÍTULO ============ -->
             <Border StrokeShape="RoundRectangle 16" Stroke="Transparent" Padding="0">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.08" Radius="14" Offset="0,3" />
+                    <Shadow Brush="#0F172A" Opacity="0.08" Radius="14" Offset="0,3" />
                 </Border.Shadow>
                 <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill"
                        SemanticProperties.Description="Foto del viaje" />
@@ -29,7 +37,7 @@
             <!-- ============ ACERCA DE ESTE VIAJE ============ -->
             <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
@@ -43,11 +51,11 @@
             <!-- ============ ESTADO DE LA RESERVA (tarjeta verde) ============ -->
             <Border StrokeShape="RoundRectangle 16" Stroke="Transparent" BackgroundColor="{StaticResource Primary}" Padding="16">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.12" Radius="14" Offset="0,4" />
+                    <Shadow Brush="#14532D" Opacity="0.12" Radius="14" Offset="0,4" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="6">
                     <Label x:Name="StatusLabel" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource SecondaryFixed}" />
-                    <Label x:Name="BalanceLabel" FontSize="16" FontAttributes="Bold" TextColor="White" />
+                    <Label x:Name="BalanceLabel" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnPrimary}" />
                 </VerticalStackLayout>
             </Border>
 
@@ -59,28 +67,28 @@
                     Padding="18"
                     IsVisible="False">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.15" Radius="16" Offset="0,5" />
+                    <Shadow Brush="#14532D" Opacity="0.15" Radius="16" Offset="0,5" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="10">
                     <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
                         <Label Text="🎫" FontSize="16" AutomationProperties.IsInAccessibleTree="False" />
-                        <Label Text="Mi código QR" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
+                        <Label Text="Mi código QR" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnPrimary}" HorizontalOptions="Center" />
                     </HorizontalStackLayout>
 
                     <Label x:Name="HolderSeatLabel"
                            FontSize="13"
-                           TextColor="#E6FFFFFF"
+                           TextColor="{StaticResource ColorOverlayWhite90}"
                            HorizontalOptions="Center"
                            HorizontalTextAlignment="Center" />
 
-                    <Border StrokeShape="RoundRectangle 14" BackgroundColor="White" Padding="12" HorizontalOptions="Center">
+                    <Border StrokeShape="RoundRectangle 14" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="12" HorizontalOptions="Center">
                         <Image x:Name="QrImage" HeightRequest="220" WidthRequest="220" HorizontalOptions="Center"
                                SemanticProperties.Description="Código QR de tu reserva" />
                     </Border>
 
-                    <Label Text="Preséntalo en el check-in de tu salida." FontSize="12" TextColor="#DEFFFFFF" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                    <Label Text="Preséntalo en el check-in de tu salida." FontSize="12" TextColor="{StaticResource ColorOverlayWhite87}" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
 
-                    <Label x:Name="PassengersListLabel" FontSize="12" TextColor="#E6FFFFFF" HorizontalOptions="Center" HorizontalTextAlignment="Center" IsVisible="False" />
+                    <Label x:Name="PassengersListLabel" FontSize="12" TextColor="{StaticResource ColorOverlayWhite90}" HorizontalOptions="Center" HorizontalTextAlignment="Center" IsVisible="False" />
 
                     <Button x:Name="AddPassengersButton"
                             Text="Agregar acompañantes"
@@ -96,8 +104,8 @@
                             Text="Ver QR de acompañantes"
                             Clicked="OnPassengersQrClicked"
                             IsVisible="False"
-                            BackgroundColor="#33FFFFFF"
-                            TextColor="White"
+                            BackgroundColor="{StaticResource ColorOverlayWhite20}"
+                            TextColor="{StaticResource OnPrimary}"
                             FontAttributes="Bold"
                             CornerRadius="12"
                             MinimumWidthRequest="48" />
@@ -108,7 +116,7 @@
             <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}"
                     BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="12">
                     <Grid ColumnDefinitions="*,Auto">
@@ -132,6 +140,7 @@
                                     BackgroundColor="{StaticResource Primary}"
                                     StrokeShape="RoundRectangle 16">
                                 <Label Text="🛫" FontSize="15"
+                                       AutomationProperties.IsInAccessibleTree="False"
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
@@ -152,6 +161,7 @@
                                     BackgroundColor="{StaticResource Secondary}"
                                     StrokeShape="RoundRectangle 16">
                                 <Label Text="🛬" FontSize="15"
+                                       AutomationProperties.IsInAccessibleTree="False"
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="2">
@@ -171,7 +181,7 @@
             <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}"
                     BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
@@ -201,7 +211,7 @@
                 <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14"
                         IsVisible="{Binding Source={x:Reference ItineraryHeader}, Path=IsVisible}">
                     <Border.Shadow>
-                        <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                        <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
                     </Border.Shadow>
                     <VerticalStackLayout x:Name="ItineraryLayout" Spacing="10">
                         <BindableLayout.ItemTemplate>
@@ -224,7 +234,7 @@
             <!-- ============ RUTA EN MAPA ============ -->
             <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
@@ -237,7 +247,7 @@
                             Text="Ver ruta en mapa interactivo"
                             Clicked="OnMapRouteClicked"
                             BackgroundColor="{StaticResource Primary}"
-                            TextColor="White"
+                            TextColor="{StaticResource OnPrimary}"
                             FontAttributes="Bold"
                             CornerRadius="12" />
                 </VerticalStackLayout>
@@ -290,11 +300,11 @@
             <!-- ============ MIS PAGOS ============ -->
             <Border StrokeShape="RoundRectangle 16" Stroke="{StaticResource SurfaceContainerHigh}" BackgroundColor="{StaticResource SurfaceContainerLowest}" Padding="14">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
-                        <Label Text="💳" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="🧾" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
                         <Label Text="Mis pagos" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
                     </HorizontalStackLayout>
 
@@ -310,12 +320,12 @@
                                     <VerticalStackLayout Spacing="3">
                                         <HorizontalStackLayout Spacing="4">
                                             <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-                                            <Label Text="·" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                                            <Label Text="·" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" AutomationProperties.IsInAccessibleTree="False" />
                                             <Label Text="{Binding Method}" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                                         </HorizontalStackLayout>
                                         <HorizontalStackLayout Spacing="4">
                                             <Label Text="{Binding Amount, StringFormat='{0:C}'}" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource OnSurface}" />
-                                            <Label Text="·" FontSize="14" TextColor="{StaticResource OnSurface}" />
+                                            <Label Text="·" FontSize="14" TextColor="{StaticResource OnSurface}" AutomationProperties.IsInAccessibleTree="False" />
                                             <Label Text="{Binding Status}" FontSize="13" TextColor="{StaticResource Secondary}" />
                                         </HorizontalStackLayout>
                                     </VerticalStackLayout>
@@ -337,7 +347,7 @@
                     BackgroundColor="{StaticResource SurfaceContainerLowest}"
                     Padding="14">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
@@ -350,7 +360,7 @@
                             Text="Realizar pago"
                             Clicked="OnRealizarPagoClicked"
                             BackgroundColor="{StaticResource Secondary}"
-                            TextColor="White"
+                            TextColor="{StaticResource OnSecondary}"
                             FontAttributes="Bold"
                             CornerRadius="12" />
                 </VerticalStackLayout>
@@ -364,7 +374,7 @@
                     BackgroundColor="{StaticResource SurfaceContainerLowest}"
                     Padding="14">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.05" Radius="12" Offset="0,2" />
+                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="8">
                     <HorizontalStackLayout Spacing="6">
@@ -395,7 +405,7 @@
                             Text="Cancelar reserva"
                             Clicked="OnCancelClicked"
                             BackgroundColor="{StaticResource Error}"
-                            TextColor="White"
+                            TextColor="{StaticResource OnError}"
                             FontAttributes="Bold"
                             CornerRadius="12"
                             MinimumWidthRequest="48" />
@@ -409,7 +419,7 @@
                         Clicked="OnRateClicked"
                         IsVisible="False"
                         BackgroundColor="{StaticResource Secondary}"
-                        TextColor="White"
+                        TextColor="{StaticResource OnSecondary}"
                         FontAttributes="Bold"
                         CornerRadius="12" />
             </VerticalStackLayout>

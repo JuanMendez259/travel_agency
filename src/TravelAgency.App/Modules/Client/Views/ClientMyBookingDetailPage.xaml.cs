@@ -33,10 +33,16 @@ public partial class ClientMyBookingDetailPage : ContentPage
     }
 
     // Resuelve un token de color global (Colors.xaml) con un respaldo seguro.
-    private static Color Token(string key, string fallback) =>
-        Application.Current?.Resources.TryGetValue(key, out var value) == true && value is Color color
-            ? color
-            : Color.FromArgb(fallback);
+    private Color Token(string key, string fallback)
+    {
+        if (Resources.TryGetValue(key, out var local) && local is Color localColor)
+            return localColor;
+
+        if (Application.Current?.Resources.TryGetValue(key, out var app) == true && app is Color appColor)
+            return appColor;
+
+        return Color.FromArgb(fallback);
+    }
 
     protected override async void OnAppearing()
     {
