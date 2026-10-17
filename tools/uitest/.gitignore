@@ -1,0 +1,4 @@
+# Artefactos generados por las pruebas UI (no versionar)
+shots/
+api.log
+travelagency.db*
