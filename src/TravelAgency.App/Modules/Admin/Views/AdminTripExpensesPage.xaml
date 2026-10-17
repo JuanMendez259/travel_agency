@@ -36,7 +36,8 @@
             <Entry x:Name="ConceptEntry" Placeholder="Ej. Renta de autobus" />
 
             <Label Text="Cantidad" />
-            <Entry x:Name="AmountEntry" Placeholder="Ej. 1500.00" Keyboard="Numeric" />
+            <Entry x:Name="AmountEntry" Placeholder="Ej. 1500.00" Keyboard="Numeric"
+                   TextChanged="OnAmountChanged" />
 
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="0,6,0,0">
                 <Button x:Name="AddButton" Text="+" FontSize="24" FontAttributes="Bold"

@@ -10,6 +10,7 @@ public partial class AdminTripExpensesPage : ContentPage
     private List<TripExpense> _expenses = new();
     private TripExpense? _editing;
     private bool _suppressTripChanged;
+    private bool _sanitizingAmount;
 
     public AdminTripExpensesPage(ApiService api)
     {
@@ -71,6 +72,40 @@ public partial class AdminTripExpensesPage : ContentPage
         UpdateTripTitle();
         ResetForm();
         await LoadExpensesAsync();
+    }
+
+    // Solo permite digitos y un separador decimal (se normaliza a ".").
+    private void OnAmountChanged(object? sender, TextChangedEventArgs e)
+    {
+        if (_sanitizingAmount) return;
+
+        var input = e.NewTextValue ?? string.Empty;
+        var sanitized = SanitizeAmount(input);
+        if (sanitized == input) return;
+
+        _sanitizingAmount = true;
+        AmountEntry.Text = sanitized;
+        _sanitizingAmount = false;
+        AmountEntry.CursorPosition = sanitized.Length;
+    }
+
+    private static string SanitizeAmount(string text)
+    {
+        var builder = new System.Text.StringBuilder();
+        var hasSeparator = false;
+        foreach (var ch in text)
+        {
+            if (char.IsDigit(ch))
+            {
+                builder.Append(ch);
+            }
+            else if ((ch == '.' || ch == ',') && !hasSeparator)
+            {
+                builder.Append('.');
+                hasSeparator = true;
+            }
+        }
+        return builder.ToString();
     }
 
     private async Task LoadExpensesAsync()
