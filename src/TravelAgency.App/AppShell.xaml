@@ -20,67 +20,67 @@
     <TabBar>
         <ShellContent
             Title="Explorar"
-            Icon="nav_compass.svg"
+            Icon="nav_compass.png"
             ContentTemplate="{DataTemplate client:ClientHomePage}"
             Route="home" />
         <ShellContent
             Title="Mis Viajes"
-            Icon="nav_tickets.svg"
+            Icon="nav_tickets.png"
             ContentTemplate="{DataTemplate client:ClientMyTripsPage}"
             Route="mytrips" />
         <ShellContent
             Title="Mi Perfil"
-            Icon="nav_circle_user.svg"
+            Icon="nav_circle_user.png"
             ContentTemplate="{DataTemplate client:ClientProfilePage}"
             Route="profile" />
         <ShellContent
             Title="Nosotros"
-            Icon="nav_info.svg"
+            Icon="nav_info.png"
             ContentTemplate="{DataTemplate client:ClientCompanyPage}"
             Route="company" />
         <ShellContent
             Title="Mis Viajes"
-            Icon="nav_tickets.svg"
+            Icon="nav_tickets.png"
             ContentTemplate="{DataTemplate admin:AdminTripsPage}"
             Route="admintrips" />
         <ShellContent
             Title="Reservas"
-            Icon="nav_calendar_check.svg"
+            Icon="nav_calendar_check.png"
             ContentTemplate="{DataTemplate admin:AdminBookingsPage}"
             Route="bookings" />
         <ShellContent
             Title="Estadísticas"
-            Icon="nav_chart_column.svg"
+            Icon="nav_chart_column.png"
             ContentTemplate="{DataTemplate admin:AdminStatsPage}"
             Route="adminstats" />
         <ShellContent
             Title="Admin"
-            Icon="nav_layout_dashboard.svg"
+            Icon="nav_layout_dashboard.png"
             ContentTemplate="{DataTemplate admin:AdminDashboardPage}"
             Route="admin" />
         <ShellContent
             Title="Coordinadores"
-            Icon="nav_user_cog.svg"
+            Icon="nav_user_cog.png"
             ContentTemplate="{DataTemplate admin:AdminCoordinadoresPage}"
             Route="coordinators" />
         <ShellContent
             Title="Descuentos"
-            Icon="nav_ticket_percent.svg"
+            Icon="nav_ticket_percent.png"
             ContentTemplate="{DataTemplate admin:AdminDiscountsPage}"
             Route="discounts" />
         <ShellContent
             Title="Reembolsos"
-            Icon="nav_hand_coins.svg"
+            Icon="nav_hand_coins.png"
             ContentTemplate="{DataTemplate admin:AdminPayoutsPage}"
             Route="payouts" />
         <ShellContent
             Title="Gastos"
-            Icon="nav_receipt.svg"
+            Icon="nav_receipt.png"
             ContentTemplate="{DataTemplate admin:AdminTripExpensesPage}"
             Route="expenses" />
         <ShellContent
             Title="Avisos"
-            Icon="nav_bell.svg"
+            Icon="nav_bell.png"
             ContentTemplate="{DataTemplate client:ClientNotificationsPage}"
             Route="notifications" />
     </TabBar>
