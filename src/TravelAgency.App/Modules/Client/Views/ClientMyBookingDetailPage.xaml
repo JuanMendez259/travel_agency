@@ -366,52 +366,6 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- ============ ACOMPAÑANTES (cancelar boleto) ============ -->
-            <Border x:Name="PassengersCancelSection"
-                    IsVisible="False"
-                    StrokeShape="RoundRectangle 16"
-                    Stroke="{StaticResource SurfaceContainerHigh}"
-                    BackgroundColor="{StaticResource SurfaceContainerLowest}"
-                    Padding="14">
-                <Border.Shadow>
-                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
-                </Border.Shadow>
-                <VerticalStackLayout Spacing="8">
-                    <HorizontalStackLayout Spacing="6">
-                        <Label Text="🧑‍🤝‍🧑" FontSize="15" AutomationProperties.IsInAccessibleTree="False" />
-                        <Label Text="Acompañantes" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Primary}" SemanticProperties.HeadingLevel="Level2" />
-                    </HorizontalStackLayout>
-                    <Label Text="Puedes cancelar el boleto de un acompañante por separado. El reembolso se abona a tu saldo a favor."
-                           FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-                    <VerticalStackLayout x:Name="PassengersCancelLayout" Spacing="8" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- ============ CANCELACIÓN ============ -->
-            <Border x:Name="CancelSection"
-                    StrokeShape="RoundRectangle 16"
-                    Stroke="Transparent"
-                    BackgroundColor="{StaticResource ErrorContainer}"
-                    Padding="14"
-                    IsVisible="False">
-                <VerticalStackLayout Spacing="8">
-                    <HorizontalStackLayout Spacing="6">
-                        <Label Text="⚠️" FontSize="14" AutomationProperties.IsInAccessibleTree="False" />
-                        <Label Text="Cancelación de la reserva" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource OnErrorContainer}" SemanticProperties.HeadingLevel="Level2" />
-                    </HorizontalStackLayout>
-                    <Label x:Name="CancelPolicyLabel" FontSize="12" TextColor="{StaticResource OnErrorContainer}" />
-                    <Label x:Name="CancelRefundLabel" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource OnErrorContainer}" />
-                    <Button x:Name="CancelButton"
-                            Text="Cancelar reserva"
-                            Clicked="OnCancelClicked"
-                            BackgroundColor="{StaticResource Error}"
-                            TextColor="{StaticResource OnError}"
-                            FontAttributes="Bold"
-                            CornerRadius="12"
-                            MinimumWidthRequest="48" />
-                </VerticalStackLayout>
-            </Border>
-
             <!-- ============ CALIFICAR VIAJE ============ -->
             <VerticalStackLayout Spacing="6">
                 <Label x:Name="RateHintLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
@@ -423,6 +377,73 @@
                         FontAttributes="Bold"
                         CornerRadius="12" />
             </VerticalStackLayout>
+
+            <!-- ============ CANCELACIÓN (reserva y boletos, plegable) ============ -->
+            <Border x:Name="CancelSection"
+                    IsVisible="False"
+                    StrokeShape="RoundRectangle 16"
+                    Stroke="{StaticResource SurfaceContainerHigh}"
+                    BackgroundColor="{StaticResource SurfaceContainerLowest}"
+                    Padding="14">
+                <Border.Shadow>
+                    <Shadow Brush="#0F172A" Opacity="0.05" Radius="12" Offset="0,2" />
+                </Border.Shadow>
+                <VerticalStackLayout Spacing="10">
+
+                    <!-- Encabezado plegable: una sola fila neutra, sin acento de error -->
+                    <Border x:Name="CancelToggleRow"
+                            AutomationId="CancelToggle"
+                            StrokeShape="RoundRectangle 12"
+                            Stroke="Transparent"
+                            BackgroundColor="Transparent"
+                            Padding="2,12"
+                            MinimumHeightRequest="44">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnCancelToggleTapped" />
+                        </Border.GestureRecognizers>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Label Text="Cancelar reserva o boletos"
+                                   FontSize="13"
+                                   TextColor="{StaticResource OnSurfaceVariant}"
+                                   VerticalOptions="Center" />
+                            <Label x:Name="CancelToggleChevron"
+                                   Grid.Column="1"
+                                   Text="🔽"
+                                   FontSize="12"
+                                   VerticalOptions="Center"
+                                   AutomationProperties.IsInAccessibleTree="False" />
+                        </Grid>
+                    </Border>
+
+                    <VerticalStackLayout x:Name="CancelBody" IsVisible="False" Spacing="12">
+
+                        <VerticalStackLayout Spacing="6">
+                            <HorizontalStackLayout Spacing="6">
+                                <Label Text="⚠️" FontSize="14" AutomationProperties.IsInAccessibleTree="False" />
+                                <Label Text="Cancelación de la reserva" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource OnSurface}" SemanticProperties.HeadingLevel="Level2" />
+                            </HorizontalStackLayout>
+                            <Label x:Name="CancelPolicyLabel" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                            <Label x:Name="CancelRefundLabel" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource OnErrorContainer}" />
+                            <Button x:Name="CancelButton"
+                                    Text="Cancelar reserva"
+                                    Clicked="OnCancelClicked"
+                                    BackgroundColor="{StaticResource Error}"
+                                    TextColor="{StaticResource OnError}"
+                                    FontAttributes="Bold"
+                                    CornerRadius="12"
+                                    MinimumWidthRequest="48" />
+                        </VerticalStackLayout>
+
+                        <VerticalStackLayout x:Name="PassengersCancelBlock" IsVisible="False" Spacing="6">
+                            <Label Text="Cancelar el boleto de un acompañante" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource OnSurface}" />
+                            <Label Text="Puedes cancelar el boleto de un acompañante por separado. El reembolso se abona a tu saldo a favor."
+                                   FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                            <VerticalStackLayout x:Name="PassengersCancelLayout" Spacing="8" />
+                        </VerticalStackLayout>
+
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
 
         </VerticalStackLayout>
     </ScrollView>
