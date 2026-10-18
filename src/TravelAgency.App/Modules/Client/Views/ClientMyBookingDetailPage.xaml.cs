@@ -311,6 +311,12 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         _canCancel = canCancel;
         CancelSection.IsVisible = canCancel;
+
+        // El bloque arranca plegado en cada carga para que la cancelacion no
+        // compita visualmente con las acciones utiles de la reserva.
+        CancelBody.IsVisible = false;
+        CancelToggleChevron.Text = "🔽";
+
         if (!canCancel) return;
 
         var limit = trip!.CancellationDaysLimit ?? BookingRefundPolicy.DefaultCancellationDaysLimit;
@@ -335,6 +341,13 @@ public partial class ClientMyBookingDetailPage : ContentPage
         CancelButton.IsVisible = true;
     }
 
+    private void OnCancelToggleTapped(object? sender, TappedEventArgs e)
+    {
+        var open = !CancelBody.IsVisible;
+        CancelBody.IsVisible = open;
+        CancelToggleChevron.Text = open ? "🔼" : "🔽";
+    }
+
     // Muestra, cuando la reserva aun se puede cancelar, una fila por acompanante
     // con la accion de cancelar su boleto individual.
     private void RenderPassengersCancelSection(List<TripPassenger> passengers)
@@ -342,7 +355,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
         PassengersCancelLayout.Children.Clear();
 
         var visible = _canCancel && passengers.Count > 0;
-        PassengersCancelSection.IsVisible = visible;
+        PassengersCancelBlock.IsVisible = visible;
         if (!visible) return;
 
         var nameColor = Token("OnSurface", "#131B2E");
