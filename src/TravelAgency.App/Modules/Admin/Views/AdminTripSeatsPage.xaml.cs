@@ -7,9 +7,12 @@ namespace TravelAgency.App.Modules.Admin.Views;
 [QueryProperty(nameof(TripId), "id")]
 public partial class AdminTripSeatsPage : ContentPage
 {
-    private static readonly Color AvailableColor = Color.FromArgb("#D9D9D9");
+    private static readonly Color AvailableColor = Color.FromArgb("#DAE2FD");
     private static readonly Color OccupiedColor = Color.FromArgb("#DBB92A");
-    private static readonly Color CheckedInColor = Color.FromArgb("#2F855A");
+    private static readonly Color CheckedInColor = Color.FromArgb("#006C49");
+    private static readonly Color OnSurfaceColor = Color.FromArgb("#131B2E");
+    private static readonly Color OnSurfaceVariantColor = Color.FromArgb("#404941");
+    private static readonly Color OutlineColor = Color.FromArgb("#717970");
 
     private readonly ApiService _api;
     private List<TripSeatRow> _rows = new();
@@ -77,6 +80,7 @@ public partial class AdminTripSeatsPage : ContentPage
         _currentFloor = 1;
 
         TripLabel.Text = map.TripTitle;
+        FloorBadgeLabel.Text = map.HasTwoFloors ? "Dos pisos" : "Planta única";
         var floorsText = map.HasTwoFloors
             ? $" · Piso 1: {map.Floor1Capacity ?? 0} · Piso 2: {map.Floor2Capacity ?? 0}"
             : string.Empty;
@@ -94,6 +98,7 @@ public partial class AdminTripSeatsPage : ContentPage
             .Where(s => !s.IsAisle && s.IsOccupied)
             .OrderBy(s => s.Number)
             .ToList();
+        OccupiedCountLabel.Text = $"{occupied.Count} ocupados";
 
         if (occupied.Count == 0)
         {
@@ -101,7 +106,8 @@ public partial class AdminTripSeatsPage : ContentPage
             {
                 Text = "Todavía no hay asientos ocupados.",
                 FontSize = 13,
-                TextColor = Colors.Gray
+                TextColor = OnSurfaceVariantColor,
+                Margin = new Thickness(0, 2)
             });
             return;
         }
@@ -112,35 +118,71 @@ public partial class AdminTripSeatsPage : ContentPage
                 ? $"{seat.OccupiedBy} (check-in hecho)"
                 : seat.OccupiedBy;
 
+            var detailColor = seat.CheckedIn ? CheckedInColor : Color.FromArgb("#8A6400");
+            var badge = new Border
+            {
+                WidthRequest = 36,
+                HeightRequest = 36,
+                StrokeThickness = 0,
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+                BackgroundColor = seat.CheckedIn ? Color.FromArgb("#6CF8BB") : Color.FromArgb("#F8E8A7"),
+                Content = new Label
+                {
+                    Text = seat.CheckedIn ? "✓" : "•",
+                    FontSize = seat.CheckedIn ? 17 : 20,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = seat.CheckedIn ? CheckedInColor : detailColor,
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center
+                }
+            };
+
+            var details = new VerticalStackLayout { Spacing = 1, VerticalOptions = LayoutOptions.Center };
+            details.Add(new Label
+            {
+                Text = who,
+                FontSize = 14,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = OnSurfaceColor
+            });
+            details.Add(new Label
+            {
+                Text = _twoFloors
+                    ? $"Piso {FloorOf(seat.Number)} · Asiento {seat.Number} · Reserva #{seat.BookingId}"
+                    : $"Asiento {seat.Number} · Reserva #{seat.BookingId}",
+                FontSize = 11,
+                TextColor = OnSurfaceVariantColor
+            });
+            details.Add(new Label
+            {
+                Text = seat.CheckedIn
+                    ? "Check-in hecho"
+                    : seat.IsAssigned ? "Pasajero registrado · falta check-in" : "Titular · falta check-in",
+                FontSize = 11,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = detailColor
+            });
+
+            var occupiedRow = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Auto),
+                    new ColumnDefinition(GridLength.Star)
+                },
+                ColumnSpacing = 10,
+                Children = { badge, details }
+            };
+            Grid.SetColumn(details, 1);
+
             OccupiedList.Add(new Border
             {
-                StrokeThickness = 0,
-                Padding = new Thickness(12, 8),
-                BackgroundColor = Color.FromArgb("#EEEEEE"),
-                Content = new VerticalStackLayout
-                {
-                    Spacing = 2,
-                    Children =
-                    {
-                        new Label
-                        {
-                            Text = _twoFloors
-                                ? $"Piso {FloorOf(seat.Number)} · Asiento {seat.Number}"
-                                : $"Asiento {seat.Number}",
-                            FontSize = 14,
-                            FontAttributes = FontAttributes.Bold
-                        },
-                        new Label { Text = who, FontSize = 12 },
-                        new Label
-                        {
-                            Text = seat.IsAssigned
-                                ? $"Reserva #{seat.BookingId} · pasajero registrado"
-                                : $"Reserva #{seat.BookingId} · titular sin pasajero registrado",
-                            FontSize = 11,
-                            TextColor = Colors.Gray
-                        }
-                    }
-                }
+                Stroke = Color.FromArgb("#E2E7FF"),
+                StrokeThickness = 1,
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+                Padding = new Thickness(10),
+                BackgroundColor = Color.FromArgb("#F2F3FF"),
+                Content = occupiedRow
             });
         }
     }
@@ -152,7 +194,7 @@ public partial class AdminTripSeatsPage : ContentPage
             return new BoxView
             {
                 WidthRequest = 18,
-                HeightRequest = 44,
+                HeightRequest = 48,
                 Color = Colors.Transparent
             };
         }
@@ -163,28 +205,54 @@ public partial class AdminTripSeatsPage : ContentPage
 
         var border = new Border
         {
-            WidthRequest = 44,
-            HeightRequest = 44,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(8) },
-            Stroke = Colors.Transparent,
+            WidthRequest = 48,
+            HeightRequest = 48,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(10) },
+            Stroke = seat.CheckedIn ? CheckedInColor : Colors.Transparent,
+            StrokeThickness = seat.CheckedIn ? 1 : 0,
             BackgroundColor = background,
-            Content = new Label
+            Content = new VerticalStackLayout
             {
-                Text = seat.Number.ToString(),
-                TextColor = seat.IsOccupied ? Colors.White : Colors.Black,
-                FontSize = 12,
-                FontAttributes = FontAttributes.Bold,
+                Spacing = 0,
                 HorizontalOptions = LayoutOptions.Center,
-                VerticalOptions = LayoutOptions.Center
+                VerticalOptions = LayoutOptions.Center,
+                Children =
+                {
+                    new Label
+                    {
+                        Text = seat.Number.ToString(),
+                        TextColor = seat.IsOccupied && !seat.CheckedIn ? OnSurfaceColor : seat.IsOccupied ? Colors.White : OnSurfaceColor,
+                        FontSize = 12,
+                        FontAttributes = FontAttributes.Bold,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    },
+                    new Label
+                    {
+                        Text = seat.CheckedIn ? "✓" : seat.IsOccupied ? "Ocupado" : "Libre",
+                        TextColor = seat.IsOccupied && !seat.CheckedIn ? OnSurfaceColor : seat.IsOccupied ? Colors.White : OnSurfaceVariantColor,
+                        FontSize = 8,
+                        FontAttributes = seat.CheckedIn ? FontAttributes.Bold : FontAttributes.None,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    }
+                }
             }
         };
+
+        var status = seat.CheckedIn ? "check-in hecho" : seat.IsOccupied ? "ocupado" : "disponible";
+        var whoDescription = seat.IsOccupied && !string.IsNullOrWhiteSpace(seat.OccupiedBy)
+            ? $", {seat.OccupiedBy}, reserva {seat.BookingId}"
+            : string.Empty;
+        SemanticProperties.SetDescription(border, $"Asiento {seat.Number}, {status}{whoDescription}");
+        SemanticProperties.SetHint(border, "Toca para ver el detalle del asiento");
 
         border.GestureRecognizers.Add(new TapGestureRecognizer
         {
             Command = new Command(async () =>
             {
-                var status = seat.CheckedIn ? "Ocupado · check-in hecho" : seat.IsOccupied ? "Ocupado" : "Disponible";
-                var who = seat.IsOccupied ? $"\n{seat.OccupiedBy} · Reserva #{seat.BookingId}" : string.Empty;
+                var status = seat.CheckedIn ? "Ocupado · check-in hecho" : seat.IsOccupied ? "Ocupado · falta check-in" : "Disponible";
+                var who = seat.IsOccupied
+                    ? $"\n{seat.OccupiedBy ?? "Titular sin pasajero registrado"} · Reserva #{seat.BookingId}"
+                    : string.Empty;
                 var title = _twoFloors
                     ? $"Piso {FloorOf(seat.Number)} · Asiento {seat.Number}"
                     : $"Asiento {seat.Number}";
@@ -200,17 +268,44 @@ public partial class AdminTripSeatsPage : ContentPage
         RowsContainer.Clear();
         foreach (var row in _rows.Where(r => r.Floor == _currentFloor))
         {
-            var rowLayout = new HorizontalStackLayout
+            var rowLayout = new Grid { ColumnSpacing = 4 };
+            rowLayout.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            rowLayout.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(24, GridUnitType.Absolute)));
+            rowLayout.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+
+            var left = new HorizontalStackLayout
             {
-                Spacing = 10,
-                HorizontalOptions = LayoutOptions.Center
+                Spacing = 4,
+                HorizontalOptions = LayoutOptions.End,
+                VerticalOptions = LayoutOptions.Center
             };
+            var right = new HorizontalStackLayout
+            {
+                Spacing = 4,
+                HorizontalOptions = LayoutOptions.Start,
+                VerticalOptions = LayoutOptions.Center
+            };
+            var seatCount = 0;
 
             foreach (var seat in row.Seats)
             {
-                rowLayout.Add(BuildSeat(seat));
+                if (seat.IsAisle) continue;
+                (seatCount < 2 ? left : right).Add(BuildSeat(seat));
+                seatCount++;
             }
 
+            var rowLabel = new Label
+            {
+                Text = $"F{row.RowNumber}",
+                FontSize = 10,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#C0C9BE"),
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            };
+            rowLayout.Add(left, 0, 0);
+            rowLayout.Add(rowLabel, 1, 0);
+            rowLayout.Add(right, 2, 0);
             RowsContainer.Add(rowLayout);
         }
     }
@@ -232,12 +327,12 @@ public partial class AdminTripSeatsPage : ContentPage
 
     private void UpdateFloorButtons()
     {
-        var activeBg = Color.FromArgb("#2F855A");
-        var inactiveBg = Color.FromArgb("#E0E0E0");
+        var activeBg = Color.FromArgb("#003B1B");
+        var inactiveBg = Color.FromArgb("#DAE2FD");
         Floor1Button.BackgroundColor = _currentFloor == 1 ? activeBg : inactiveBg;
-        Floor1Button.TextColor = _currentFloor == 1 ? Colors.White : Colors.Black;
+        Floor1Button.TextColor = _currentFloor == 1 ? Colors.White : OnSurfaceColor;
         Floor2Button.BackgroundColor = _currentFloor == 2 ? activeBg : inactiveBg;
-        Floor2Button.TextColor = _currentFloor == 2 ? Colors.White : Colors.Black;
+        Floor2Button.TextColor = _currentFloor == 2 ? Colors.White : OnSurfaceColor;
     }
 
     private async void OnRefreshing(object? sender, EventArgs e)
