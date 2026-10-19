@@ -137,6 +137,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureBookingQrColumnAsync(db, provider);
     await EnsureUserQrColumnAsync(db, provider);
     await EnsureUserEmergencyContactColumnAsync(db, provider);
+    await EnsureUserSupabaseColumnsAsync(db, provider);
     await EnsurePassengersTableAsync(db, provider);
     await EnsureTripFinalizedColumnAsync(db, provider);
     await EnsureRatingsTableAsync(db, provider);
@@ -3601,6 +3602,43 @@ static async Task EnsureUserEmergencyContactColumnAsync(AppDbContext db, string 
             ? "ALTER TABLE \"Users\" ADD COLUMN \"EmergencyContact\" TEXT NULL;"
             : "ALTER TABLE \"Users\" ADD COLUMN \"EmergencyContact\" character varying(120) NULL;");
     }
+}
+
+static async Task EnsureUserSupabaseColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Users", "SupabaseUserId", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Users\" ADD COLUMN \"SupabaseUserId\" TEXT NULL;"
+            : "ALTER TABLE \"Users\" ADD COLUMN \"SupabaseUserId\" character varying(64) NULL;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Users", "Proveedor", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Users\" ADD COLUMN \"Proveedor\" TEXT NULL;"
+            : "ALTER TABLE \"Users\" ADD COLUMN \"Proveedor\" character varying(16) NULL;");
+    }
+
+    var duplicateCount = (await db.Database.SqlQueryRaw<int>(
+        provider == "sqlite"
+            ? "SELECT COUNT(*) AS \"Value\" FROM (SELECT \"Email\" FROM \"Users\" GROUP BY \"Email\" HAVING COUNT(*) > 1) AS \"Duplicates\""
+            : "SELECT COUNT(*)::int AS \"Value\" FROM (SELECT \"Email\" FROM \"Users\" GROUP BY \"Email\" HAVING COUNT(*) > 1) AS \"Duplicates\"")
+        .ToListAsync()).FirstOrDefault();
+
+    if (duplicateCount > 0)
+    {
+        Console.WriteLine($"Bootstrap: se omitieron los indices unicos de Users porque hay {duplicateCount} correos duplicados.");
+        return;
+    }
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_Email\" ON \"Users\" (\"Email\");"
+        : "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_Email\" ON \"Users\" (\"Email\");");
+
+    await TryExecAsync(db, provider == "sqlite"
+        ? "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_SupabaseUserId\" ON \"Users\" (\"SupabaseUserId\");"
+        : "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_SupabaseUserId\" ON \"Users\" (\"SupabaseUserId\");");
 }
 
 static async Task EnsurePassengersTableAsync(AppDbContext db, string provider)

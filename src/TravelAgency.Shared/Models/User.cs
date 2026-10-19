@@ -12,6 +12,8 @@ public class User
     public string? Phone { get; set; }
     public string? EmergencyContact { get; set; }
     public string? QrToken { get; set; }
+    public string? SupabaseUserId { get; set; }
+    public string? Proveedor { get; set; }
     public UserRole Role { get; set; }
     public DateTime CreatedAt { get; set; }
 
