@@ -186,7 +186,14 @@ public partial class LoginPage : ContentPage
             _session.Start(auth);
             _api.SetAuthToken(auth.Token);
             await SaveRememberedAsync();
-            App.GoToMainShell();
+            if (auth?.PerfilIncompleto == true)
+            {
+                await Shell.Current.GoToAsync("profilesetup");
+            }
+            else
+            {
+                App.GoToMainShell();
+            }
         }
         catch (Exception ex)
         {

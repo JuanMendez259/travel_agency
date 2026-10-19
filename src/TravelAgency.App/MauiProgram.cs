@@ -36,6 +36,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<SessionService>();
 		builder.Services.AddTransient<AppShell>();
 		builder.Services.AddTransient<LoginPage>();
+        builder.Services.AddTransient<ProfileSetupPage>();
 		builder.Services.AddTransient<ClientHomePage>();
         builder.Services.AddTransient<ClientFavoritesPage>();
 builder.Services.AddTransient<ClientTripDetailPage>();

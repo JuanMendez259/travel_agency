@@ -142,6 +142,14 @@ public class ApiService
     public Task<User?> GetMyProfileAsync() =>
         _http.GetFromJsonAsync<User>("/api/users/me", JsonOptions);
 
+    public async Task<User?> UpdateMyProfileAsync(string? phone, string? emergencyContact)
+    {
+        var response = await _http.PutAsJsonAsync("/api/users/me",
+            new { Phone = phone, EmergencyContact = emergencyContact }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<User>(JsonOptions);
+    }
+
     public Task<ProfileStats?> GetMyProfileStatsAsync() =>
         _http.GetFromJsonAsync<ProfileStats>("/api/users/me/stats", JsonOptions);
 
