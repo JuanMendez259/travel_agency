@@ -1,4 +1,5 @@
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.ApplicationModel;
 using Mapsui;
 using Mapsui.Layers;
 using TravelAgency.App.Converters;
@@ -661,6 +662,22 @@ public partial class ClientMyBookingDetailPage : ContentPage
     {
         if (int.TryParse(BookingId, out var id) && id > 0 && _remainingSlots > 0)
             await Shell.Current.GoToAsync($"addpassengers?bookingId={id}&count={_remainingSlots}");
+    }
+
+    private async void OnAgencyWhatsAppClicked(object? sender, EventArgs e)
+    {
+        var message = $"Hola, necesito ayuda con mi reserva #{BookingId} para el viaje {TitleLabel.Text}.";
+        var url = AgencyContacts.BuildWhatsAppUrl(AgencyContacts.AgencyWhatsApp, message);
+        if (url is null) return;
+
+        try
+        {
+            await Launcher.Default.OpenAsync(url);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No se pudo abrir WhatsApp", ex.Message, "OK");
+        }
     }
 
     private async void OnMapRouteClicked(object? sender, EventArgs e)

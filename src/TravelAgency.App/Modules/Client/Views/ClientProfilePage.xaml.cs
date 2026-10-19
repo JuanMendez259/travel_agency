@@ -10,9 +10,6 @@ public partial class ClientProfilePage : ContentPage
 {
     const string NotificationsPrefKey = "profile_notifications_enabled";
 
-    /// Numero de WhatsApp de la agencia (52 = Mexico, 445 = Puebla), solo digitos.
-    const string AgencyWhatsApp = "5214444579256";
-
     private readonly ApiService _api;
     private readonly SessionService _session;
     private byte[]? _qrBytes;
@@ -210,7 +207,7 @@ public partial class ClientProfilePage : ContentPage
                       $"Teléfono: {phone}\n" +
                       $"Saldo disponible: {available:C}\n" +
                       $"Monto solicitado: {amount:C}";
-        var url = $"https://wa.me/{AgencyWhatsApp}?text={Uri.EscapeDataString(message)}";
+        var url = AgencyContacts.BuildWhatsAppUrl(AgencyContacts.AgencyWhatsApp, message)!;
 
         try
         {

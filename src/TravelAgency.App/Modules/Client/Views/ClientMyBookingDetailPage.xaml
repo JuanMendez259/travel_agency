@@ -271,6 +271,13 @@
                         <Label Grid.Row="3" Grid.Column="1" Text="Total" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource Primary}" />
                     </Grid>
                     <Label x:Name="ReservaTotalLabel" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Primary}" HorizontalOptions="End" />
+                    <Button Text="💬 Escribir a Proxima Parada Tours"
+                            Clicked="OnAgencyWhatsAppClicked"
+                            BackgroundColor="{StaticResource SecondaryContainer}"
+                            TextColor="{StaticResource Primary}"
+                            FontAttributes="Bold"
+                            CornerRadius="12"
+                            MinimumHeightRequest="44" />
                 </VerticalStackLayout>
             </Border>
 

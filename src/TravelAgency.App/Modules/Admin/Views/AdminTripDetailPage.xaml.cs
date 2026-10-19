@@ -1,3 +1,4 @@
+using Microsoft.Maui.ApplicationModel;
 using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
@@ -284,7 +285,62 @@ public partial class AdminTripDetailPage : ContentPage
             row.Add(seatsLabel);
             row.Add(statusLabel);
 
-            PassengersLayout.Children.Add(row);
+            var rowContent = new VerticalStackLayout { Spacing = 4 };
+            rowContent.Add(row);
+
+            if (_trip is not null && TripContactPolicy.CanOfferContact(_trip, booking, DateTime.Today))
+            {
+                var phone = booking.User?.Phone;
+                if (AgencyContacts.BuildPhoneUrl(phone) is null)
+                {
+                    rowContent.Add(new Label
+                    {
+                        Text = "Sin teléfono registrado",
+                        FontSize = 11,
+                        TextColor = Color.FromArgb("#717970"),
+                        HorizontalOptions = LayoutOptions.End
+                    });
+                }
+                else
+                {
+                    var actions = new HorizontalStackLayout
+                    {
+                        Spacing = 8,
+                        HorizontalOptions = LayoutOptions.End
+                    };
+                    var callButton = new Button
+                    {
+                        Text = "📞 Llamar",
+                        FontSize = 12,
+                        HeightRequest = 40,
+                        Padding = new Thickness(10, 0),
+                        CornerRadius = 10,
+                        BackgroundColor = Color.FromArgb("#F2F3FF"),
+                        TextColor = Color.FromArgb("#003B1B"),
+                        CommandParameter = phone
+                    };
+                    callButton.Clicked += OnCallClientClicked;
+
+                    var whatsappButton = new Button
+                    {
+                        Text = "💬 WhatsApp",
+                        FontSize = 12,
+                        HeightRequest = 40,
+                        Padding = new Thickness(10, 0),
+                        CornerRadius = 10,
+                        BackgroundColor = Color.FromArgb("#6CF8BB"),
+                        TextColor = Color.FromArgb("#003B1B"),
+                        CommandParameter = booking
+                    };
+                    whatsappButton.Clicked += OnWhatsAppClientClicked;
+
+                    actions.Add(callButton);
+                    actions.Add(whatsappButton);
+                    rowContent.Add(actions);
+                }
+            }
+
+            PassengersLayout.Children.Add(rowContent);
         }
 
         var nonCancelled = bookings.Where(b => b.Status != BookingStatus.Cancelled).ToList();
@@ -293,6 +349,44 @@ public partial class AdminTripDetailPage : ContentPage
 
         PassengersHeader.Text = $"Pasajeros ({bookings.Count})";
         PassengersTotalLabel.Text = $"Total: {totalSeats} asiento(s) vendidos · {totalAmount:C}";
+    }
+
+    private async void OnCallClientClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button { CommandParameter: string phone }) return;
+        var url = AgencyContacts.BuildPhoneUrl(phone);
+        if (url is null) return;
+
+        try
+        {
+            await Launcher.Default.OpenAsync(url);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No se pudo llamar", ex.Message, "OK");
+        }
+    }
+
+    private async void OnWhatsAppClientClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button { CommandParameter: Booking booking }) return;
+        var phone = booking.User?.Phone;
+        var greeting = string.IsNullOrWhiteSpace(booking.User?.Name)
+            ? "Hola"
+            : $"Hola {booking.User.Name}";
+        var tripTitle = string.IsNullOrWhiteSpace(_trip?.Title) ? "tu viaje" : _trip.Title;
+        var message = $"{greeting}, te contactamos por {tripTitle}.";
+        var url = AgencyContacts.BuildWhatsAppUrl(phone, message);
+        if (url is null) return;
+
+        try
+        {
+            await Launcher.Default.OpenAsync(url);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No se pudo abrir WhatsApp", ex.Message, "OK");
+        }
     }
 
     private void RenderCapacityRequests()
