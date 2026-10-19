@@ -22,5 +22,7 @@
     <Compile Include="../../src/TravelAgency.App/Services/TripCalendarIcsFormatter.cs" Link="Production/TripCalendarIcsFormatter.cs" />
     <Compile Include="../../src/TravelAgency.App/Services/PhoneNumberFormatter.cs" Link="Production/PhoneNumberFormatter.cs" />
     <Compile Include="../../src/TravelAgency.App/Services/TripContactPolicy.cs" Link="Production/TripContactPolicy.cs" />
+    <Compile Include="../../src/TravelAgency.App/Services/PkceChallenge.cs" Link="Production/PkceChallenge.cs" />
+    <Compile Include="../../src/TravelAgency.App/Services/SocialAuthException.cs" Link="Production/SocialAuthException.cs" />
   </ItemGroup>
 </Project>
