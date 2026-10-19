@@ -261,7 +261,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
         await RenderRatingUiAsync(booking, trip);
 
         if (!string.IsNullOrEmpty(trip?.ImageUrl))
-            TripImage.Source = await _api.GetTripImageAsync(trip.ImageUrl);
+            TripImage.Source = _api.GetTripImage(trip.ImageUrl, ApiService.LargeImageWidth);
 
         if (trip?.Id is int transportTripId && transportTripId > 0)
             await RenderTransportSectionAsync(transportTripId);
@@ -279,7 +279,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
             if (hasImage)
             {
-                TransportImage.Source = await _api.GetTripImageAsync(info!.ImageUrl);
+                TransportImage.Source = _api.GetTripImage(info!.ImageUrl, ApiService.LargeImageWidth);
                 TransportImageBorder.IsVisible = TransportImage.Source is not null;
             }
             else

@@ -3,6 +3,7 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripsPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:TravelAgency.App.Controls"
     xmlns:conv="clr-namespace:TravelAgency.App.Converters"
     xmlns:viewmodels="clr-namespace:TravelAgency.App.ViewModels"
     Title="Mis Viajes">
@@ -67,7 +68,7 @@
                     <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
                         <VerticalStackLayout Padding="12" Spacing="6">
                             <Grid ColumnDefinitions="80,*" ColumnSpacing="10">
-                                <Image Source="{Binding Thumb}" IsVisible="{Binding Thumb, Converter={StaticResource HasValue}}"
+                                <controls:NetworkImage Source="{Binding Thumb}" IsVisible="{Binding Thumb, Converter={StaticResource HasValue}}"
                                        HeightRequest="80" Aspect="AspectFill" />
                                 <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
                                     <Label Text="{Binding Trip.Title}" FontSize="17" FontAttributes="Bold" />

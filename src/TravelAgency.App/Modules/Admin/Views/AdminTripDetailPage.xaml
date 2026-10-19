@@ -3,6 +3,7 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:TravelAgency.App.Controls"
     Title="Detalle del Viaje">
 
     <ContentPage.ToolbarItems>
@@ -12,7 +13,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="10">
 
-            <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill" />
+            <controls:NetworkImage x:Name="TripImage" HeightRequest="200" Aspect="AspectFill" />
             <Label x:Name="TitleLabel" FontSize="22" FontAttributes="Bold" />
             <Label x:Name="DestinationLabel" FontSize="16" TextColor="{StaticResource OnSurfaceVariant}" />
             <Label x:Name="DatesLabel" FontSize="15" />
@@ -100,7 +101,7 @@
             </HorizontalStackLayout>
 
             <Label x:Name="TransportUnitHeader" Text="Informacion de la unidad" FontSize="16" FontAttributes="Bold" Margin="0,15,0,0" />
-            <Image x:Name="TransportUnitImage" HeightRequest="160" Aspect="AspectFill" IsVisible="False" />
+            <controls:NetworkImage x:Name="TransportUnitImage" HeightRequest="160" Aspect="AspectFill" IsVisible="False" />
             <Label x:Name="TransportUnitPlateLabel" FontSize="14" Margin="0,4,0,0" IsVisible="False" />
             <Label x:Name="TransportUnitEmptyLabel" Text="Sin informacion" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
 
