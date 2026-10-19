@@ -85,4 +85,8 @@ API base URL: `https://travelagency-production-f6cf.up.railway.app`
   `HeightRequest` o得 un contenedor con tamaño definido.
 
 - Siempre que generes o edites interfaces visuales (vistas XAML, ContentPage, ContentView, o estilos en C#), debes leer obligatoriamente `@DESIGN.md` para aplicar los nombres de los diccionarios de recursos y tokens correctos de .NET MAUI. Jamás mezcles sintaxis Web (HTML/CSS) en este repositorio.
-  
+
+# Reglas del Agente
+- Antes de inspeccionar o leer cualquier archivo de código (.cs, .xaml), DEBES consultar el servidor MCP de Graphify o el archivo `graph.json`.
+- Queda estrictamente prohibido realizar lecturas recursivas de directorios completos.
+- **No uses los UI tests (`tools/uitest`) para manejar la interfaz de la app en la computadora.** Los cambios de UI los verifica el usuario de forma manual. Solo puedes ejecutar esos tests si el usuario te lo confirma explícitamente en ese momento.
