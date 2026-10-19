@@ -42,12 +42,12 @@ Reserva por asiento y por opción (paquete) con cupo limitado por el transporte 
 - **Cupo reservable:** si el viaje incluye hotel, el cupo efectivo es el mínimo entre la capacidad del transporte y el cupo del hotel.
 - **Backend:** ASP.NET Core Minimal API; Supabase/Postgres en producción y SQLite como respaldo local. Al arrancar ejecuta migraciones idempotentes `Ensure*` que agregan columnas/tablas faltantes.
 - **Idioma:** la UI es en español.
-- **Decisión abierta — marca:** el nombre definitivo del negocio no está decidido.
+- **Marca:** la marca oficial es **Proxima Parada Tours**.
 - **Decisión abierta — pagos:** no se confirmó si existe una pasarela de pago real o si los pagos/anticipos se registran manualmente.
 
 ## Brand Commitments
 
-No hay marca definitiva: "RutaVerde México" es un nombre de trabajo/placeholder. Los datos y acreditaciones que muestra la pantalla "Nosotros" (cifras de exploradores, rutas, reforestación, NOM-09, Leave No Trace, WFR, comercio justo) son contenido de muestra, no compromisos verificados, y no deben presentarse como reales.
+La marca oficial es "Proxima Parada Tours". Los datos y acreditaciones que muestra la pantalla "Nosotros" (cifras de exploradores, rutas, reforestación, NOM-09, Leave No Trace, WFR, comercio justo) son contenido de muestra, no compromisos verificados, y no deben presentarse como reales.
 
 ## Evidence on Hand
 

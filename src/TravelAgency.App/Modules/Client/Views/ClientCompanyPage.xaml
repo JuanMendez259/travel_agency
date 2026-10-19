@@ -111,7 +111,7 @@
                                FontSize="18" FontAttributes="Bold"
                                TextColor="{StaticResource ColorPrimary}" />
                         <Label FontSize="14" TextColor="{StaticResource ColorOnSurfaceVariant}"
-                               Text="RutaVerde nació en los senderos de la Huasteca y la Selva Maya con una convicción clara: viajar no debe consumir los lugares que amamos, sino regenerarlos." />
+                               Text="Proxima Parada Tours nació en los senderos de la Huasteca y la Selva Maya con una convicción clara: viajar no debe consumir los lugares que amamos, sino regenerarlos." />
                         <Label FontSize="14" TextColor="{StaticResource ColorOnSurfaceVariant}"
                                Text="Diseñamos expediciones en grupos reducidos de máximo 12 exploradores, acompañados por biólogos y guías nativos certificados. Cada itinerario distribuye riqueza justa a cooperativas ejidales y apoya la conservación biológica local." />
 
@@ -126,7 +126,7 @@
                                     <Label FontSize="12" FontAttributes="Italic"
                                            TextColor="{StaticResource ColorPrimary}"
                                            Text="“No dejamos más huella que la de nuestros pasos, ni nos llevamos más que memorias transformadoras.”" />
-                                    <Label Text="Equipo Fundador • RutaVerde México" FontSize="11"
+                                    <Label Text="Equipo Fundador • Proxima Parada Tours" FontSize="11"
                                            TextColor="{StaticResource ColorOnSurfaceVariant}" />
                                 </VerticalStackLayout>
                             </Grid>
@@ -481,7 +481,7 @@
                            FontSize="11" FontAttributes="Bold"
                            TextColor="{StaticResource ColorOutline}"
                            HorizontalOptions="Center" />
-                    <Label Text="RutaVerde México" FontSize="11"
+                    <Label Text="Proxima Parada Tours" FontSize="11"
                            TextColor="{StaticResource ColorOnSurfaceVariant}"
                            HorizontalOptions="Center" />
                 </VerticalStackLayout>
@@ -511,7 +511,7 @@
                                 <Label Text="🌿" FontSize="16"
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
-                            <Label Text="Compromiso RutaVerde" FontSize="18" FontAttributes="Bold"
+                            <Label Text="Compromiso Proxima Parada Tours" FontSize="18" FontAttributes="Bold"
                                    TextColor="{StaticResource ColorPrimary}" VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <Button Grid.Column="1" Text="✕" FontSize="16" Padding="0"

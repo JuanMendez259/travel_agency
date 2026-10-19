@@ -22,8 +22,8 @@ public partial class ClientCompanyPage : ContentPage
         {
             await Share.Default.RequestAsync(new ShareTextRequest
             {
-                Title = "RutaVerde México",
-                Text = "Descubre RutaVerde: expediciones responsables en grupos reducidos, " +
+                Title = "Proxima Parada Tours",
+                Text = "Descubre Proxima Parada Tours: expediciones responsables en grupos reducidos, " +
                        "guiadas por biólogos y comunidades locales. Reserva en la app."
             });
         }

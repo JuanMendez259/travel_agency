@@ -207,7 +207,7 @@
                                   VerticalOptions="Start"
                                   CheckedChanged="OnPoliciesCheckedChanged" />
                         <Label Grid.Column="1"
-                               Text="He leído y acepto íntegramente las políticas de reservación y las políticas de cancelación de RutaVerde."
+                               Text="He leído y acepto íntegramente las políticas de reservación y las políticas de cancelación de Proxima Parada Tours."
                                FontSize="13" TextColor="{StaticResource ColorOnSurface}" VerticalOptions="Center" />
                     </Grid>
                 </Border>
