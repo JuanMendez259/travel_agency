@@ -283,6 +283,12 @@ public partial class ClientTripDetailPage : ContentPage
         SpecialNeedsPanel.IsVisible = e.Value;
     }
 
+    private async void OnMapClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+        await Shell.Current.GoToAsync($"clienttripmap?tripId={_trip.Id}");
+    }
+
     private async void OnBookClicked(object? sender, EventArgs e)
     {
         if (_trip is null) return;

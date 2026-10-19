@@ -185,6 +185,14 @@
                             </VerticalStackLayout>
                         </Grid>
                     </Border>
+
+                    <Button Text="Mapa e itinerario"
+                            Clicked="OnMapClicked"
+                            BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                            TextColor="{StaticResource ColorPrimary}"
+                            FontAttributes="Bold"
+                            CornerRadius="12"
+                            HeightRequest="46" />
                 </VerticalStackLayout>
             </Border>
 
