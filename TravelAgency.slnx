@@ -4,4 +4,7 @@
     <Project Path="src/TravelAgency.App/TravelAgency.App.csproj" />
     <Project Path="src/TravelAgency.Shared/TravelAgency.Shared.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TravelAgency.App.Tests/TravelAgency.App.Tests.csproj" />
+  </Folder>
 </Solution>
