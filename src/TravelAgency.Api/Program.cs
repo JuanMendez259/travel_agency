@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -235,6 +236,127 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, AppDbContext d
         Name = user.Name,
         Email = user.Email,
         Role = user.Role
+    });
+});
+
+app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext db, IConfiguration config) =>
+{
+    string? metadataName(JsonElement metadata, string property)
+    {
+        if (metadata.ValueKind != JsonValueKind.Object) return null;
+        if (!metadata.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.String)
+            return null;
+        var text = value.GetString();
+        return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+    }
+
+    var supabaseUrl = config["Supabase:Url"]?.TrimEnd('/');
+    if (string.IsNullOrWhiteSpace(supabaseUrl))
+        return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
+
+    var anonKey = config["Supabase:AnonKey"];
+
+    using var http = new HttpClient();
+    using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"{supabaseUrl}/auth/v1/user");
+    httpRequest.Headers.TryAddWithoutValidation("apikey", anonKey);
+    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {request.AccessToken}");
+
+    HttpResponseMessage response;
+    try
+    {
+        response = await http.SendAsync(httpRequest);
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
+    }
+    catch (TaskCanceledException)
+    {
+        return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
+    }
+
+    if (response.StatusCode == HttpStatusCode.Unauthorized)
+        return Results.Unauthorized();
+
+    if (!response.IsSuccessStatusCode)
+        return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
+
+    var payload = await response.Content.ReadAsStringAsync();
+    using var document = JsonDocument.Parse(payload);
+    var root = document.RootElement;
+
+    var sub = root.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
+    var email = root.TryGetProperty("email", out var emailElement) ? emailElement.GetString() : null;
+
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.BadRequest("Tu proveedor no entregó un correo.");
+
+    var emailConfirmedAt = root.TryGetProperty("email_confirmed_at", out var confirmedElement)
+        ? confirmedElement.GetString()
+        : null;
+    if (string.IsNullOrEmpty(emailConfirmedAt))
+        return Results.BadRequest("Tu proveedor no verificó tu correo.");
+
+    var userMetadata = root.TryGetProperty("user_metadata", out var userMetadataElement)
+        ? userMetadataElement
+        : default;
+    var appMetadata = root.TryGetProperty("app_metadata", out var appMetadataElement)
+        ? appMetadataElement
+        : default;
+
+    var providerName = metadataName(userMetadata, "full_name")
+        ?? metadataName(userMetadata, "name")
+        ?? email.Split('@')[0];
+    var provider = metadataName(appMetadata, "provider");
+
+    if (!string.IsNullOrEmpty(sub))
+    {
+        var linked = await db.Users.FirstOrDefaultAsync(u => u.SupabaseUserId == sub);
+        if (linked is not null)
+        {
+            return Results.Ok(new SocialAuthResponse
+            {
+                Token = GenerateToken(linked, signingKey, jwtIssuer, jwtAudience),
+                UserId = linked.Id,
+                Name = linked.Name,
+                Email = linked.Email,
+                Role = linked.Role,
+                PerfilIncompleto = false,
+                Proveedor = linked.Proveedor
+            });
+        }
+    }
+
+    var emailKey = email.Trim().ToLowerInvariant();
+    var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == emailKey);
+    if (existing is not null)
+        return Results.Conflict("Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña.");
+
+    var user = new User
+    {
+        Name = providerName,
+        Email = emailKey,
+        SupabaseUserId = sub,
+        Proveedor = string.IsNullOrWhiteSpace(provider) ? "unknown" : provider,
+        Role = UserRole.Client,
+        CreatedAt = DateTime.UtcNow,
+        QrToken = GenerateQrToken(),
+        Phone = null,
+        EmergencyContact = null
+    };
+
+    db.Users.Add(user);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new SocialAuthResponse
+    {
+        Token = GenerateToken(user, signingKey, jwtIssuer, jwtAudience),
+        UserId = user.Id,
+        Name = user.Name,
+        Email = user.Email,
+        Role = user.Role,
+        PerfilIncompleto = true,
+        Proveedor = user.Proveedor
     });
 });
 

@@ -24,6 +24,22 @@ public class AuthResponse
     public UserRole Role { get; set; }
 }
 
+public class SocialLoginRequest
+{
+    public string? AccessToken { get; set; }
+}
+
+public class SocialAuthResponse
+{
+    public string? Token { get; set; }
+    public int UserId { get; set; }
+    public string? Name { get; set; }
+    public string? Email { get; set; }
+    public UserRole Role { get; set; }
+    public bool PerfilIncompleto { get; set; }
+    public string? Proveedor { get; set; }
+}
+
 public class UpdateUserRoleRequest
 {
     public UserRole Role { get; set; }
