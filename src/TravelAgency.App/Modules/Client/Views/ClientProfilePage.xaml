@@ -21,6 +21,16 @@
             <Color x:Key="ColorOutline">#717970</Color>
             <Color x:Key="ColorError">#BA1A1A</Color>
             <Color x:Key="ColorErrorContainer">#FFDAD6</Color>
+            <Color x:Key="ColorOnPrimary">#FFFFFF</Color>
+            <Color x:Key="ColorOnSecondary">#FFFFFF</Color>
+            <Color x:Key="ColorSecondaryFixed">#6FFBBE</Color>
+            <Color x:Key="ColorSecondaryFixedDim">#4EDEA3</Color>
+            <Color x:Key="ColorPassDeep">#0D4422</Color>
+            <Color x:Key="ColorOverlayWhite10">#1AFFFFFF</Color>
+            <Color x:Key="ColorOverlayWhite15">#26FFFFFF</Color>
+            <Color x:Key="ColorOverlayWhite20">#33FFFFFF</Color>
+            <Color x:Key="ColorOverlayWhite70">#B3FFFFFF</Color>
+            <Color x:Key="ColorOverlayWhite75">#BFFFFFFF</Color>
         </ResourceDictionary>
     </ContentPage.Resources>
 
@@ -32,7 +42,7 @@
                 <Grid WidthRequest="104" HeightRequest="104" HorizontalOptions="Center">
                     <Border StrokeThickness="0"
                             StrokeShape="RoundRectangle 52"
-                            Padding="0">
+                            Padding="3">
                         <Border.Background>
                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                 <GradientStop Color="{StaticResource ColorPrimary}" Offset="0" />
@@ -40,38 +50,34 @@
                             </LinearGradientBrush>
                         </Border.Background>
                         <Border.Shadow>
-                            <Shadow Brush="Black" Opacity="0.18" Radius="10" Offset="0,4" />
+                            <Shadow Brush="#0F172A" Opacity="0.18" Radius="10" Offset="0,4" />
                         </Border.Shadow>
-                        <Label x:Name="AvatarLabel"
-                               Text="NA"
-                               FontSize="34"
-                               FontAttributes="Bold"
-                               TextColor="White"
-                               HorizontalOptions="Center"
-                               VerticalOptions="Center" />
+                        <Border StrokeThickness="0"
+                                StrokeShape="RoundRectangle 50"
+                                BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                                Padding="0">
+                            <Label x:Name="AvatarLabel"
+                                   Text="NA"
+                                   FontFamily="PlusJakartaSans"
+                                   FontSize="32"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
                     </Border>
 
-                    <Border WidthRequest="30" HeightRequest="30"
-                            StrokeThickness="2"
-                            Stroke="{StaticResource ColorSurfaceContainerLowest}"
-                            BackgroundColor="{StaticResource ColorSecondary}"
-                            StrokeShape="RoundRectangle 15"
-                            HorizontalOptions="End" VerticalOptions="End"
-                            Margin="0,0,2,2">
-                        <Label Text="✓" FontSize="15" FontAttributes="Bold" TextColor="White"
-                               HorizontalOptions="Center" VerticalOptions="Center" />
-                    </Border>
-
-                    <Border WidthRequest="28" HeightRequest="28"
-                            Stroke="{StaticResource ColorSurfaceContainerHigh}"
+                    <Border WidthRequest="32" HeightRequest="32"
+                            StrokeThickness="0"
                             BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
-                            StrokeShape="RoundRectangle 14"
+                            StrokeShape="RoundRectangle 16"
                             HorizontalOptions="Start" VerticalOptions="Start"
-                            Margin="4,4,0,0">
+                            Margin="2,2,0,0">
                         <Border.Shadow>
-                            <Shadow Brush="Black" Opacity="0.12" Radius="6" Offset="0,2" />
+                            <Shadow Brush="#0F172A" Opacity="0.12" Radius="6" Offset="0,2" />
                         </Border.Shadow>
-                        <Label Text="📷" FontSize="13"
+                        <Label Text="📷" FontSize="14"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}"
                                HorizontalOptions="Center" VerticalOptions="Center">
                             <Label.GestureRecognizers>
                                 <TapGestureRecognizer Tapped="OnComingSoonTapped" />
@@ -81,196 +87,292 @@
                 </Grid>
 
                 <Label x:Name="NameLabel"
+                       FontFamily="PlusJakartaSans"
                        FontSize="22" FontAttributes="Bold"
                        TextColor="{StaticResource ColorOnSurface}"
                        HorizontalOptions="Center" />
+
+                <!-- Contadores -->
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="10" Margin="0,4,0,0">
+                    <Border StrokeShape="RoundRectangle 16"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                            Padding="12,10">
+                        <Border.Shadow>
+                            <Shadow Brush="#0F172A" Opacity="0.05" Radius="10" Offset="0,2" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="2">
+                            <Label x:Name="TripsCountLabel" Text="0"
+                                   FontFamily="PlusJakartaSans"
+                                   FontSize="20" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorPrimary}"
+                                   HorizontalOptions="Center" />
+                            <Label Text="Viajes hechos"
+                                   FontFamily="Inter"
+                                   FontSize="11"
+                                   TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                   HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Column="1" StrokeShape="RoundRectangle 16"
+                            BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                            Padding="12,10">
+                        <Border.Shadow>
+                            <Shadow Brush="#0F172A" Opacity="0.05" Radius="10" Offset="0,2" />
+                        </Border.Shadow>
+                        <VerticalStackLayout Spacing="2">
+                            <Label x:Name="ReviewsCountLabel" Text="0"
+                                   FontFamily="PlusJakartaSans"
+                                   FontSize="20" FontAttributes="Bold"
+                                   TextColor="{StaticResource ColorSecondary}"
+                                   HorizontalOptions="Center" />
+                            <Label Text="Reseñas"
+                                   FontFamily="Inter"
+                                   FontSize="11"
+                                   TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                   HorizontalOptions="Center" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
             </VerticalStackLayout>
 
-            <!-- ============ CONTADORES ============ -->
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-                <Border StrokeShape="RoundRectangle 16"
-                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
-                        Padding="16,14">
-                    <Border.Shadow>
-                        <Shadow Brush="Black" Opacity="0.05" Radius="10" Offset="0,2" />
-                    </Border.Shadow>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Label x:Name="TripsCountLabel" Text="0"
-                               FontSize="22" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorPrimary}"
-                               HorizontalOptions="Center" />
-                        <Label Text="Viajes hechos" FontSize="11" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorOnSurfaceVariant}"
-                               HorizontalOptions="Center" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Column="1" StrokeShape="RoundRectangle 16"
-                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
-                        Padding="16,14">
-                    <Border.Shadow>
-                        <Shadow Brush="Black" Opacity="0.05" Radius="10" Offset="0,2" />
-                    </Border.Shadow>
-                    <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                        <Label x:Name="ReviewsCountLabel" Text="0"
-                               FontSize="22" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorSecondary}"
-                               HorizontalOptions="Center" />
-                        <Label Text="Reseñas" FontSize="11" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorOnSurfaceVariant}"
-                               HorizontalOptions="Center" />
-                    </VerticalStackLayout>
-                </Border>
-            </Grid>
-
-            <!-- ============ MI SALDO ============ -->
-            <Border StrokeShape="RoundRectangle 16"
-                    Stroke="Transparent"
-                    BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
-                    Padding="16">
-                <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.06" Radius="12" Offset="0,3" />
-                </Border.Shadow>
-                <VerticalStackLayout Spacing="12">
-                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
-                        <Border WidthRequest="44" HeightRequest="44"
-                                StrokeThickness="0"
-                                BackgroundColor="{StaticResource ColorSecondaryContainer}"
-                                StrokeShape="RoundRectangle 14">
-                            <Label Text="💰" FontSize="20"
-                                   HorizontalOptions="Center" VerticalOptions="Center" />
-                        </Border>
-                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
-                            <Label Text="Mi saldo" FontSize="16" FontAttributes="Bold"
-                                   TextColor="{StaticResource ColorOnSurface}" />
-                            <Label Text="Saldo a favor por cancelaciones"
-                                   FontSize="11"
-                                   TextColor="{StaticResource ColorOnSurfaceVariant}" />
-                            <Label x:Name="HeldLabel"
-                                   IsVisible="False"
-                                   FontSize="11" FontAttributes="Bold"
-                                   TextColor="{StaticResource ColorOutline}" />
-                        </VerticalStackLayout>
-                        <Label x:Name="SaldoLabel"
-                               Grid.Column="2"
-                               Text="$0.00 MXN"
-                               FontSize="18" FontAttributes="Bold"
-                               TextColor="{StaticResource ColorSecondary}"
-                               VerticalOptions="Center" />
-                    </Grid>
-
-                    <BoxView HeightRequest="1" Color="{StaticResource ColorSurfaceContainerHigh}" />
-
-                    <Border StrokeThickness="0"
-                            BackgroundColor="Transparent"
-                            Padding="0,2">
-                        <Border.GestureRecognizers>
-                            <TapGestureRecognizer Tapped="OnPayoutRequested" />
-                        </Border.GestureRecognizers>
-                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
-                            <Label Text="💸" FontSize="16" VerticalOptions="Center" />
-                            <Label Grid.Column="1" Text="Pedir Reembolso"
-                                   FontSize="14" FontAttributes="Bold"
-                                   TextColor="{StaticResource ColorSecondary}"
-                                   VerticalOptions="Center" />
-                            <Label Grid.Column="2" Text="›" FontSize="20"
-                                   TextColor="{StaticResource ColorOutline}"
-                                   VerticalOptions="Center" />
-                        </Grid>
-                    </Border>
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- ============ PASE / QR ============ -->
-            <Border StrokeShape="RoundRectangle 18" Padding="16">
+            <!-- ============ TARJETA DIGITAL (pase del viajero) ============ -->
+            <Border StrokeThickness="0"
+                    StrokeShape="RoundRectangle 22"
+                    Padding="0">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                        <GradientStop Color="{StaticResource ColorPrimary}" Offset="0" />
-                        <GradientStop Color="{StaticResource ColorPrimaryContainer}" Offset="0.55" />
-                        <GradientStop Color="{StaticResource ColorSecondary}" Offset="1" />
+                        <GradientStop Color="{StaticResource ColorPrimaryContainer}" Offset="0" />
+                        <GradientStop Color="{StaticResource ColorPassDeep}" Offset="0.5" />
+                        <GradientStop Color="{StaticResource ColorPrimary}" Offset="1" />
                     </LinearGradientBrush>
                 </Border.Background>
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.18" Radius="14" Offset="0,5" />
+                    <Shadow Brush="#14532D" Opacity="0.35" Radius="22" Offset="0,10" />
                 </Border.Shadow>
-                <VerticalStackLayout Spacing="14">
 
-                    <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
-                        <Border WidthRequest="30" HeightRequest="30"
-                                StrokeThickness="0"
-                                BackgroundColor="#33FFFFFF"
-                                StrokeShape="RoundRectangle 10">
-                            <Label Text="🎫" FontSize="15"
-                                   HorizontalOptions="Center" VerticalOptions="Center" />
-                        </Border>
-                        <Label Text="Pase de Abordaje &amp; ID"
-                               FontSize="16" FontAttributes="Bold"
-                               TextColor="White" VerticalOptions="Center" />
-                    </HorizontalStackLayout>
-
-                    <Border StrokeThickness="0"
-                            StrokeShape="RoundRectangle 16"
-                            BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
-                            Padding="16">
-                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Image x:Name="QrImage"
-                                   HeightRequest="148" WidthRequest="148"
-                                   HorizontalOptions="Center" />
-                            <Label x:Name="QrNameLabel" Text="—"
-                                   Margin="0,4,0,0"
-                                   FontSize="16" FontAttributes="Bold"
-                                   TextColor="{StaticResource ColorOnSurface}"
-                                   HorizontalOptions="Center" />
-                            <Label x:Name="QrIdLabel" Text="ID: —"
-                                   FontSize="12"
-                                   TextColor="{StaticResource ColorSecondary}"
-                                   HorizontalOptions="Center" />
-                        </VerticalStackLayout>
-                    </Border>
-
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button x:Name="SavePassButton"
-                                Text="💳  Guardar Pase"
-                                Clicked="OnSavePassClicked"
-                                IsEnabled="False"
-                                BackgroundColor="#33FFFFFF"
-                                TextColor="White"
-                                FontAttributes="Bold"
-                                FontSize="13"
-                                CornerRadius="10"
-                                HeightRequest="44" />
-                        <Button x:Name="SharePassButton"
-                                Grid.Column="1"
-                                Text="📤  Compartir"
-                                Clicked="OnSharePassClicked"
-                                IsEnabled="False"
-                                BackgroundColor="#33FFFFFF"
-                                TextColor="White"
-                                FontAttributes="Bold"
-                                FontSize="13"
-                                CornerRadius="10"
-                                HeightRequest="44" />
+                <Grid IsClippedToBounds="True">
+                    <!-- Anillos decorativos (topografia) -->
+                    <Grid IsClippedToBounds="True" Opacity="0.10"
+                          HorizontalOptions="End" VerticalOptions="Start">
+                        <Ellipse WidthRequest="250" HeightRequest="250"
+                                 Stroke="{StaticResource ColorSecondaryContainer}"
+                                 StrokeThickness="1.5"
+                                 TranslationX="70" TranslationY="-70" />
+                        <Ellipse WidthRequest="180" HeightRequest="180"
+                                 Stroke="{StaticResource ColorSecondaryContainer}"
+                                 StrokeThickness="1.5"
+                                 StrokeDashArray="4,3"
+                                 TranslationX="70" TranslationY="-70" />
+                        <Ellipse WidthRequest="110" HeightRequest="110"
+                                 Stroke="{StaticResource ColorSecondaryContainer}"
+                                 StrokeThickness="1.5"
+                                 TranslationX="70" TranslationY="-70" />
                     </Grid>
-                </VerticalStackLayout>
+
+                    <VerticalStackLayout Padding="18" Spacing="14">
+
+                        <!-- Barra superior: marca + estado -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <HorizontalStackLayout Spacing="10" VerticalOptions="Center">
+                                <Border WidthRequest="38" HeightRequest="38"
+                                        StrokeThickness="0"
+                                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                        StrokeShape="RoundRectangle 19">
+                                    <Label Text="🌲" FontSize="18"
+                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                                <VerticalStackLayout Spacing="0" VerticalOptions="Center">
+                                    <Label Text="PROXIMA PARADA TOURS"
+                                           FontFamily="PlusJakartaSans"
+                                           FontSize="12" FontAttributes="Bold"
+                                           CharacterSpacing="1"
+                                           TextColor="{StaticResource ColorOnPrimary}" />
+                                    <HorizontalStackLayout Spacing="4">
+                                        <Label Text="🌲" FontSize="11" VerticalOptions="Center" />
+                                        <Label Text="Pase Viajero"
+                                               FontFamily="Inter"
+                                               FontSize="11"
+                                               TextColor="{StaticResource ColorSecondaryFixed}"
+                                               VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                            </HorizontalStackLayout>
+
+                            <Border x:Name="PassStatusPill"
+                                    Grid.Column="1"
+                                    StrokeThickness="0"
+                                    BackgroundColor="{StaticResource ColorOverlayWhite15}"
+                                    StrokeShape="RoundRectangle 100"
+                                    Padding="8,3"
+                                    VerticalOptions="Center">
+                                <HorizontalStackLayout Spacing="5">
+                                    <BoxView WidthRequest="6" HeightRequest="6"
+                                             CornerRadius="3"
+                                             Color="{StaticResource ColorSecondaryFixed}"
+                                             VerticalOptions="Center" />
+                                    <Label Text="Activo"
+                                           FontFamily="Inter"
+                                           FontSize="10" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorSecondaryFixed}" />
+                                </HorizontalStackLayout>
+                            </Border>
+                        </Grid>
+
+                        <BoxView HeightRequest="1" Color="{StaticResource ColorOverlayWhite10}" />
+
+                        <!-- Titular + saldo -->
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                                <Label Text="TITULAR DEL PASE"
+                                       FontFamily="Inter"
+                                       FontSize="10"
+                                       CharacterSpacing="1"
+                                       TextColor="{StaticResource ColorSecondaryFixedDim}" />
+                                <Label x:Name="QrNameLabel" Text="—"
+                                       FontFamily="PlusJakartaSans"
+                                       FontSize="15" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnPrimary}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                <Label Text="SALDO MONEDERO"
+                                       FontFamily="Inter"
+                                       FontSize="10"
+                                       CharacterSpacing="1"
+                                       HorizontalOptions="End"
+                                       TextColor="{StaticResource ColorSecondaryFixedDim}" />
+                                <HorizontalStackLayout Spacing="4" HorizontalOptions="End">
+                                    <Label x:Name="SaldoLabel" Text="$0.00"
+                                           FontFamily="PlusJakartaSans"
+                                           FontSize="19" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorSecondaryFixed}" />
+                                    <Label Text="MXN"
+                                           FontFamily="Inter"
+                                           FontSize="11" FontAttributes="Bold"
+                                           TextColor="{StaticResource ColorOverlayWhite75}"
+                                           VerticalOptions="End" />
+                                </HorizontalStackLayout>
+                                <Label x:Name="HeldLabel"
+                                       IsVisible="False"
+                                       FontFamily="Inter"
+                                       FontSize="10"
+                                       HorizontalOptions="End"
+                                       TextColor="{StaticResource ColorOverlayWhite70}" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <!-- Codigo QR para escaneo -->
+                        <Border StrokeThickness="0"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                                Padding="14">
+                            <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+                                <Image x:Name="QrImage"
+                                       HeightRequest="148" WidthRequest="148"
+                                       HorizontalOptions="Center" />
+                                <Label Text="Código de cliente para escaneo en embarque"
+                                       FontFamily="Inter"
+                                       FontSize="11" FontAttributes="Bold"
+                                       TextColor="{StaticResource ColorOnSurfaceVariant}"
+                                       HorizontalTextAlignment="Center"
+                                       HorizontalOptions="Center" />
+                                <Border StrokeThickness="0"
+                                        BackgroundColor="{StaticResource ColorSurfaceContainer}"
+                                        StrokeShape="RoundRectangle 100"
+                                        Padding="12,4"
+                                        HorizontalOptions="Center">
+                                    <Label x:Name="QrIdLabel" Text="ID: —"
+                                           FontFamily="Inter"
+                                           FontSize="12" FontAttributes="Bold"
+                                           CharacterSpacing="2"
+                                           TextColor="{StaticResource ColorOnSurface}" />
+                                </Border>
+                            </VerticalStackLayout>
+                        </Border>
+
+                        <!-- Acciones reales del pase -->
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                            <Button x:Name="SavePassButton"
+                                    Text="💳  Guardar Pase"
+                                    Clicked="OnSavePassClicked"
+                                    IsEnabled="False"
+                                    BackgroundColor="{StaticResource ColorOverlayWhite20}"
+                                    TextColor="{StaticResource ColorOnPrimary}"
+                                    FontAttributes="Bold"
+                                    FontSize="13"
+                                    CornerRadius="10"
+                                    HeightRequest="46" />
+                            <Button x:Name="SharePassButton"
+                                    Grid.Column="1"
+                                    Text="📤  Compartir"
+                                    Clicked="OnSharePassClicked"
+                                    IsEnabled="False"
+                                    BackgroundColor="{StaticResource ColorOverlayWhite20}"
+                                    TextColor="{StaticResource ColorOnPrimary}"
+                                    FontAttributes="Bold"
+                                    FontSize="13"
+                                    CornerRadius="10"
+                                    HeightRequest="46" />
+                        </Grid>
+
+                        <Label Text="Emitido por Proxima Parada Tours"
+                               FontFamily="Inter"
+                               FontSize="10"
+                               TextColor="{StaticResource ColorOverlayWhite70}" />
+                    </VerticalStackLayout>
+                </Grid>
             </Border>
+
+            <!-- ============ BILLETERAS DIGITALES ============ -->
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Billeteras digitales"
+                       FontFamily="PlusJakartaSans"
+                       FontSize="14" FontAttributes="Bold"
+                       TextColor="{StaticResource ColorOnSurface}" />
+
+                <Button Text="🍎  Apple Wallet"
+                        IsEnabled="False"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                        TextColor="{StaticResource ColorOutline}"
+                        FontAttributes="Bold"
+                        FontSize="14"
+                        CornerRadius="12"
+                        HeightRequest="50" />
+
+                <Button Text="🤖  Google Wallet"
+                        IsEnabled="False"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                        TextColor="{StaticResource ColorOutline}"
+                        FontAttributes="Bold"
+                        FontSize="14"
+                        CornerRadius="12"
+                        HeightRequest="50" />
+
+                <Label Text="Proximamente: podrás guardar tu pase en Apple Wallet y Google Wallet."
+                       FontFamily="Inter"
+                       FontSize="11"
+                       TextColor="{StaticResource ColorOnSurfaceVariant}" />
+            </VerticalStackLayout>
 
             <!-- ============ DATOS PERSONALES ============ -->
             <Border StrokeShape="RoundRectangle 16"
                     BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
                     Padding="16">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.06" Radius="12" Offset="0,3" />
+                    <Shadow Brush="#0F172A" Opacity="0.06" Radius="12" Offset="0,3" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="14">
                     <Grid ColumnDefinitions="*,Auto">
                         <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
                             <Label Text="👤" FontSize="18" VerticalOptions="Center" />
                             <Label Text="Datos Personales"
-                                   FontSize="18" FontAttributes="Bold"
+                                   FontFamily="PlusJakartaSans"
+                                   FontSize="16" FontAttributes="Bold"
                                    TextColor="{StaticResource ColorOnSurface}"
                                    VerticalOptions="Center" />
                         </HorizontalStackLayout>
                         <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
                             <Label Text="Editar"
+                                   FontFamily="Inter"
                                    FontSize="12" FontAttributes="Bold"
                                    TextColor="{StaticResource ColorSecondary}"
                                    VerticalOptions="Center" />
@@ -284,15 +386,20 @@
                     </Grid>
 
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Nombre completo" FontSize="11" FontAttributes="Bold"
+                        <Label Text="Nombre completo"
+                               FontFamily="Inter"
+                               FontSize="11"
                                TextColor="{StaticResource ColorOnSurfaceVariant}" />
                         <Label x:Name="ProfileNameValueLabel" Text="—"
+                               FontFamily="PlusJakartaSans"
                                FontSize="14" FontAttributes="Bold"
                                TextColor="{StaticResource ColorOnSurface}" />
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Correo electrónico" FontSize="11" FontAttributes="Bold"
+                        <Label Text="Correo electrónico"
+                               FontFamily="Inter"
+                               FontSize="11"
                                TextColor="{StaticResource ColorOnSurfaceVariant}" />
                         <Grid ColumnDefinitions="*,Auto">
                             <Label x:Name="ProfileEmailValueLabel" Text="—"
@@ -301,14 +408,16 @@
                                    VerticalOptions="Center" />
                             <Border Grid.Column="1" IsVisible="False" x:Name="EmailVerifiedBadge"
                                     StrokeThickness="0"
-                                    BackgroundColor="{StaticResource ColorSurfaceContainer}"
-                                    StrokeShape="RoundRectangle 10"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                                    StrokeShape="RoundRectangle 100"
                                     Padding="8,3">
                                 <HorizontalStackLayout Spacing="4">
                                     <Label Text="✓" FontSize="11" FontAttributes="Bold"
                                            TextColor="{StaticResource ColorSecondary}"
                                            VerticalOptions="Center" />
-                                    <Label Text="Verificado" FontSize="11" FontAttributes="Bold"
+                                    <Label Text="Verificado"
+                                           FontFamily="Inter"
+                                           FontSize="11" FontAttributes="Bold"
                                            TextColor="{StaticResource ColorSecondary}"
                                            VerticalOptions="Center" />
                                 </HorizontalStackLayout>
@@ -317,7 +426,9 @@
                     </VerticalStackLayout>
 
                     <VerticalStackLayout Spacing="4">
-                        <Label Text="Teléfono móvil" FontSize="11" FontAttributes="Bold"
+                        <Label Text="Teléfono móvil"
+                               FontFamily="Inter"
+                               FontSize="11"
                                TextColor="{StaticResource ColorOnSurfaceVariant}" />
                         <Grid ColumnDefinitions="*,Auto">
                             <Label x:Name="ProfilePhoneValueLabel" Text="—"
@@ -326,14 +437,16 @@
                                    VerticalOptions="Center" />
                             <Border Grid.Column="1" IsVisible="False" x:Name="PhoneVerifiedBadge"
                                     StrokeThickness="0"
-                                    BackgroundColor="{StaticResource ColorSurfaceContainer}"
-                                    StrokeShape="RoundRectangle 10"
+                                    BackgroundColor="{StaticResource ColorSurfaceContainerLow}"
+                                    StrokeShape="RoundRectangle 100"
                                     Padding="8,3">
                                 <HorizontalStackLayout Spacing="4">
                                     <Label Text="✓" FontSize="11" FontAttributes="Bold"
                                            TextColor="{StaticResource ColorSecondary}"
                                            VerticalOptions="Center" />
-                                    <Label Text="Verificado" FontSize="11" FontAttributes="Bold"
+                                    <Label Text="Verificado"
+                                           FontFamily="Inter"
+                                           FontSize="11" FontAttributes="Bold"
                                            TextColor="{StaticResource ColorSecondary}"
                                            VerticalOptions="Center" />
                                 </HorizontalStackLayout>
@@ -348,9 +461,10 @@
                         <VerticalStackLayout Spacing="2">
                             <HorizontalStackLayout Spacing="6">
                                 <Label Text="🚨" FontSize="14" VerticalOptions="Center" />
-                                <Label Text="CONTACTO DE EMERGENCIA"
+                                <Label Text="Contacto de emergencia"
+                                       FontFamily="Inter"
                                        FontSize="11" FontAttributes="Bold"
-                                       TextColor="#3F4B44"
+                                       TextColor="{StaticResource ColorOnSurfaceVariant}"
                                        VerticalOptions="Center" />
                             </HorizontalStackLayout>
                             <Label x:Name="ProfileEmergencyValueLabel" Text="—"
@@ -366,13 +480,14 @@
                     BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
                     Padding="16,16,16,8">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.06" Radius="12" Offset="0,3" />
+                    <Shadow Brush="#0F172A" Opacity="0.06" Radius="12" Offset="0,3" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="4">
                     <HorizontalStackLayout Spacing="8" Margin="0,0,0,8">
                         <Label Text="⚙️" FontSize="18" VerticalOptions="Center" />
                         <Label Text="Configuración de la Cuenta"
-                               FontSize="18" FontAttributes="Bold"
+                               FontFamily="PlusJakartaSans"
+                               FontSize="16" FontAttributes="Bold"
                                TextColor="{StaticResource ColorOnSurface}"
                                VerticalOptions="Center" />
                     </HorizontalStackLayout>
@@ -391,9 +506,13 @@
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Cambiar contraseña" FontSize="15" FontAttributes="Bold"
+                                <Label Text="Cambiar contraseña"
+                                       FontFamily="PlusJakartaSans"
+                                       FontSize="14" FontAttributes="Bold"
                                        TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Crea una contraseña más segura" FontSize="11"
+                                <Label Text="Crea una contraseña más segura"
+                                       FontFamily="Inter"
+                                       FontSize="11"
                                        TextColor="{StaticResource ColorOnSurfaceVariant}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›" FontSize="20"
@@ -416,9 +535,13 @@
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Actualizar correo electrónico" FontSize="15" FontAttributes="Bold"
+                                <Label Text="Actualizar correo electrónico"
+                                       FontFamily="PlusJakartaSans"
+                                       FontSize="14" FontAttributes="Bold"
                                        TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Recepción de itinerarios" FontSize="11"
+                                <Label Text="Recepción de itinerarios"
+                                       FontFamily="Inter"
+                                       FontSize="11"
                                        TextColor="{StaticResource ColorOnSurfaceVariant}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›" FontSize="20"
@@ -441,9 +564,13 @@
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Cambiar número telefónico" FontSize="15" FontAttributes="Bold"
+                                <Label Text="Cambiar número telefónico"
+                                       FontFamily="PlusJakartaSans"
+                                       FontSize="14" FontAttributes="Bold"
                                        TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Para alertas SMS y WhatsApp de ruta" FontSize="11"
+                                <Label Text="Para alertas SMS y WhatsApp de ruta"
+                                       FontFamily="Inter"
+                                       FontSize="11"
                                        TextColor="{StaticResource ColorOnSurfaceVariant}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›" FontSize="20"
@@ -466,9 +593,13 @@
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Métodos de pago guardados" FontSize="15" FontAttributes="Bold"
+                                <Label Text="Métodos de pago guardados"
+                                       FontFamily="PlusJakartaSans"
+                                       FontSize="14" FontAttributes="Bold"
                                        TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Aún no has registrado tarjetas" FontSize="11"
+                                <Label Text="Aún no has registrado tarjetas"
+                                       FontFamily="Inter"
+                                       FontSize="11"
                                        TextColor="{StaticResource ColorOnSurfaceVariant}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›" FontSize="20"
@@ -479,18 +610,19 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- ============ SOPORTE Y AJUSTES ============ -->
+            <!-- ============ SOPORTE, AJUSTES Y SESIÓN ============ -->
             <Border StrokeShape="RoundRectangle 16"
                     BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
-                    Padding="16,16,16,8">
+                    Padding="16,16,16,16">
                 <Border.Shadow>
-                    <Shadow Brush="Black" Opacity="0.06" Radius="12" Offset="0,3" />
+                    <Shadow Brush="#0F172A" Opacity="0.06" Radius="12" Offset="0,3" />
                 </Border.Shadow>
                 <VerticalStackLayout Spacing="4">
                     <HorizontalStackLayout Spacing="8" Margin="0,0,0,8">
                         <Label Text="🛎️" FontSize="18" VerticalOptions="Center" />
                         <Label Text="Soporte y Ajustes"
-                               FontSize="18" FontAttributes="Bold"
+                               FontFamily="PlusJakartaSans"
+                               FontSize="16" FontAttributes="Bold"
                                TextColor="{StaticResource ColorOnSurface}"
                                VerticalOptions="Center" />
                     </HorizontalStackLayout>
@@ -505,9 +637,13 @@
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Spacing="1" VerticalOptions="Center">
-                                <Label Text="Notificaciones y alertas" FontSize="15" FontAttributes="Bold"
+                                <Label Text="Notificaciones y alertas"
+                                       FontFamily="PlusJakartaSans"
+                                       FontSize="14" FontAttributes="Bold"
                                        TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Horarios y estados del clima" FontSize="11"
+                                <Label Text="Horarios y estados del clima"
+                                       FontFamily="Inter"
+                                       FontSize="11"
                                        TextColor="{StaticResource ColorOnSurfaceVariant}" />
                             </VerticalStackLayout>
                         </HorizontalStackLayout>
@@ -519,7 +655,7 @@
                                 VerticalOptions="Center" />
                     </Grid>
 
-                    <Border ClassId="Centro de Soporte RutaVerde" StrokeThickness="0"
+                    <Border ClassId="Centro de Soporte Proxima Parada Tours" StrokeThickness="0"
                             BackgroundColor="Transparent" Padding="8,10">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Tapped="OnComingSoonTapped" />
@@ -533,9 +669,13 @@
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Centro de Soporte RutaVerde" FontSize="15" FontAttributes="Bold"
+                                <Label Text="Centro de Soporte Proxima Parada Tours"
+                                       FontFamily="PlusJakartaSans"
+                                       FontSize="14" FontAttributes="Bold"
                                        TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Preguntas frecuentes y chat con guía" FontSize="11"
+                                <Label Text="Preguntas frecuentes y chat con guía"
+                                       FontFamily="Inter"
+                                       FontSize="11"
                                        TextColor="{StaticResource ColorOnSurfaceVariant}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›" FontSize="20"
@@ -558,9 +698,13 @@
                                        HorizontalOptions="Center" VerticalOptions="Center" />
                             </Border>
                             <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                                <Label Text="Términos y Privacidad" FontSize="15" FontAttributes="Bold"
+                                <Label Text="Términos y Privacidad"
+                                       FontFamily="PlusJakartaSans"
+                                       FontSize="14" FontAttributes="Bold"
                                        TextColor="{StaticResource ColorOnSurface}" />
-                                <Label Text="Políticas de viaje y cancelación" FontSize="11"
+                                <Label Text="Políticas de viaje y cancelación"
+                                       FontFamily="Inter"
+                                       FontSize="11"
                                        TextColor="{StaticResource ColorOnSurfaceVariant}" />
                             </VerticalStackLayout>
                             <Label Grid.Column="2" Text="›" FontSize="20"
@@ -568,31 +712,33 @@
                                    VerticalOptions="Center" />
                         </Grid>
                     </Border>
+
+                    <BoxView HeightRequest="1" Margin="0,6"
+                             Color="{StaticResource ColorSurfaceContainerHigh}" />
+
+                    <Button x:Name="LogoutButton"
+                            Text="🚪  Cerrar Sesión"
+                            Clicked="OnLogoutClicked"
+                            BackgroundColor="#66FFDAD6"
+                            TextColor="{StaticResource ColorError}"
+                            FontAttributes="Bold"
+                            CornerRadius="12"
+                            HeightRequest="48" />
+
+                    <VerticalStackLayout Spacing="2" Margin="0,10,0,0">
+                        <Label x:Name="VersionLabel"
+                               FontFamily="Inter"
+                               FontSize="11" FontAttributes="Bold"
+                               TextColor="{StaticResource ColorOutline}"
+                               HorizontalOptions="Center" />
+                        <Label Text="Turismo sustentable y seguro"
+                               FontFamily="Inter"
+                               FontSize="11"
+                               TextColor="{StaticResource ColorOnSurfaceVariant}"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
-
-            <!-- ============ CERRAR SESIÓN ============ -->
-            <Button x:Name="LogoutButton"
-                    Text="🚪  Cerrar Sesión"
-                    Clicked="OnLogoutClicked"
-                    BackgroundColor="#66FFDAD6"
-                    TextColor="{StaticResource ColorError}"
-                    FontAttributes="Bold"
-                    CornerRadius="12"
-                    HeightRequest="50"
-                    Margin="0,4,0,0" />
-
-            <!-- ============ VERSIÓN ============ -->
-            <VerticalStackLayout Spacing="2" Margin="0,2,0,0">
-                <Label x:Name="VersionLabel"
-                       FontSize="11" FontAttributes="Bold"
-                       TextColor="{StaticResource ColorOutline}"
-                       HorizontalOptions="Center" />
-                <Label Text="Turismo sustentable y seguro"
-                       FontSize="11"
-                       TextColor="{StaticResource ColorOnSurfaceVariant}"
-                       HorizontalOptions="Center" />
-            </VerticalStackLayout>
 
         </VerticalStackLayout>
     </ScrollView>
