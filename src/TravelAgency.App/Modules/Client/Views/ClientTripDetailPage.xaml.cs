@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
+using Microsoft.Maui.Storage;
 using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
@@ -287,6 +288,28 @@ public partial class ClientTripDetailPage : ContentPage
     {
         if (_trip is null) return;
         await Shell.Current.GoToAsync($"clienttripmap?tripId={_trip.Id}");
+    }
+
+    private async void OnAddToCalendarClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+
+        var content = TripCalendarIcsFormatter.Build(_trip, DateTime.UtcNow);
+        var path = Path.Combine(FileSystem.CacheDirectory, $"viaje-{_trip.Id}.ics");
+
+        try
+        {
+            await File.WriteAllTextAsync(path, content);
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = $"Viaje: {_trip.Title}",
+                File = new ShareFile(path, "text/calendar")
+            });
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No se pudo compartir", ex.Message, "OK");
+        }
     }
 
     private async void OnBookClicked(object? sender, EventArgs e)
