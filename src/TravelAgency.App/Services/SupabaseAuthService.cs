@@ -57,8 +57,7 @@ public sealed class SupabaseAuthService
             return new SocialAuthResult { Mensaje = "No pudimos abrir el proveedor de identidad." };
         }
 
-        var query = string.Join("&", result.Properties.Select(p => $"{p.Key}={p.Value}"));
-        if (!PkceChallenge.TryParseAuthCallback($"{RedirectUri}?{query}", state, out var code, out var parseError))
+        if (!PkceChallenge.TryParseAuthCallback(result.Properties, state, out var code, out var parseError))
         {
             return new SocialAuthResult
             {
@@ -72,6 +71,7 @@ public sealed class SupabaseAuthService
             HttpMethod.Post,
             $"{SupabaseUrl}/auth/v1/token?grant_type=pkce");
         tokenRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", SupabaseAnonKey);
+        tokenRequest.Headers.TryAddWithoutValidation("apikey", SupabaseAnonKey);
         tokenRequest.Content = JsonContent.Create(new { auth_code = code, code_verifier = verifier });
 
         HttpResponseMessage tokenResponse;

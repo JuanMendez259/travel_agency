@@ -241,10 +241,10 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, AppDbContext d
 
 app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext db, IConfiguration config) =>
 {
-    string? metadataName(JsonElement metadata, string property)
+    string? readString(JsonElement element, string property)
     {
-        if (metadata.ValueKind != JsonValueKind.Object) return null;
-        if (!metadata.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.String)
+        if (element.ValueKind != JsonValueKind.Object) return null;
+        if (!element.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.String)
             return null;
         var text = value.GetString();
         return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
@@ -276,7 +276,7 @@ app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext 
     }
 
     if (response.StatusCode == HttpStatusCode.Unauthorized)
-        return Results.Unauthorized();
+        return Results.Text("No pudimos comprobar tu identidad con el proveedor.", statusCode: 401);
 
     if (!response.IsSuccessStatusCode)
         return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
@@ -285,15 +285,13 @@ app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext 
     using var document = JsonDocument.Parse(payload);
     var root = document.RootElement;
 
-    var sub = root.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
-    var email = root.TryGetProperty("email", out var emailElement) ? emailElement.GetString() : null;
+    var sub = readString(root, "id");
+    var email = readString(root, "email");
 
     if (string.IsNullOrWhiteSpace(email))
         return Results.BadRequest("Tu proveedor no entregó un correo.");
 
-    var emailConfirmedAt = root.TryGetProperty("email_confirmed_at", out var confirmedElement)
-        ? confirmedElement.GetString()
-        : null;
+    var emailConfirmedAt = readString(root, "email_confirmed_at");
     if (string.IsNullOrEmpty(emailConfirmedAt))
         return Results.BadRequest("Tu proveedor no verificó tu correo.");
 
@@ -304,10 +302,10 @@ app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext 
         ? appMetadataElement
         : default;
 
-    var providerName = metadataName(userMetadata, "full_name")
-        ?? metadataName(userMetadata, "name")
+    var providerName = readString(userMetadata, "full_name")
+        ?? readString(userMetadata, "name")
         ?? email.Split('@')[0];
-    var provider = metadataName(appMetadata, "provider");
+    var provider = readString(appMetadata, "provider");
 
     if (!string.IsNullOrEmpty(sub))
     {
@@ -328,7 +326,7 @@ app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext 
     }
 
     var emailKey = email.Trim().ToLowerInvariant();
-    var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == emailKey);
+    var existing = await db.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == emailKey);
     if (existing is not null)
         return Results.Conflict("Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña.");
 
@@ -346,7 +344,32 @@ app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext 
     };
 
     db.Users.Add(user);
-    await db.SaveChangesAsync();
+    try
+    {
+        await db.SaveChangesAsync();
+    }
+    catch (DbUpdateException)
+    {
+        db.Entry(user).State = EntityState.Detached;
+
+        var raced = await db.Users.FirstOrDefaultAsync(u => u.SupabaseUserId == sub);
+        if (raced is null)
+            raced = await db.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == emailKey);
+
+        if (raced is null || raced.SupabaseUserId != sub)
+            return Results.Conflict("Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña.");
+
+        return Results.Ok(new SocialAuthResponse
+        {
+            Token = GenerateToken(raced, signingKey, jwtIssuer, jwtAudience),
+            UserId = raced.Id,
+            Name = raced.Name,
+            Email = raced.Email,
+            Role = raced.Role,
+            PerfilIncompleto = string.IsNullOrWhiteSpace(raced.Phone),
+            Proveedor = raced.Proveedor
+        });
+    }
 
     return Results.Ok(new SocialAuthResponse
     {
@@ -3762,25 +3785,30 @@ static async Task EnsureUserSupabaseColumnsAsync(AppDbContext db, string provide
             : "ALTER TABLE \"Users\" ADD COLUMN \"Proveedor\" character varying(16) NULL;");
     }
 
-    var duplicateCount = (await db.Database.SqlQueryRaw<int>(
-        provider == "sqlite"
-            ? "SELECT COUNT(*) AS \"Value\" FROM (SELECT \"Email\" FROM \"Users\" GROUP BY \"Email\" HAVING COUNT(*) > 1) AS \"Duplicates\""
-            : "SELECT COUNT(*)::int AS \"Value\" FROM (SELECT \"Email\" FROM \"Users\" GROUP BY \"Email\" HAVING COUNT(*) > 1) AS \"Duplicates\"")
-        .ToListAsync()).FirstOrDefault();
-
-    if (duplicateCount > 0)
+    var hasDuplicateEmails = true;
+    try
     {
-        Console.WriteLine($"Bootstrap: se omitieron los indices unicos de Users porque hay {duplicateCount} correos duplicados.");
+        var duplicateCount = (await db.Database.SqlQueryRaw<int>(
+            provider == "sqlite"
+                ? "SELECT COUNT(*) AS \"Value\" FROM (SELECT \"Email\" FROM \"Users\" WHERE \"Email\" IS NOT NULL GROUP BY \"Email\" HAVING COUNT(*) > 1) AS \"Duplicates\""
+                : "SELECT COUNT(*)::int AS \"Value\" FROM (SELECT \"Email\" FROM \"Users\" WHERE \"Email\" IS NOT NULL GROUP BY \"Email\" HAVING COUNT(*) > 1) AS \"Duplicates\"")
+            .ToListAsync()).FirstOrDefault();
+        hasDuplicateEmails = duplicateCount > 0;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Bootstrap: no se pudieron comprobar correos duplicados ({ex.Message}).");
+    }
+
+    await TryExecAsync(db, "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_SupabaseUserId\" ON \"Users\" (\"SupabaseUserId\");");
+
+    if (hasDuplicateEmails)
+    {
+        Console.WriteLine("Bootstrap: se omite el indice unico de Users.Email porque hay correos duplicados o no se pudo comprobar.");
         return;
     }
 
-    await TryExecAsync(db, provider == "sqlite"
-        ? "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_Email\" ON \"Users\" (\"Email\");"
-        : "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_Email\" ON \"Users\" (\"Email\");");
-
-    await TryExecAsync(db, provider == "sqlite"
-        ? "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_SupabaseUserId\" ON \"Users\" (\"SupabaseUserId\");"
-        : "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_SupabaseUserId\" ON \"Users\" (\"SupabaseUserId\");");
+    await TryExecAsync(db, "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_Email\" ON \"Users\" (\"Email\");");
 }
 
 static async Task EnsurePassengersTableAsync(AppDbContext db, string provider)

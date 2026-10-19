@@ -231,7 +231,7 @@ public partial class LoginPage : ContentPage
             _api.SetAuthToken(result.Auth.Token);
 
             if (result.Auth.PerfilIncompleto)
-                await Shell.Current.GoToAsync("profilesetup");
+                App.GoToProfileSetup();
             else
                 App.GoToMainShell();
         }

@@ -30,9 +30,6 @@ public static class PkceChallenge
 
     public static bool TryParseAuthCallback(string redirectUrl, string expectedState, out string? code, out string? error)
     {
-        code = null;
-        error = null;
-
         var queryStart = redirectUrl.IndexOf('?');
         if (queryStart < 0)
         {
@@ -41,11 +38,21 @@ public static class PkceChallenge
             return false;
         }
 
-        var query = redirectUrl.Substring(queryStart + 1);
-        var parameters = ParseQueryParameters(query);
+        return TryParseAuthCallback(
+            ParseQueryParameters(redirectUrl.Substring(queryStart + 1)),
+            expectedState,
+            out code,
+            out error);
+    }
 
-        var state = parameters.TryGetValue("state", out var stateValue) ? stateValue : "";
+    public static bool TryParseAuthCallback(
+        IDictionary<string, string> parameters,
+        string expectedState,
+        out string? code,
+        out string? error)
+    {
         code = parameters.TryGetValue("code", out var codeValue) ? codeValue : null;
+        error = null;
 
         if (string.IsNullOrEmpty(code))
         {
@@ -53,13 +60,13 @@ public static class PkceChallenge
             return false;
         }
 
+        var state = parameters.TryGetValue("state", out var stateValue) ? stateValue : "";
         if (state != expectedState)
         {
             error = "state";
             return false;
         }
 
-        error = null;
         return true;
     }
 
@@ -74,8 +81,8 @@ public static class PkceChallenge
             var idx = part.IndexOf('=');
             if (idx > 0)
             {
-                var key = part.Substring(0, idx);
-                var value = part.Substring(idx + 1);
+                var key = Uri.UnescapeDataString(part.Substring(0, idx));
+                var value = Uri.UnescapeDataString(part.Substring(idx + 1));
                 result[key] = value;
             }
         }

@@ -6,20 +6,17 @@ namespace TravelAgency.App.Tests;
 public class PkceChallengeTests
 {
     [Fact]
-    public void Challenge_IsS256Base64Url()
+    public void Challenge_IsS256Base64Url_KnownVector()
     {
-        var verifier = PkceChallenge.CreateVerifier();
-        var challenge = PkceChallenge.CreateChallenge(verifier);
-        Assert.True(challenge.Length == 43);
-        Assert.Contains(challenge, c => char.IsLetterOrDigit(c) || c == '-' || c == '_');
+        var challenge = PkceChallenge.CreateChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk");
+        Assert.Equal("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", challenge);
     }
 
     [Fact]
     public void Verifier_Is43CharBase64Url()
     {
         var verifier = PkceChallenge.CreateVerifier();
-        Assert.Equal(43, verifier.Length);
-        Assert.Contains(verifier, c => char.IsLetterOrDigit(c) || c == '-' || c == '_');
+        Assert.Matches("^[A-Za-z0-9_-]{43}$", verifier);
     }
 
     [Fact]
