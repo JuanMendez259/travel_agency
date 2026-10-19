@@ -36,7 +36,7 @@
 
 ---
 
-### T1: Datos — `Users.SupabaseUserId` y `Users.Proveedor`
+### Task 1: Datos — `Users.SupabaseUserId` y `Users.Proveedor`
 
 **Files:**
 - Modify: `src/TravelAgency.Shared/Models/User.cs`
@@ -115,7 +115,7 @@ git commit -m "api: columnas de Supabase en Users y config AnonKey"
 
 ---
 
-### T2: API — `POST /api/auth/social`
+### Task 2: API — `POST /api/auth/social`
 
 **Files:**
 - Modify: `src/TravelAgency.Shared/Models/AuthModels.cs`
@@ -187,7 +187,7 @@ git commit -m "api: endpoint de canje de sesión social por JWT de la app"
 
 ---
 
-### T3: API — `PUT /api/users/me`
+### Task 3: API — `PUT /api/users/me`
 
 **Files:**
 - Modify: `src/TravelAgency.Shared/Models/AuthModels.cs`
@@ -254,7 +254,7 @@ git commit -m "api: endpoint para editar el perfil propio"
 
 ---
 
-### T4: App — `PkceChallenge` puro + pruebas unitarias
+### Task 4: App — `PkceChallenge` puro + pruebas unitarias
 
 **Files:**
 - Create: `src/TravelAgency.App/Services/PkceChallenge.cs`
@@ -365,7 +365,7 @@ git commit -m "app: PKCE y excepción de auth social con pruebas"
 
 ---
 
-### T5: App — `SupabaseAuthService`
+### Task 5: App — `SupabaseAuthService`
 
 **Files:**
 - Create: `src/TravelAgency.App/Services/SupabaseAuthService.cs`
@@ -497,7 +497,7 @@ git commit -m "app: servicio de auth social con Supabase (PKCE + canje)"
 
 ---
 
-### T6: App — `ProfileSetupPage` y ruta `profilesetup`
+### Task 6: App — `ProfileSetupPage` y ruta `profilesetup`
 
 **Files:**
 - Create: `src/TravelAgency.App/Modules/Auth/Views/ProfileSetupPage.xaml`
@@ -577,7 +577,7 @@ git commit -m "app: paso de perfil tras el primer ingreso social"
 
 ---
 
-### T7: App — Deep Link `proximaparadatours://`
+### Task 7: App — Deep Link `proximaparadatours://`
 
 **Files:**
 - Modify: `src/TravelAgency.App/Platforms/iOS/Info.plist`
@@ -628,7 +628,7 @@ git commit -m "app: deep link para el retorno del proveedor de identidad"
 
 ---
 
-### T8: App — `LoginPage`: botones de proveedor e Instagram como enlace
+### Task 8: App — `LoginPage`: botones de proveedor e Instagram como enlace
 
 **Files:**
 - Modify: `src/TravelAgency.App/Modules/Auth/Views/LoginPage.xaml`
@@ -720,7 +720,7 @@ git commit -m "app: botones de proveedor en el login y aviso de teléfono"
 
 ---
 
-### T9: Verificación final y pruebas manuales
+### Task 9: Verificación final y pruebas manuales
 
 **Files:**
 - Ninguno (solo verificación).
