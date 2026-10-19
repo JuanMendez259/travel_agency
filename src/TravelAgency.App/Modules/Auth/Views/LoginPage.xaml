@@ -230,13 +230,12 @@
                 <BoxView Grid.Column="2" HeightRequest="1" Color="{StaticResource ColorSurfaceContainerHigh}" VerticalOptions="Center" />
             </Grid>
 
-            <!-- ============ REDES SOCIALES ============ -->
+            <!-- ============ PROVEEDORES ============ -->
             <VerticalStackLayout Spacing="10">
-                <Button x:Name="FacebookButton"
-                        Text="Continuar con Facebook"
-                        ImageSource="https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/company_image/fb.png"
-                        ContentLayout="Left,10"
-                        Clicked="OnFacebookClicked"
+                <Button x:Name="GoogleButton"
+                        ClassId="google"
+                        Text="Continuar con Google"
+                        Clicked="OnProviderClicked"
                         BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
                         TextColor="{StaticResource ColorOnSurface}"
                         BorderColor="{StaticResource ColorSurfaceContainerHigh}"
@@ -244,11 +243,23 @@
                         CornerRadius="10"
                         HeightRequest="48"
                         FontAttributes="Bold" />
-                <Button x:Name="InstagramButton"
-                        Text="Continuar con Instagram"
-                        ImageSource="https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/company_image/insta.png"
+                <Button x:Name="AppleButton"
+                        ClassId="apple"
+                        Text="Continuar con Apple"
+                        Clicked="OnProviderClicked"
+                        BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
+                        TextColor="{StaticResource ColorOnSurface}"
+                        BorderColor="{StaticResource ColorSurfaceContainerHigh}"
+                        BorderWidth="1"
+                        CornerRadius="10"
+                        HeightRequest="48"
+                        FontAttributes="Bold" />
+                <Button x:Name="FacebookButton"
+                        ClassId="facebook"
+                        Text="Continuar con Facebook"
+                        ImageSource="https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/company_image/fb.png"
                         ContentLayout="Left,10"
-                        Clicked="OnInstagramClicked"
+                        Clicked="OnProviderClicked"
                         BackgroundColor="{StaticResource ColorSurfaceContainerLowest}"
                         TextColor="{StaticResource ColorOnSurface}"
                         BorderColor="{StaticResource ColorSurfaceContainerHigh}"
@@ -257,6 +268,18 @@
                         HeightRequest="48"
                         FontAttributes="Bold" />
             </VerticalStackLayout>
+
+            <Label Text="Síguenos en Instagram"
+                   FontSize="12"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource ColorPrimary}"
+                   HorizontalOptions="Center"
+                   Margin="0,14,0,0">
+                <Label.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnInstagramTapped" />
+                </Label.GestureRecognizers>
+            </Label>
+
 
             <!-- ============ ACCESO RÁPIDO (SOLO PRUEBAS) ============ -->
             <VerticalStackLayout x:Name="QuickLoginLayout" Margin="0,22,0,0">

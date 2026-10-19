@@ -33,7 +33,6 @@ public static class PkceChallenge
         code = null;
         error = null;
 
-        // Extract query string after '?'
         var queryStart = redirectUrl.IndexOf('?');
         if (queryStart < 0)
         {

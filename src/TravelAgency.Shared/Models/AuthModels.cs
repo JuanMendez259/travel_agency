@@ -22,7 +22,6 @@ public class AuthResponse
     public string? Name { get; set; }
     public string? Email { get; set; }
     public UserRole Role { get; set; }
-    public bool PerfilIncompleto { get; set; }
 }
 
 public class SocialLoginRequest
@@ -39,6 +38,13 @@ public class SocialAuthResponse
     public UserRole Role { get; set; }
     public bool PerfilIncompleto { get; set; }
     public string? Proveedor { get; set; }
+}
+
+public class UpdateProfileRequest
+{
+    public string? Name { get; set; }
+    public string? Phone { get; set; }
+    public string? EmergencyContact { get; set; }
 }
 
 public class UpdateUserRoleRequest

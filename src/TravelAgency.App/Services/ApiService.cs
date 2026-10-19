@@ -107,6 +107,19 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
     }
 
+    public async Task<SocialAuthResponse?> SocialAuthAsync(string accessToken)
+    {
+        var response = await _http.PostAsJsonAsync("/api/auth/social", new { accessToken }, JsonOptions);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body)
+                ? "No se pudo iniciar sesión con el proveedor."
+                : body.Trim().Trim('"'));
+        }
+        return await response.Content.ReadFromJsonAsync<SocialAuthResponse>(JsonOptions);
+    }
+
     public Task<List<Trip>?> GetTripsAsync() =>
         _http.GetFromJsonAsync<List<Trip>>("/api/trips", JsonOptions);
 

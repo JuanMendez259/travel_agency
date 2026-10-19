@@ -878,6 +878,26 @@ app.MapGet("/api/users/me", async (ClaimsPrincipal principal, AppDbContext db) =
     return user is null ? Results.NotFound("Usuario no encontrado.") : Results.Ok(user);
 }).RequireAuthorization();
 
+app.MapPut("/api/users/me", async (UpdateProfileRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var user = await db.Users.FindAsync(GetUserId(principal));
+    if (user is null) return Results.NotFound("Usuario no encontrado.");
+
+    var phone = request.Phone?.Trim();
+    if (string.IsNullOrWhiteSpace(phone) || new string(phone.Where(char.IsDigit).ToArray()).Length < 10)
+        return Results.BadRequest("Indica un teléfono válido de 10 dígitos.");
+
+    if (!string.IsNullOrWhiteSpace(request.Name))
+        user.Name = request.Name!.Trim();
+    user.Phone = phone;
+    user.EmergencyContact = string.IsNullOrWhiteSpace(request.EmergencyContact)
+        ? null
+        : request.EmergencyContact!.Trim();
+
+    await db.SaveChangesAsync();
+    return Results.Ok(user);
+}).RequireAuthorization();
+
 app.MapGet("/api/users/me/stats", async (ClaimsPrincipal principal, AppDbContext db) =>
 {
     var userId = GetUserId(principal);
