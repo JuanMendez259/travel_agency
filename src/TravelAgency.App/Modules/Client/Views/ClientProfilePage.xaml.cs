@@ -30,7 +30,7 @@ public partial class ClientProfilePage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        VersionLabel.Text = $"v{AppInfo.Version} (Build {AppInfo.BuildString}) • RutaVerde México";
+        VersionLabel.Text = $"v{AppInfo.Version} (Build {AppInfo.BuildString}) • Proxima Parada Tours";
         try
         {
             await LoadProfileAsync();
@@ -111,14 +111,15 @@ public partial class ClientProfilePage : ContentPage
         QrNameLabel.Text = fullName ?? "Viajero";
 
         var token = user.QrToken;
+        PassStatusPill.IsVisible = !string.IsNullOrWhiteSpace(token);
         if (string.IsNullOrWhiteSpace(token))
         {
-            QrIdLabel.Text = "ID: —";
+            QrIdLabel.Text = "—";
             return;
         }
 
         var code = new string(token.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
-        QrIdLabel.Text = $"ID: RV-MX-{(code.Length > 6 ? code[..6] : code)}";
+        QrIdLabel.Text = $"PPT-{(code.Length > 6 ? code[..6] : code)}";
     }
 
     void LoadNotificationsPreference()
