@@ -35,7 +35,7 @@ public partial class ClientFavoritesPage : ContentPage
             {
                 foreach (var trip in trips)
                 {
-                    var thumb = await _api.GetTripImageAsync(trip.ImageUrl);
+                    var thumb = _api.GetTripImage(trip.ImageUrl);
                     items.Add(new TripListItem(trip, thumb, isFavorite: true));
                 }
             }

@@ -42,7 +42,7 @@ public partial class ClientMyTripsPage : ContentPage
         try
         {
             _current = await _api.GetUserBookingsAsync(_session.UserId, SelectedStatus()) ?? new List<Booking>();
-            await BuildCardsAsync();
+            BuildCards();
             ApplySearch();
         }
         catch (Exception ex)
@@ -59,12 +59,12 @@ public partial class ClientMyTripsPage : ContentPage
         }
     }
 
-    private async Task BuildCardsAsync()
+    private void BuildCards()
     {
         _cards = new List<BookingCardItem>();
         foreach (var booking in _current)
         {
-            var thumb = await _api.GetTripImageAsync(booking.Trip?.ImageUrl);
+            var thumb = _api.GetTripImage(booking.Trip?.ImageUrl);
             _cards.Add(new BookingCardItem(booking, thumb));
         }
     }

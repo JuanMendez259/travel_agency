@@ -46,7 +46,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             if (trip is null) return;
 
             StartEdit(trip);
-            await LoadPreviewAsync(trip.ImageUrl);
+            LoadPreview(trip.ImageUrl);
             await PageScroll.ScrollToAsync(0, 0, true);
         }
         catch (Exception ex)
@@ -211,13 +211,11 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         }
     }
 
-    private async Task LoadPreviewAsync(string? imageUrl)
+    private void LoadPreview(string? imageUrl)
     {
         var hasImage = !string.IsNullOrEmpty(imageUrl);
 
-        ImagePreview.Source = await _api.GetTripImageAsync(imageUrl);
-        if (ImagePreview.Source is null) return;
-
+        ImagePreview.Source = _api.GetTripImage(imageUrl, ApiService.LargeImageWidth);
         ImagePreview.IsVisible = true;
         ImageNameLabel.Text = hasImage
             ? (_selectedImage is null ? "Imagen actual" : _selectedImage.FileName)
@@ -323,7 +321,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         ImageNameLabel.Text = string.Empty;
         ImageNameLabel.IsVisible = false;
 
-        await LoadPreviewAsync(null);
+        LoadPreview(null);
     }
 
     private void OnActiveToggled(object? sender, ToggledEventArgs e)

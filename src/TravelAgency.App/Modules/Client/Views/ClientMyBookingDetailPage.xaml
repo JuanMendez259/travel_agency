@@ -3,6 +3,7 @@
     x:Class="TravelAgency.App.Modules.Client.Views.ClientMyBookingDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:TravelAgency.App.Controls"
     xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
     Title="Detalle de Mi Reserva">
 
@@ -22,7 +23,7 @@
                 <Border.Shadow>
                     <Shadow Brush="#0F172A" Opacity="0.08" Radius="14" Offset="0,3" />
                 </Border.Shadow>
-                <Image x:Name="TripImage" HeightRequest="200" Aspect="AspectFill"
+                <controls:NetworkImage x:Name="TripImage" HeightRequest="200" Aspect="AspectFill"
                        SemanticProperties.Description="Foto del viaje" />
             </Border>
 
@@ -192,7 +193,7 @@
 
                     <Border x:Name="TransportImageBorder" StrokeShape="RoundRectangle 12" Stroke="Transparent"
                             Padding="0" IsVisible="False">
-                        <Image x:Name="TransportImage" HeightRequest="170" Aspect="AspectFill"
+                        <controls:NetworkImage x:Name="TransportImage" HeightRequest="170" Aspect="AspectFill"
                                SemanticProperties.Description="Foto de la unidad de transporte" />
                     </Border>
 

@@ -21,9 +21,60 @@ public class ApiService
 
     public static string BaseUrl { get; set; } = "https://travelagency-production-f6cf.up.railway.app";
 
-    // Se usa cuando el viaje no tiene imagen o la descarga falla.
-    public const string TripPlaceholderUrl =
-        "https://onddztbqjmmybojkspjl.supabase.co/storage/v1/object/public/trips/placeholder.jpg";
+    // Placeholder incluido en la app: se usa cuando el viaje no tiene imagen o
+    // cuando la descarga falla, sin volver a bajarlo por cada tarjeta.
+    public const string TripPlaceholderFile = "placeholder.jpg";
+
+    // Anchos que se piden a la transformacion de Supabase Storage.
+    public const int CardImageWidth = 400;
+    public const int LargeImageWidth = 800;
+    private const int ImageQuality = 80;
+
+    // La transformacion depende del add-on de imagenes de Supabase; con esto
+    // apagado se pide siempre la imagen original.
+    private static readonly bool UseStorageResize = true;
+
+    public static Microsoft.Maui.Controls.ImageSource PlaceholderSource() =>
+        Microsoft.Maui.Controls.ImageSource.FromFile(TripPlaceholderFile);
+
+    /// Reescribe una URL publica de Supabase Storage a su version redimensionada
+    /// (render/image). Fuera de Supabase devuelve la URL sin tocar.
+    public static string WithWidth(string url, int width)
+    {
+        if (!UseStorageResize) return url;
+
+        const string from = "/storage/v1/object/public/";
+        var index = url.IndexOf(from, StringComparison.OrdinalIgnoreCase);
+        if (index < 0) return url;
+
+        var resized = new System.Text.StringBuilder(url)
+            .Remove(index, from.Length)
+            .Insert(index, "/storage/v1/render/image/public/");
+        resized.Append(url.Contains('?') ? '&' : '?');
+        resized.Append("width=").Append(width).Append("&quality=").Append(ImageQuality);
+        return resized.ToString();
+    }
+
+    /// Imagen de un viaje (o el placeholder local). La descarga y el cacheo los
+    /// hace la plataforma: UriImageSource pide cada imagen cuando se muestra, asi
+    /// que las listas ya no esperan una descarga por elemento.
+    public Microsoft.Maui.Controls.ImageSource GetTripImage(string? url, int width = CardImageWidth)
+    {
+        var absolute = ResolveUrl(url);
+        if (absolute is not null)
+        {
+            var resized = WithWidth(absolute, width);
+            if (Uri.TryCreate(resized, UriKind.Absolute, out var uri))
+                return new Microsoft.Maui.Controls.UriImageSource
+                {
+                    Uri = uri,
+                    CachingEnabled = true,
+                    CacheValidity = TimeSpan.FromDays(7)
+                };
+        }
+
+        return PlaceholderSource();
+    }
 
     public static string? ResolveUrl(string? url)
     {
@@ -584,32 +635,6 @@ public class ApiService
         using var response = await _http.GetAsync(url);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsByteArrayAsync();
-    }
-
-    public async Task<Microsoft.Maui.Controls.ImageSource?> GetTripImageAsync(string? url)
-    {
-        var absolute = ResolveUrl(url);
-        if (absolute is not null)
-        {
-            var image = await DownloadImageAsync(_http, absolute);
-            if (image is not null) return image;
-        }
-
-        return await DownloadImageAsync(_http, TripPlaceholderUrl);
-    }
-
-    static async Task<Microsoft.Maui.Controls.ImageSource?> DownloadImageAsync(HttpClient http, string url)
-    {
-        try
-        {
-            var bytes = await http.GetByteArrayAsync(url);
-            if (bytes.Length == 0) return null;
-            return Microsoft.Maui.Controls.ImageSource.FromStream(() => new MemoryStream(bytes));
-        }
-        catch
-        {
-            return null;
-        }
     }
 
 

@@ -92,7 +92,7 @@ public partial class AdminTripDetailPage : ContentPage
         await RenderRatingsAsync();
         RenderOptions();
 
-        TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
+        TripImage.Source = _api.GetTripImage(_trip.ImageUrl, ApiService.LargeImageWidth);
         TripImage.IsVisible = TripImage.Source is not null;
 
         await RenderTransportUnitAsync();
@@ -121,7 +121,7 @@ public partial class AdminTripDetailPage : ContentPage
 
         if (hasImage)
         {
-            TransportUnitImage.Source = await _api.GetTripImageAsync(info!.ImageUrl);
+            TransportUnitImage.Source = _api.GetTripImage(info!.ImageUrl, ApiService.LargeImageWidth);
             TransportUnitImage.IsVisible = TransportUnitImage.Source is not null;
         }
         else

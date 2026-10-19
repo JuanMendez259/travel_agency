@@ -3,6 +3,7 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminDashboardPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:TravelAgency.App.Controls"
     Title="Publicar Viaje">
 
     <ContentPage.ToolbarItems>
@@ -128,7 +129,7 @@
             </Grid>
 
             <Button Text="Seleccionar imagen" Clicked="OnPickImageClicked" />
-            <Image x:Name="ImagePreview"
+            <controls:NetworkImage x:Name="ImagePreview"
                    HeightRequest="140"
                    Aspect="AspectFill"
                    IsVisible="False"

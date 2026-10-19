@@ -122,7 +122,7 @@ public partial class ClientTripDetailPage : ContentPage
         RenderOptionsIfAny();
 
         if (!string.IsNullOrEmpty(_trip.ImageUrl))
-            TripImage.Source = await _api.GetTripImageAsync(_trip.ImageUrl);
+            TripImage.Source = _api.GetTripImage(_trip.ImageUrl, ApiService.LargeImageWidth);
     }
 
     private static string FormatTripDateTime(DateTime value)
