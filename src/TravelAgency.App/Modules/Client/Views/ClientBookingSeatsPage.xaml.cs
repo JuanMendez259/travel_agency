@@ -920,18 +920,21 @@ public partial class ClientBookingSeatsPage : ContentPage
 
             if (created is not null && created.Id > 0)
             {
+                AppHaptics.Confirm();
                 // Limpia la pestaña Explorar (home -> viaje -> asientos) y abre el detalle de la reserva.
                 await Shell.Current.GoToAsync("//home", animate: false);
                 await Shell.Current.GoToAsync($"//mytrips/mybooking?id={created.Id}");
             }
             else
             {
+                AppHaptics.Reject();
                 await DisplayAlertAsync("Reserva creada",
                     "Tu reserva se registró, pero no se pudo abrir el detalle.", "OK");
             }
         }
         catch (Exception ex)
         {
+            AppHaptics.Reject();
             await DisplayAlertAsync("Error", ex.Message, "OK");
             RefreshSeatVisuals();
         }

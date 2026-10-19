@@ -113,6 +113,10 @@ public partial class AdminScanQrPage : ContentPage
         try
         {
             var result = await _api.CheckinByTokenAsync(token, _trip.Id);
+            if (result is null)
+                throw new InvalidOperationException("No se recibió confirmación del check-in.");
+
+            AppHaptics.Confirm();
             var name = result?.Name ?? "Pasajero";
 
             if (result?.AlreadyCheckedIn == true)
@@ -133,6 +137,7 @@ public partial class AdminScanQrPage : ContentPage
         }
         catch (Exception ex)
         {
+            AppHaptics.Reject();
             ResultLabel.Text = "No se pudo registrar";
             ResultLabel.TextColor = Color.FromArgb("#C53030");
             DetailLabel.Text = ex.Message;
