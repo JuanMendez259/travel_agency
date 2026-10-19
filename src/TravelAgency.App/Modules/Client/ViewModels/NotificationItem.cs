@@ -29,7 +29,7 @@ public class NotificationItem
 
     public Color IconTextColor { get; private set; } = Color.FromArgb("#14532D");
 
-    public string TagText { get; private set; } = "RutaVerde · Agencia";
+    public string TagText { get; private set; } = "Proxima Parada Tours · Agencia";
 
     public NotificationItem(UserNotification notification)
     {
@@ -46,7 +46,7 @@ public class NotificationItem
             Icon = "✓";
             IconBackgroundColor = Color.FromArgb("#14532D");
             IconTextColor = Colors.White;
-            TagText = "RutaVerde · Agencia";
+            TagText = "Proxima Parada Tours · Agencia";
             return;
         }
 
@@ -55,7 +55,7 @@ public class NotificationItem
             Icon = "💳";
             IconBackgroundColor = Color.FromArgb("#6FFBBE");
             IconTextColor = Color.FromArgb("#005236");
-            TagText = "RutaVerde · Pagos";
+            TagText = "Proxima Parada Tours · Pagos";
             return;
         }
 
@@ -64,7 +64,7 @@ public class NotificationItem
             Icon = "✓";
             IconBackgroundColor = Color.FromArgb("#006C49");
             IconTextColor = Colors.White;
-            TagText = "RutaVerde · Operaciones";
+            TagText = "Proxima Parada Tours · Operaciones";
             return;
         }
 
@@ -73,13 +73,13 @@ public class NotificationItem
             Icon = "🥾";
             IconBackgroundColor = Color.FromArgb("#D8E6DC");
             IconTextColor = Color.FromArgb("#3D4A43");
-            TagText = "RutaVerde · Guías y Soporte";
+            TagText = "Proxima Parada Tours · Guías y Soporte";
             return;
         }
 
         Icon = "📢";
         IconBackgroundColor = Color.FromArgb("#E2E7FF");
         IconTextColor = Color.FromArgb("#14532D");
-        TagText = "RutaVerde · Avisos";
+        TagText = "Proxima Parada Tours · Avisos";
     }
 }

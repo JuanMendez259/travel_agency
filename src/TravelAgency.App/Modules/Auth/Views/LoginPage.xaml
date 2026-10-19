@@ -8,7 +8,7 @@
 
     <ContentPage.Resources>
         <ResourceDictionary>
-            <!-- Tokens de color tomados del diseño de Stitch (RutaVerde palette) -->
+            <!-- Tokens de color tomados del diseño de Stitch (paleta de Proxima Parada Tours) -->
             <Color x:Key="ColorPrimary">#003B1B</Color>
             <Color x:Key="ColorPrimaryContainer">#14532D</Color>
             <Color x:Key="ColorSecondary">#006C49</Color>
