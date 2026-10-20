@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -137,6 +138,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureBookingQrColumnAsync(db, provider);
     await EnsureUserQrColumnAsync(db, provider);
     await EnsureUserEmergencyContactColumnAsync(db, provider);
+    await EnsureUserSupabaseColumnsAsync(db, provider);
     await EnsurePassengersTableAsync(db, provider);
     await EnsureTripFinalizedColumnAsync(db, provider);
     await EnsureRatingsTableAsync(db, provider);
@@ -234,6 +236,150 @@ app.MapPost("/api/auth/register", async (RegisterRequest request, AppDbContext d
         Name = user.Name,
         Email = user.Email,
         Role = user.Role
+    });
+});
+
+app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext db, IConfiguration config) =>
+{
+    string? readString(JsonElement element, string property)
+    {
+        if (element.ValueKind != JsonValueKind.Object) return null;
+        if (!element.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.String)
+            return null;
+        var text = value.GetString();
+        return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+    }
+
+    var supabaseUrl = config["Supabase:Url"]?.TrimEnd('/');
+    if (string.IsNullOrWhiteSpace(supabaseUrl))
+        return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
+
+    var anonKey = config["Supabase:AnonKey"];
+
+    using var http = new HttpClient();
+    using var httpRequest = new HttpRequestMessage(HttpMethod.Get, $"{supabaseUrl}/auth/v1/user");
+    httpRequest.Headers.TryAddWithoutValidation("apikey", anonKey);
+    httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {request.AccessToken}");
+
+    HttpResponseMessage response;
+    try
+    {
+        response = await http.SendAsync(httpRequest);
+    }
+    catch (HttpRequestException)
+    {
+        return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
+    }
+    catch (TaskCanceledException)
+    {
+        return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
+    }
+
+    if (response.StatusCode == HttpStatusCode.Unauthorized)
+        return Results.Text("No pudimos comprobar tu identidad con el proveedor.", statusCode: 401);
+
+    if (!response.IsSuccessStatusCode)
+        return Results.Text("No pudimos contactar con el proveedor de identidad.", statusCode: 502);
+
+    var payload = await response.Content.ReadAsStringAsync();
+    using var document = JsonDocument.Parse(payload);
+    var root = document.RootElement;
+
+    var sub = readString(root, "id");
+    var email = readString(root, "email");
+
+    if (string.IsNullOrWhiteSpace(email))
+        return Results.BadRequest("Tu proveedor no entregó un correo.");
+
+    var emailConfirmedAt = readString(root, "email_confirmed_at");
+    if (string.IsNullOrEmpty(emailConfirmedAt))
+        return Results.BadRequest("Tu proveedor no verificó tu correo.");
+
+    var userMetadata = root.TryGetProperty("user_metadata", out var userMetadataElement)
+        ? userMetadataElement
+        : default;
+    var appMetadata = root.TryGetProperty("app_metadata", out var appMetadataElement)
+        ? appMetadataElement
+        : default;
+
+    var providerName = readString(userMetadata, "full_name")
+        ?? readString(userMetadata, "name")
+        ?? email.Split('@')[0];
+    var provider = readString(appMetadata, "provider");
+
+    if (!string.IsNullOrEmpty(sub))
+    {
+        var linked = await db.Users.FirstOrDefaultAsync(u => u.SupabaseUserId == sub);
+        if (linked is not null)
+        {
+            return Results.Ok(new SocialAuthResponse
+            {
+                Token = GenerateToken(linked, signingKey, jwtIssuer, jwtAudience),
+                UserId = linked.Id,
+                Name = linked.Name,
+                Email = linked.Email,
+                Role = linked.Role,
+                PerfilIncompleto = false,
+                Proveedor = linked.Proveedor
+            });
+        }
+    }
+
+    var emailKey = email.Trim().ToLowerInvariant();
+    var existing = await db.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == emailKey);
+    if (existing is not null)
+        return Results.Conflict("Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña.");
+
+    var user = new User
+    {
+        Name = providerName,
+        Email = emailKey,
+        SupabaseUserId = sub,
+        Proveedor = string.IsNullOrWhiteSpace(provider) ? "unknown" : provider,
+        Role = UserRole.Client,
+        CreatedAt = DateTime.UtcNow,
+        QrToken = GenerateQrToken(),
+        Phone = null,
+        EmergencyContact = null
+    };
+
+    db.Users.Add(user);
+    try
+    {
+        await db.SaveChangesAsync();
+    }
+    catch (DbUpdateException)
+    {
+        db.Entry(user).State = EntityState.Detached;
+
+        var raced = await db.Users.FirstOrDefaultAsync(u => u.SupabaseUserId == sub);
+        if (raced is null)
+            raced = await db.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == emailKey);
+
+        if (raced is null || raced.SupabaseUserId != sub)
+            return Results.Conflict("Ya tienes una cuenta con este correo. Inicia sesión con tu contraseña.");
+
+        return Results.Ok(new SocialAuthResponse
+        {
+            Token = GenerateToken(raced, signingKey, jwtIssuer, jwtAudience),
+            UserId = raced.Id,
+            Name = raced.Name,
+            Email = raced.Email,
+            Role = raced.Role,
+            PerfilIncompleto = string.IsNullOrWhiteSpace(raced.Phone),
+            Proveedor = raced.Proveedor
+        });
+    }
+
+    return Results.Ok(new SocialAuthResponse
+    {
+        Token = GenerateToken(user, signingKey, jwtIssuer, jwtAudience),
+        UserId = user.Id,
+        Name = user.Name,
+        Email = user.Email,
+        Role = user.Role,
+        PerfilIncompleto = true,
+        Proveedor = user.Proveedor
     });
 });
 
@@ -753,6 +899,26 @@ app.MapGet("/api/users/me", async (ClaimsPrincipal principal, AppDbContext db) =
 {
     var user = await db.Users.FindAsync(GetUserId(principal));
     return user is null ? Results.NotFound("Usuario no encontrado.") : Results.Ok(user);
+}).RequireAuthorization();
+
+app.MapPut("/api/users/me", async (UpdateProfileRequest request, ClaimsPrincipal principal, AppDbContext db) =>
+{
+    var user = await db.Users.FindAsync(GetUserId(principal));
+    if (user is null) return Results.NotFound("Usuario no encontrado.");
+
+    var phone = request.Phone?.Trim();
+    if (string.IsNullOrWhiteSpace(phone) || new string(phone.Where(char.IsDigit).ToArray()).Length < 10)
+        return Results.BadRequest("Indica un teléfono válido de 10 dígitos.");
+
+    if (!string.IsNullOrWhiteSpace(request.Name))
+        user.Name = request.Name!.Trim();
+    user.Phone = phone;
+    user.EmergencyContact = string.IsNullOrWhiteSpace(request.EmergencyContact)
+        ? null
+        : request.EmergencyContact!.Trim();
+
+    await db.SaveChangesAsync();
+    return Results.Ok(user);
 }).RequireAuthorization();
 
 app.MapGet("/api/users/me/stats", async (ClaimsPrincipal principal, AppDbContext db) =>
@@ -3601,6 +3767,48 @@ static async Task EnsureUserEmergencyContactColumnAsync(AppDbContext db, string 
             ? "ALTER TABLE \"Users\" ADD COLUMN \"EmergencyContact\" TEXT NULL;"
             : "ALTER TABLE \"Users\" ADD COLUMN \"EmergencyContact\" character varying(120) NULL;");
     }
+}
+
+static async Task EnsureUserSupabaseColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Users", "SupabaseUserId", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Users\" ADD COLUMN \"SupabaseUserId\" TEXT NULL;"
+            : "ALTER TABLE \"Users\" ADD COLUMN \"SupabaseUserId\" character varying(64) NULL;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Users", "Proveedor", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Users\" ADD COLUMN \"Proveedor\" TEXT NULL;"
+            : "ALTER TABLE \"Users\" ADD COLUMN \"Proveedor\" character varying(16) NULL;");
+    }
+
+    var hasDuplicateEmails = true;
+    try
+    {
+        var duplicateCount = (await db.Database.SqlQueryRaw<int>(
+            provider == "sqlite"
+                ? "SELECT COUNT(*) AS \"Value\" FROM (SELECT \"Email\" FROM \"Users\" WHERE \"Email\" IS NOT NULL GROUP BY \"Email\" HAVING COUNT(*) > 1) AS \"Duplicates\""
+                : "SELECT COUNT(*)::int AS \"Value\" FROM (SELECT \"Email\" FROM \"Users\" WHERE \"Email\" IS NOT NULL GROUP BY \"Email\" HAVING COUNT(*) > 1) AS \"Duplicates\"")
+            .ToListAsync()).FirstOrDefault();
+        hasDuplicateEmails = duplicateCount > 0;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Bootstrap: no se pudieron comprobar correos duplicados ({ex.Message}).");
+    }
+
+    await TryExecAsync(db, "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_SupabaseUserId\" ON \"Users\" (\"SupabaseUserId\");");
+
+    if (hasDuplicateEmails)
+    {
+        Console.WriteLine("Bootstrap: se omite el indice unico de Users.Email porque hay correos duplicados o no se pudo comprobar.");
+        return;
+    }
+
+    await TryExecAsync(db, "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Users_Email\" ON \"Users\" (\"Email\");");
 }
 
 static async Task EnsurePassengersTableAsync(AppDbContext db, string provider)

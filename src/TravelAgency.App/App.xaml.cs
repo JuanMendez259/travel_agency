@@ -88,4 +88,9 @@ public partial class App : Application
 
         Application.Current!.Windows[0].Page = Services.GetRequiredService<LoginPage>();
     }
+
+    public static void GoToProfileSetup()
+    {
+        Application.Current!.Windows[0].Page = Services.GetRequiredService<ProfileSetupPage>();
+    }
 }

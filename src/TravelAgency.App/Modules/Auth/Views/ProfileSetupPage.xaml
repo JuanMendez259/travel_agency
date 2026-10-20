@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage
+    x:Class="TravelAgency.App.Modules.Auth.Views.ProfileSetupPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    BackgroundColor="{StaticResource ColorSurface}"
+    Title="Perfil">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <Color x:Key="ColorPrimary">#003B1B</Color>
+            <Color x:Key="ColorSurface">#FAF8FF</Color>
+            <Color x:Key="ColorSurfaceContainerLow">#F2F3FF</Color>
+            <Color x:Key="ColorOnSurface">#131B2E</Color>
+            <Color x:Key="ColorOnSurfaceVariant">#404941</Color>
+            <Color x:Key="ColorOutline">#717970</Color>
+
+            <Style x:Key="FieldEntry" TargetType="Entry">
+                <Setter Property="BackgroundColor" Value="Transparent" />
+                <Setter Property="TextColor" Value="{StaticResource ColorOnSurface}" />
+                <Setter Property="PlaceholderColor" Value="{StaticResource ColorOutline}" />
+                <Setter Property="FontSize" Value="15" />
+                <Setter Property="HeightRequest" Value="50" />
+            </Style>
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24,20" Spacing="16">
+
+            <Label Text="Completa tu perfil"
+                   FontSize="26"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource ColorPrimary}"
+                   HorizontalOptions="Center" />
+
+            <Label x:Name="ProfileNameLabel"
+                   FontSize="15"
+                   TextColor="{StaticResource ColorOnSurface}"
+                   HorizontalOptions="Center"
+                   IsVisible="False" />
+
+            <Label Text="Solo faltan tu teléfono y un contacto de emergencia para terminar tu registro."
+                   FontSize="15"
+                   TextColor="{StaticResource ColorOnSurfaceVariant}"
+                   HorizontalOptions="Center"
+                   Margin="0,4,0,0" />
+
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Teléfono (obligatorio, 10 dígitos)" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="📱" FontSize="16" VerticalOptions="Center" />
+                        <Entry x:Name="PhoneEntry" Grid.Column="1"
+                               Placeholder="Número de teléfono"
+                               Keyboard="Telephone"
+                               Style="{StaticResource FieldEntry}"
+                               AutomationId="ProfileSetupPhone" />
+                    </Grid>
+                </Border>
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Contacto de emergencia (opcional)" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource ColorOnSurfaceVariant}" />
+                <Border StrokeShape="RoundRectangle 10" Stroke="Transparent" BackgroundColor="{StaticResource ColorSurfaceContainerLow}" Padding="12,0">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="🆘" FontSize="16" VerticalOptions="Center" />
+                        <Entry x:Name="EmergencyContactEntry" Grid.Column="1"
+                               Placeholder="Nombre o teléfono de emergencia"
+                               Style="{StaticResource FieldEntry}"
+                               AutomationId="ProfileSetupEmergency" />
+                    </Grid>
+                </Border>
+            </VerticalStackLayout>
+
+            <Button x:Name="ContinueButton"
+                    Text="Continuar"
+                    Clicked="OnContinueClicked"
+                    BackgroundColor="{StaticResource ColorPrimary}"
+                    TextColor="White"
+                    FontAttributes="Bold"
+                    CornerRadius="10"
+                    HeightRequest="50"
+                    Margin="0,24,0,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

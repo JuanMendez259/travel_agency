@@ -82,6 +82,14 @@ public partial class ClientProfilePage : ContentPage
         EmailVerifiedBadge.IsVisible = !string.IsNullOrWhiteSpace(user.Email);
         PhoneVerifiedBadge.IsVisible = !string.IsNullOrWhiteSpace(user.Phone);
 
+        if (string.IsNullOrWhiteSpace(user.Phone))
+        {
+            var addPhone = await DisplayAlertAsync("Tu teléfono",
+                "Aún no has indicado un teléfono. ¿Quieres agregarlo ahora?", "Agregar", "Después");
+            if (addPhone)
+                await Shell.Current.GoToAsync("profilesetup");
+        }
+
         _qrBytes = QrCodeService.PngBytes(user.QrToken);
         QrImage.Source = _qrBytes is null ? null : ImageSource.FromStream(() => new MemoryStream(_qrBytes));
         QrImage.IsVisible = _qrBytes is not null;

@@ -107,6 +107,19 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<AuthResponse>(JsonOptions);
     }
 
+    public async Task<SocialAuthResponse?> SocialAuthAsync(string accessToken)
+    {
+        var response = await _http.PostAsJsonAsync("/api/auth/social", new { accessToken }, JsonOptions);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body)
+                ? "No se pudo iniciar sesión con el proveedor."
+                : body.Trim().Trim('"'));
+        }
+        return await response.Content.ReadFromJsonAsync<SocialAuthResponse>(JsonOptions);
+    }
+
     public Task<List<Trip>?> GetTripsAsync() =>
         _http.GetFromJsonAsync<List<Trip>>("/api/trips", JsonOptions);
 
@@ -141,6 +154,14 @@ public class ApiService
 
     public Task<User?> GetMyProfileAsync() =>
         _http.GetFromJsonAsync<User>("/api/users/me", JsonOptions);
+
+    public async Task<User?> UpdateMyProfileAsync(string? phone, string? emergencyContact)
+    {
+        var response = await _http.PutAsJsonAsync("/api/users/me",
+            new { Phone = phone, EmergencyContact = emergencyContact }, JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<User>(JsonOptions);
+    }
 
     public Task<ProfileStats?> GetMyProfileStatsAsync() =>
         _http.GetFromJsonAsync<ProfileStats>("/api/users/me/stats", JsonOptions);

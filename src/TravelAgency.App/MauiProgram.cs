@@ -31,11 +31,25 @@ public static class MauiProgram
 			ApiService.BaseUrl = apiBaseUrl;
 		}
 
+		var supabaseUrl = Environment.GetEnvironmentVariable("TRAVELAGENCY_SUPABASE_URL");
+		if (!string.IsNullOrWhiteSpace(supabaseUrl))
+		{
+			SupabaseAuthService.SupabaseUrl = supabaseUrl;
+		}
+
+		var supabaseAnonKey = Environment.GetEnvironmentVariable("TRAVELAGENCY_SUPABASE_ANONKEY");
+		if (!string.IsNullOrWhiteSpace(supabaseAnonKey))
+		{
+			SupabaseAuthService.SupabaseAnonKey = supabaseAnonKey;
+		}
+
 		builder.Services.AddSingleton<ApiService>();
 		builder.Services.AddSingleton<NominatimGeocoder>();
 		builder.Services.AddSingleton<SessionService>();
+		builder.Services.AddSingleton<SupabaseAuthService>();
 		builder.Services.AddTransient<AppShell>();
 		builder.Services.AddTransient<LoginPage>();
+        builder.Services.AddTransient<ProfileSetupPage>();
 		builder.Services.AddTransient<ClientHomePage>();
         builder.Services.AddTransient<ClientFavoritesPage>();
 builder.Services.AddTransient<ClientTripDetailPage>();

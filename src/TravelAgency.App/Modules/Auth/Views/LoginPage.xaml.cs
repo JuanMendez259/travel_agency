@@ -10,14 +10,16 @@ public partial class LoginPage : ContentPage
 
     private readonly ApiService _api;
     private readonly SessionService _session;
+    private readonly SupabaseAuthService _social;
     private bool _isRegistering;
     private bool _isPasswordVisible;
 
-    public LoginPage(ApiService api, SessionService session)
+    public LoginPage(ApiService api, SessionService session, SupabaseAuthService social)
     {
         InitializeComponent();
         _api = api;
         _session = session;
+        _social = social;
         QuickLoginPicker.ItemsSource = new[] { "Admin", "Coordinador", "Cliente" };
     }
 
@@ -198,10 +200,59 @@ public partial class LoginPage : ContentPage
         }
     }
 
-    private async void OnFacebookClicked(object? sender, EventArgs e)
-        => await OpenSocialAsync("https://www.facebook.com/proximaparadat");
+    private async void OnProviderClicked(object? sender, EventArgs e)
+    {
+        var provider = (sender as Button)?.ClassId;
+        if (string.IsNullOrWhiteSpace(provider)) return;
 
-    private async void OnInstagramClicked(object? sender, EventArgs e)
+        SetProviderButtonsEnabled(false);
+        try
+        {
+            var result = await _social.SignInAsync(provider);
+            if (result.Auth is null)
+            {
+                await DisplayAlertAsync("No pudimos iniciar sesión",
+                    result.Mensaje ?? "Intenta de nuevo.", "OK");
+                if (!string.IsNullOrEmpty(result.ProviderEmail))
+                {
+                    EmailEntry.Text = result.ProviderEmail;
+                }
+                return;
+            }
+
+            _session.Start(new AuthResponse
+            {
+                Token = result.Auth.Token,
+                UserId = result.Auth.UserId,
+                Name = result.Auth.Name,
+                Email = result.Auth.Email,
+                Role = result.Auth.Role
+            });
+            _api.SetAuthToken(result.Auth.Token);
+
+            if (result.Auth.PerfilIncompleto)
+                App.GoToProfileSetup();
+            else
+                App.GoToMainShell();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+        finally
+        {
+            SetProviderButtonsEnabled(true);
+        }
+    }
+
+    private void SetProviderButtonsEnabled(bool enabled)
+    {
+        GoogleButton.IsEnabled = enabled;
+        AppleButton.IsEnabled = enabled;
+        FacebookButton.IsEnabled = enabled;
+    }
+
+    private async void OnInstagramTapped(object? sender, TappedEventArgs e)
         => await OpenSocialAsync("https://www.instagram.com/proxima_parada_tours/");
 
     private async Task OpenSocialAsync(string url)
