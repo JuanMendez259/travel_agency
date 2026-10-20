@@ -87,6 +87,11 @@ API base URL: `https://travelagency-production-f6cf.up.railway.app`
 - Siempre que generes o edites interfaces visuales (vistas XAML, ContentPage, ContentView, o estilos en C#), debes leer obligatoriamente `@DESIGN.md` para aplicar los nombres de los diccionarios de recursos y tokens correctos de .NET MAUI. Jamás mezcles sintaxis Web (HTML/CSS) en este repositorio.
 
 # Reglas del Agente
+- **Exploración obligatoria con Graphify (pre-skill):** Antes de invocar **cualquier skill de exploración** (`brainstorming`, `dispatching-parallel-agents`, `subagent-driven-development`, etc.) o de leer archivos `.cs`/`.xaml`:
+  1. **Intentar Graphify MCP primero.** Si el servidor MCP `graphify` está disponible, úsalo para obtener el mapa del proyecto (archivos clave, símbolos, dependencias, rutas).
+  2. **Fallback a `graph.json`.** Si no hay MCP disponible o no devuelve resultados útiles, lee `graph.json` en la raíz del repositorio (si existe).
+  3. **Acotar con el mapa.** Usa ese mapa para identificar los archivos/símbolos relevantes y **solo** ahí hacer `grep`/`glob`/lecturas. No hagas búsquedas masivas por todo el repo.
+  4. **Pasar contexto a la skill.** Al invocar la skill, incluye un breve resumen del mapa relevante para que no tenga que volver a explorar desde cero.
 - Antes de inspeccionar o leer cualquier archivo de código (.cs, .xaml), DEBES consultar el servidor MCP de Graphify o el archivo `graph.json`.
 - Queda estrictamente prohibido realizar lecturas recursivas de directorios completos.
 - **No uses los UI tests (`tools/uitest`) para manejar la interfaz de la app en la computadora.** Los cambios de UI los verifica el usuario de forma manual. Solo puedes ejecutar esos tests si el usuario te lo confirma explícitamente en ese momento.

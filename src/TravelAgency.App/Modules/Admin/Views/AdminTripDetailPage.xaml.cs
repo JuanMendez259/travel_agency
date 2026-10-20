@@ -26,9 +26,9 @@ public partial class AdminTripDetailPage : ContentPage
         {
             PaymentsButton.IsVisible = false;
             MapButton.IsVisible = false;
-            CheckinButton.IsVisible = false;
             AuditButton.IsVisible = false;
             EditActions.IsVisible = false;
+            ManageOptionsButton.IsVisible = false;
         }
 
         AddTransportUnitButton.IsVisible = _session.IsAdmin;
