@@ -45,7 +45,7 @@ public partial class AdminCheckinPage : ContentPage
 
         Title = $"Check-in · {_trip.Title}";
         TripTitleLabel.Text = _trip.Title;
-        TripMetaLabel.Text = $"{_trip.Destination} · {_trip.StartDate:dd/MM/yyyy HH:mm} al {_trip.EndDate:dd/MM/yyyy HH:mm}";
+        TripMetaLabel.Text = $"📍 {_trip.Destination}  ·  🗓 {_trip.StartDate:dd/MM/yyyy HH:mm} al {_trip.EndDate:dd/MM/yyyy HH:mm}";
 
         RenderAll();
     }
@@ -64,15 +64,25 @@ public partial class AdminCheckinPage : ContentPage
         var bookings = trip.Bookings
             .Where(b => b.Status != BookingStatus.Cancelled)
             .ToList();
-        var passengers = bookings.SelectMany(b => b.Passengers ?? new List<TripPassenger>()).ToList();
-        var boarded = bookings.Count(b => b.CheckedIn) + passengers.Count(p => p.CheckedIn);
-        var boardedSeats = bookings.Where(b => b.CheckedIn).Sum(b => b.NumberOfSeats) + passengers.Count(p => p.CheckedIn);
-        var totalSeats = bookings.Sum(b => b.NumberOfSeats) + passengers.Count;
-        ProgressLabel.Text = $"{boarded} de {bookings.Count + passengers.Count} pasajeros abordaron · {boardedSeats} de {totalSeats} asientos";
+        var totalPassengers = bookings.Sum(b => 1 + (b.Passengers?.Count ?? 0));
+        var totalSeats = bookings.Sum(b => Math.Max(b.NumberOfSeats, 1 + (b.Passengers?.Count ?? 0)));
+        var boarded = bookings.Sum(b => b.CheckedIn
+            ? 1 + (b.Passengers?.Count ?? 0)
+            : b.Passengers?.Count(p => p.CheckedIn) ?? 0);
+        var boardedSeats = bookings.Sum(b => b.CheckedIn
+            ? Math.Max(b.NumberOfSeats, 1 + (b.Passengers?.Count ?? 0))
+            : b.Passengers?.Count(p => p.CheckedIn) ?? 0);
+
+        DepartureTimeLabel.Text = $"Salida {trip.StartDate:HH:mm}";
+        ProgressLabel.Text = $"{boarded} de {totalPassengers} pasajeros abordaron · {boardedSeats} de {totalSeats} asientos";
+        PassengersStatLabel.Text = $"{boarded}/{totalPassengers}";
+        SeatsStatLabel.Text = $"{boardedSeats}/{totalSeats}";
+        PendingStatLabel.Text = Math.Max(0, totalPassengers - boarded).ToString();
+        StatusProgressBar.Progress = totalSeats > 0 ? (double)boardedSeats / totalSeats : 0;
 
         if (trip.DepartureCompleted)
         {
-            StatusBanner.BackgroundColor = Color.FromArgb("#2F855A");
+            StatusDotLabel.TextColor = Res("SecondaryContainer");
             StatusLabel.Text = "Salida completada";
             ScanButton.IsVisible = false;
             OpenCheckinButton.IsVisible = false;
@@ -82,7 +92,7 @@ public partial class AdminCheckinPage : ContentPage
         }
         else if (trip.CheckInOpen)
         {
-            StatusBanner.BackgroundColor = Color.FromArgb("#2B6CB0");
+            StatusDotLabel.TextColor = Res("SecondaryContainer");
             StatusLabel.Text = "Check-in abierto";
             ScanButton.IsVisible = true;
             OpenCheckinButton.IsVisible = false;
@@ -92,7 +102,7 @@ public partial class AdminCheckinPage : ContentPage
         }
         else
         {
-            StatusBanner.BackgroundColor = Color.FromArgb("#6B7280");
+            StatusDotLabel.TextColor = Res("OnPrimaryContainer");
             StatusLabel.Text = "Check-in cerrado";
             ScanButton.IsVisible = true;
             OpenCheckinButton.IsVisible = true;
@@ -112,6 +122,13 @@ public partial class AdminCheckinPage : ContentPage
             .OrderByDescending(b => b.BookingDate)
             .ToList();
 
+        var activeBookings = bookings.Where(b => b.Status != BookingStatus.Cancelled).ToList();
+        var totalPeople = activeBookings.Sum(b => 1 + (b.Passengers?.Count ?? 0));
+        var totalSeats = activeBookings.Sum(b => Math.Max(b.NumberOfSeats, 1 + (b.Passengers?.Count ?? 0)));
+        var peopleText = totalPeople == 1 ? "1 persona" : $"{totalPeople} personas";
+        var seatsText = totalSeats == 1 ? "1 asiento" : $"{totalSeats} asientos";
+        PassengersCountLabel.Text = $"{peopleText} · {seatsText}";
+
         NoPassengersLabel.IsVisible = bookings.Count == 0;
         if (bookings.Count == 0) return;
 
@@ -128,89 +145,48 @@ public partial class AdminCheckinPage : ContentPage
     private View BuildTripPassengerRow(TripPassenger passenger, Booking booking)
     {
         var isCancelled = booking.Status == BookingStatus.Cancelled;
-        var canToggle = !_trip!.DepartureCompleted && booking.Status != BookingStatus.Cancelled && _trip.CheckInOpen;
+        var canToggle = !_trip!.DepartureCompleted && !isCancelled && _trip.CheckInOpen;
+
+        var name = string.IsNullOrWhiteSpace(passenger.Name) ? "Pasajero" : passenger.Name!;
+        var holder = booking.User?.Name ?? booking.User?.Email ?? $"Usuario #{booking.UserId}";
+        var displayName = $"{name} (de {holder})";
 
         var infoText = "Acompañante · 1 asiento";
         if (passenger.CheckedIn && passenger.CheckedInAt.HasValue)
             infoText += $" · Abordó {passenger.CheckedInAt.Value.ToLocalTime():HH:mm}";
 
-        var info = new VerticalStackLayout { Spacing = 2, VerticalOptions = LayoutOptions.Center };
-        info.Children.Add(new Label
-        {
-            Text = $"{passenger.Name} (de {booking.User?.Name ?? $"#{booking.UserId}"})",
-            FontSize = 15,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = isCancelled ? Colors.Gray : null
-        });
-        info.Children.Add(new Label
-        {
-            Text = infoText,
-            FontSize = 13,
-            TextColor = Colors.Gray
-        });
-
-        var boardedLabel = new Label
-        {
-            Text = passenger.CheckedIn ? "Abordó" : "No abordó",
-            FontSize = 13,
-            FontAttributes = FontAttributes.Bold,
-            VerticalOptions = LayoutOptions.Center,
-            Margin = new Thickness(10, 0, 0, 0),
-            TextColor = passenger.CheckedIn ? Color.FromArgb("#2F855A") : Colors.Gray
-        };
+        var badgeText = isCancelled ? "Cancelada" : passenger.CheckedIn ? "Abordó" : "No abordó";
 
         var switchControl = new Switch
         {
             IsToggled = passenger.CheckedIn,
             IsEnabled = canToggle,
             BindingContext = passenger,
-            VerticalOptions = LayoutOptions.Center,
-            Margin = new Thickness(6, 0, 0, 0)
+            VerticalOptions = LayoutOptions.Center
         };
+        SemanticProperties.SetDescription(switchControl, $"Abordaje de {name}");
         switchControl.Toggled += OnPassengerBoardToggledAsync;
 
-        var qrButton = new Button
+        Button? qrButton = null;
+        if (!string.IsNullOrWhiteSpace(passenger.QrToken))
         {
-            Text = "QR",
-            FontSize = 13,
-            Padding = new Thickness(10, 4),
-            BackgroundColor = Color.FromArgb("#1976D2"),
-            TextColor = Colors.White,
-            BindingContext = (booking.Id, passenger.Id),
-            VerticalOptions = LayoutOptions.Center,
-            Margin = new Thickness(6, 0, 0, 0)
-        };
-        qrButton.Clicked += OnViewPassengerQrClickedAsync;
+            qrButton = BuildQrButton();
+            SemanticProperties.SetDescription(qrButton, $"Ver QR de {name}");
+            qrButton.BindingContext = (booking.Id, passenger.Id);
+            qrButton.Clicked += OnViewPassengerQrClickedAsync;
+        }
 
-        var right = new HorizontalStackLayout
-        {
-            VerticalOptions = LayoutOptions.Center,
-            Children = { boardedLabel, switchControl, qrButton }
-        };
-
-        var grid = new Grid
-        {
-            ColumnDefinitions =
-            {
-                new ColumnDefinition(GridLength.Star),
-                new ColumnDefinition(GridLength.Auto)
-            },
-            Padding = new Thickness(12)
-        };
-        grid.Add(info, 0);
-        grid.Add(right, 1);
-
-        var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
-        var baseColor = isDark ? Color.FromArgb("#2C2C2C") : Color.FromArgb("#EEEEEE");
-        var boardedColor = Color.FromArgb("#E6F4EA");
-
-        return new Border
-        {
-            StrokeThickness = 0,
-            BackgroundColor = passenger.CheckedIn ? boardedColor : baseColor,
-            Content = grid,
-            Margin = new Thickness(0, 0, 0, 2)
-        };
+        return BuildPassengerCard(
+            AdminDisplay.Initials(name),
+            displayName,
+            infoText,
+            badgeText,
+            passenger.CheckedIn,
+            isCancelled,
+            true,
+            "Control individual",
+            qrButton,
+            switchControl);
     }
 
     private async void OnPassengerBoardToggledAsync(object? sender, ToggledEventArgs e)
@@ -254,88 +230,227 @@ public partial class AdminCheckinPage : ContentPage
     {
         var name = booking.User?.Name ?? booking.User?.Email ?? $"Usuario #{booking.UserId}";
         var isCancelled = booking.Status == BookingStatus.Cancelled;
-        var canToggle = !_trip!.DepartureCompleted && booking.Status != BookingStatus.Cancelled && _trip.CheckInOpen;
+        var canToggle = !_trip!.DepartureCompleted && !isCancelled && _trip.CheckInOpen;
 
-        var infoText = $"{booking.NumberOfSeats} asiento(s) · {booking.TotalAmount:C}";
+        var seatsLabel = booking.NumberOfSeats == 1 ? "asiento" : "asientos";
+        var infoText = $"{booking.NumberOfSeats} {seatsLabel} · {booking.TotalAmount:C}";
         if (booking.CheckedIn && booking.CheckedInAt.HasValue)
             infoText += $" · Abordó {booking.CheckedInAt.Value.ToLocalTime():HH:mm}";
 
-        var info = new VerticalStackLayout { Spacing = 2, VerticalOptions = LayoutOptions.Center };
-        info.Children.Add(new Label
-        {
-            Text = name,
-            FontSize = 15,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = isCancelled ? Colors.Gray : null
-        });
-        info.Children.Add(new Label
-        {
-            Text = infoText,
-            FontSize = 13,
-            TextColor = Colors.Gray
-        });
-
-        var boardedLabel = new Label
-        {
-            Text = booking.Status == BookingStatus.Cancelled ? "Cancelada" : (booking.CheckedIn ? "Abordó" : "No abordó"),
-            FontSize = 13,
-            FontAttributes = FontAttributes.Bold,
-            VerticalOptions = LayoutOptions.Center,
-            Margin = new Thickness(10, 0, 0, 0),
-            TextColor = booking.CheckedIn ? Color.FromArgb("#2F855A") : Colors.Gray
-        };
+        var badgeText = isCancelled ? "Cancelada" : booking.CheckedIn ? "Abordó" : "No abordó";
 
         var switchControl = new Switch
         {
             IsToggled = booking.CheckedIn,
             IsEnabled = canToggle,
             BindingContext = booking,
-            VerticalOptions = LayoutOptions.Center,
-            Margin = new Thickness(6, 0, 0, 0)
+            VerticalOptions = LayoutOptions.Center
         };
+        SemanticProperties.SetDescription(switchControl, $"Abordaje de {name}");
         switchControl.Toggled += OnBoardToggledAsync;
 
-        var qrButton = new Button
+        Button? qrButton = null;
+        if (!string.IsNullOrWhiteSpace(booking.QrToken))
         {
-            Text = "QR",
-            FontSize = 13,
-            Padding = new Thickness(10, 4),
-            BackgroundColor = Color.FromArgb("#1976D2"),
-            TextColor = Colors.White,
-            BindingContext = booking,
-            VerticalOptions = LayoutOptions.Center,
-            Margin = new Thickness(6, 0, 0, 0)
-        };
-        qrButton.Clicked += OnViewQrClickedAsync;
+            qrButton = BuildQrButton();
+            SemanticProperties.SetDescription(qrButton, $"Ver QR de {name}");
+            qrButton.BindingContext = booking;
+            qrButton.Clicked += OnViewQrClickedAsync;
+        }
 
-        var right = new HorizontalStackLayout
+        return BuildPassengerCard(
+            AdminDisplay.Initials(booking.User?.Name ?? booking.User?.Email),
+            name,
+            infoText,
+            badgeText,
+            booking.CheckedIn,
+            isCancelled,
+            false,
+            "Titular de la reserva",
+            qrButton,
+            switchControl);
+    }
+
+    private static Border BuildPassengerCard(
+        string initials,
+        string name,
+        string infoText,
+        string badgeText,
+        bool boarded,
+        bool cancelled,
+        bool companion,
+        string note,
+        Button? qrButton,
+        Switch switchControl)
+    {
+        var info = new VerticalStackLayout { Spacing = 2, VerticalOptions = LayoutOptions.Center };
+        info.Children.Add(new Label
         {
-            VerticalOptions = LayoutOptions.Center,
-            Children = { boardedLabel, switchControl, qrButton }
-        };
+            Text = name,
+            FontFamily = "OpenSansSemibold",
+            FontSize = 15,
+            FontAttributes = FontAttributes.Bold,
+            LineBreakMode = LineBreakMode.TailTruncation,
+            TextColor = cancelled ? Res("Outline") : Res("OnSurface")
+        });
+        info.Children.Add(new Label
+        {
+            Text = infoText,
+            FontSize = 11,
+            LineBreakMode = LineBreakMode.TailTruncation,
+            TextColor = Res("OnSurfaceVariant")
+        });
 
-        var grid = new Grid
+        var top = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            },
+            ColumnSpacing = 10
+        };
+        top.Add(BuildAvatar(initials, boarded, companion), 0);
+        top.Add(info, 1);
+        top.Add(BuildBadge(badgeText, boarded, cancelled), 2);
+
+        var actions = new HorizontalStackLayout { Spacing = 8, VerticalOptions = LayoutOptions.Center };
+        if (qrButton is not null)
+            actions.Children.Add(qrButton);
+        actions.Children.Add(switchControl);
+
+        var bottom = new Grid
         {
             ColumnDefinitions =
             {
                 new ColumnDefinition(GridLength.Star),
                 new ColumnDefinition(GridLength.Auto)
             },
-            Padding = new Thickness(12)
+            ColumnSpacing = 8
         };
-        grid.Add(info, 0);
-        grid.Add(right, 1);
+        bottom.Add(new Label
+        {
+            Text = note,
+            FontSize = 10,
+            TextColor = Res("Outline"),
+            VerticalOptions = LayoutOptions.Center
+        }, 0);
+        bottom.Add(actions, 1);
 
-        var isDark = Application.Current?.RequestedTheme == AppTheme.Dark;
-        var baseColor = isDark ? Color.FromArgb("#2C2C2C") : Color.FromArgb("#EEEEEE");
-        var boardedColor = Color.FromArgb("#E6F4EA");
+        var content = new VerticalStackLayout { Spacing = 0 };
+        content.Children.Add(top);
+        content.Children.Add(new BoxView
+        {
+            HeightRequest = 1,
+            BackgroundColor = Res("SurfaceContainerHigh"),
+            Margin = new Thickness(0, 10, 0, 10)
+        });
+        content.Children.Add(bottom);
+
+        return new Border
+        {
+            Style = StyleResource("AdminCard"),
+            Padding = new Thickness(14),
+            Margin = new Thickness(companion ? 18 : 0, 0, 0, 0),
+            BackgroundColor = cancelled
+                ? Res("SurfaceContainerLow")
+                : Res("SurfaceContainerLowest"),
+            Content = content
+        };
+    }
+
+    private static View BuildAvatar(string initials, bool boarded, bool companion)
+    {
+        var size = companion ? 32 : 40;
+        return new Border
+        {
+            WidthRequest = size,
+            HeightRequest = size,
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle
+            {
+                CornerRadius = companion ? 11 : 14
+            },
+            BackgroundColor = boarded ? Res("SecondaryContainer") : Res("SurfaceContainer"),
+            VerticalOptions = LayoutOptions.Center,
+            Content = new Label
+            {
+                Text = initials,
+                FontFamily = "OpenSansSemibold",
+                FontSize = companion ? 10 : 12,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = boarded ? Res("OnSuccessContainer") : Res("Primary"),
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            }
+        };
+    }
+
+    private static View BuildBadge(string text, bool boarded, bool cancelled)
+    {
+        var background = cancelled
+            ? Res("ErrorContainer")
+            : boarded ? Res("SuccessContainer") : Res("SurfaceContainerLow");
+        var foreground = cancelled
+            ? Res("OnErrorContainer")
+            : boarded ? Res("OnSuccessContainer") : Res("Outline");
 
         return new Border
         {
             StrokeThickness = 0,
-            BackgroundColor = booking.CheckedIn ? boardedColor : baseColor,
-            Content = grid
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle
+            {
+                CornerRadius = 100
+            },
+            BackgroundColor = background,
+            Padding = new Thickness(8, 4),
+            VerticalOptions = LayoutOptions.Center,
+            Content = new Label
+            {
+                Text = text,
+                FontFamily = "OpenSansSemibold",
+                FontSize = 10,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = foreground,
+                VerticalTextAlignment = TextAlignment.Center
+            }
         };
+    }
+
+    private static Button BuildQrButton()
+    {
+        return new Button
+        {
+            Text = "QR",
+            FontFamily = "OpenSansSemibold",
+            FontSize = 10,
+            FontAttributes = FontAttributes.Bold,
+            Padding = new Thickness(10, 2),
+            HeightRequest = 44,
+            MinimumHeightRequest = 44,
+            MinimumWidthRequest = 44,
+            CornerRadius = 9,
+            BorderWidth = 1,
+            BorderColor = Res("OutlineVariant"),
+            BackgroundColor = Res("SurfaceContainerLowest"),
+            TextColor = Res("Primary"),
+            VerticalOptions = LayoutOptions.Center
+        };
+    }
+
+    private static Color Res(string key)
+    {
+        if (Application.Current?.Resources.TryGetValue(key, out var value) == true && value is Color color)
+            return color;
+        return Colors.Transparent;
+    }
+
+    private static Style? StyleResource(string key)
+    {
+        if (Application.Current?.Resources.TryGetValue(key, out var value) == true && value is Style style)
+            return style;
+        return null;
     }
 
     private async void OnBoardToggledAsync(object? sender, ToggledEventArgs e)

@@ -65,6 +65,12 @@
     <Color x:Key="OnTertiaryFixed">#121e18</Color>
     <Color x:Key="OnTertiaryFixedVariant">#3d4a43</Color>
 
+    <!-- Semantic status colors -->
+    <Color x:Key="SuccessContainer">#E6F4EA</Color>
+    <Color x:Key="OnSuccessContainer">#14532D</Color>
+    <Color x:Key="WarningContainer">#FFF3D6</Color>
+    <Color x:Key="OnWarningContainer">#7A5200</Color>
+
     <!-- Error colors -->
     <Color x:Key="Error">#ba1a1a</Color>
     <Color x:Key="OnError">#ffffff</Color>

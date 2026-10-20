@@ -458,6 +458,9 @@ opencode.json
 opencode.jsonc
 .opencode/
 
+# Mocks locales de diseño (Stitch)
+stitch/
+
 # Tooling local de skills (impeccable)
 .claude/
 /package.json

@@ -3,55 +3,288 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminScanQrPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
     xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.MAUI.Controls"
-    Title="Escanear QR">
+    Title="Escanear QR"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
+    BackgroundColor="{StaticResource Surface}">
 
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Grid RowDefinitions="Auto,*">
 
-        <VerticalStackLayout Grid.Row="0" Padding="14,10" Spacing="2">
-            <Label x:Name="TripLabel" FontSize="14" FontAttributes="Bold" />
-            <Label x:Name="HintLabel"
-                   Text="Enfoca el código QR del cliente para registrar el check-in."
-                   FontSize="13"
-                   TextColor="{StaticResource OnSurfaceVariant}" />
-        </VerticalStackLayout>
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Check-in"
+            PageTitle="Escanear QR"
+            ShowBack="True"
+            ShowLogout="False" />
 
-        <Grid Grid.Row="1">
-            <zxing:CameraBarcodeReaderView x:Name="ScannerView"
-                                           BarcodesDetected="OnBarcodesDetected"
-                                           CameraLocation="Rear" />
-            <Border StrokeThickness="3"
-                    Stroke="White"
-                    Margin="60,40"
-                    InputTransparent="True" />
-        </Grid>
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Spacing="0" Padding="0,0,0,32">
 
-        <VerticalStackLayout Grid.Row="2" Padding="14" Spacing="10">
-            <Label x:Name="ResultLabel"
-                   Text="Apunta la cámara al código QR…"
-                   FontSize="17"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center" />
-            <Label x:Name="DetailLabel"
-                   FontSize="13"
-                   TextColor="{StaticResource OnSurfaceVariant}"
-                   HorizontalOptions="Center"
-                   IsVisible="False" />
+                <Border Style="{StaticResource AdminCard}" Margin="20,4,20,0">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                        <Border
+                            WidthRequest="44"
+                            HeightRequest="44"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="{StaticResource SuccessContainer}"
+                            VerticalOptions="Center">
+                            <Label
+                                Text="🧭"
+                                FontSize="21"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center" />
+                        </Border>
 
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <Entry x:Name="ManualTokenEntry"
-                       Placeholder="Código del QR (sin cámara)"
-                       Keyboard="Text" />
-                <Button Grid.Column="1"
-                        Text="Verificar"
-                        Clicked="OnManualVerifyClicked" />
-            </Grid>
+                        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                            <Label
+                                x:Name="TripLabel"
+                                FontFamily="OpenSansSemibold"
+                                FontSize="16"
+                                FontAttributes="Bold"
+                                TextColor="{StaticResource OnSurface}" />
+                            <Label
+                                x:Name="HintLabel"
+                                FontSize="12"
+                                TextColor="{StaticResource OnSurfaceVariant}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
 
-            <Button x:Name="ResumeButton"
-                    Text="Escaneó otro pasajero"
-                    Clicked="OnResumeClicked"
-                    IsVisible="False" />
-        </VerticalStackLayout>
+                <Label
+                    Text="Enfoca el código QR del cliente para registrar el check-in."
+                    Margin="22,14,22,9"
+                    FontSize="12"
+                    LineHeight="1.5"
+                    TextColor="{StaticResource OnSurfaceVariant}" />
 
+                <Grid HeightRequest="360" BackgroundColor="{StaticResource Primary}">
+                    <zxing:CameraBarcodeReaderView
+                        x:Name="ScannerView"
+                        BarcodesDetected="OnBarcodesDetected"
+                        CameraLocation="Rear"
+                        HorizontalOptions="Fill"
+                        VerticalOptions="Fill" />
+
+                    <Border
+                        x:Name="CameraStatusBadge"
+                        InputTransparent="True"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Start"
+                        Margin="0,14,0,0"
+                        Padding="10,6"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 100"
+                        BackgroundColor="{StaticResource PrimaryContainer}">
+                        <HorizontalStackLayout Spacing="7" VerticalOptions="Center">
+                            <Label
+                                Text="●"
+                                FontSize="9"
+                                TextColor="{StaticResource SecondaryContainer}"
+                                VerticalOptions="Center" />
+                            <Label
+                                Text="Cámara activa"
+                                FontFamily="OpenSansSemibold"
+                                FontSize="10"
+                                TextColor="{StaticResource OnPrimary}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Grid
+                        WidthRequest="220"
+                        HeightRequest="220"
+                        InputTransparent="True"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center">
+                        <Border
+                            WidthRequest="28"
+                            HeightRequest="28"
+                            StrokeThickness="3"
+                            Stroke="{StaticResource SecondaryContainer}"
+                            StrokeShape="RoundRectangle 8"
+                            HorizontalOptions="Start"
+                            VerticalOptions="Start" />
+                        <Border
+                            WidthRequest="28"
+                            HeightRequest="28"
+                            StrokeThickness="3"
+                            Stroke="{StaticResource SecondaryContainer}"
+                            StrokeShape="RoundRectangle 8"
+                            HorizontalOptions="End"
+                            VerticalOptions="Start" />
+                        <Border
+                            WidthRequest="28"
+                            HeightRequest="28"
+                            StrokeThickness="3"
+                            Stroke="{StaticResource SecondaryContainer}"
+                            StrokeShape="RoundRectangle 8"
+                            HorizontalOptions="Start"
+                            VerticalOptions="End" />
+                        <Border
+                            WidthRequest="28"
+                            HeightRequest="28"
+                            StrokeThickness="3"
+                            Stroke="{StaticResource SecondaryContainer}"
+                            StrokeShape="RoundRectangle 8"
+                            HorizontalOptions="End"
+                            VerticalOptions="End" />
+
+                        <BoxView
+                            HeightRequest="2"
+                            BackgroundColor="{StaticResource SecondaryContainer}"
+                            Opacity="0.8"
+                            Margin="14,0"
+                            VerticalOptions="Center" />
+                    </Grid>
+
+                    <Label
+                        Text="Coloca el código dentro del marco."
+                        InputTransparent="True"
+                        FontFamily="OpenSansSemibold"
+                        FontSize="10"
+                        TextColor="{StaticResource OnPrimary}"
+                        HorizontalOptions="Center"
+                        VerticalOptions="End"
+                        Margin="0,0,0,22" />
+                </Grid>
+
+                <Border
+                    Style="{StaticResource AdminCard}"
+                    Margin="20,-26,20,0"
+                    Padding="18"
+                    StrokeShape="RoundRectangle 24">
+                    <VerticalStackLayout Spacing="0">
+                        <Border
+                            WidthRequest="38"
+                            HeightRequest="4"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 100"
+                            BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                            HorizontalOptions="Center"
+                            Margin="0,0,0,14" />
+
+                        <Label
+                            Text="Escaneo"
+                            FontFamily="OpenSansSemibold"
+                            FontSize="9"
+                            CharacterSpacing="1.4"
+                            TextTransform="Uppercase"
+                            TextColor="{StaticResource Outline}" />
+
+                        <Label
+                            x:Name="ResultLabel"
+                            Text="Apunta la cámara al código QR…"
+                            SemanticProperties.HeadingLevel="Level2"
+                            FontFamily="OpenSansSemibold"
+                            FontSize="20"
+                            FontAttributes="Bold"
+                            LineHeight="1.22"
+                            TextColor="{StaticResource OnSurface}"
+                            Margin="0,4,0,0" />
+
+                        <Label
+                            x:Name="DetailLabel"
+                            FontSize="12"
+                            LineHeight="1.55"
+                            TextColor="{StaticResource OnSurfaceVariant}"
+                            IsVisible="False"
+                            Margin="0,6,0,0" />
+
+                        <BoxView
+                            HeightRequest="1"
+                            BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                            Margin="0,16,0,14" />
+
+                        <HorizontalStackLayout Spacing="6">
+                            <Label Text="⌨️" FontSize="12" VerticalOptions="Center" />
+                            <Label
+                                Text="Verificación manual"
+                                SemanticProperties.HeadingLevel="Level2"
+                                FontFamily="OpenSansSemibold"
+                                FontSize="10"
+                                CharacterSpacing="0.6"
+                                TextTransform="Uppercase"
+                                TextColor="{StaticResource OnSurfaceVariant}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,9,0,0">
+                            <Border
+                                StrokeThickness="1"
+                                Stroke="{StaticResource OutlineVariant}"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="{StaticResource SurfaceContainerLowest}"
+                                Padding="12,0">
+                                <Entry
+                                    x:Name="ManualTokenEntry"
+                                    Placeholder="Código del QR"
+                                    Keyboard="Text"
+                                    ClearButtonVisibility="WhileEditing"
+                                    FontSize="13"
+                                    HeightRequest="50"
+                                    BackgroundColor="Transparent"
+                                    TextColor="{StaticResource OnSurface}"
+                                    PlaceholderColor="{StaticResource Outline}"
+                                    VerticalOptions="Center" />
+                            </Border>
+
+                            <Button
+                                Grid.Column="1"
+                                Text="Verificar"
+                                Style="{StaticResource AdminOutlineButton}"
+                                HeightRequest="52"
+                                MinimumWidthRequest="96"
+                                CornerRadius="14"
+                                Padding="14,0"
+                                Clicked="OnManualVerifyClicked" />
+                        </Grid>
+
+                        <Label
+                            Text="Pega el código que aparece debajo del QR del pasajero."
+                            FontSize="10"
+                            LineHeight="1.5"
+                            TextColor="{StaticResource Outline}"
+                            Margin="0,8,0,0" />
+
+                        <Border
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="{StaticResource SurfaceContainerLow}"
+                            Padding="12"
+                            Margin="0,14,0,0">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                <Label Text="🔒" FontSize="12" VerticalOptions="Start" />
+                                <Label
+                                    Grid.Column="1"
+                                    Text="Cada código registra un pasajero. Si ya había abordado, verás el aviso correspondiente."
+                                    FontSize="10"
+                                    LineHeight="1.55"
+                                    TextColor="{StaticResource OnSurfaceVariant}" />
+                            </Grid>
+                        </Border>
+
+                        <Button
+                            x:Name="ResumeButton"
+                            Text="🔄 Escanear otro pasajero"
+                            Style="{StaticResource AdminTonalButton}"
+                            IsVisible="False"
+                            Margin="0,12,0,0"
+                            Clicked="OnResumeClicked" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label
+                    Text="Solo personal autorizado · Los escaneos quedan registrados en el viaje"
+                    FontSize="10"
+                    LineHeight="1.5"
+                    TextColor="{StaticResource Outline}"
+                    HorizontalTextAlignment="Center"
+                    Margin="20,14,20,0" />
+
+            </VerticalStackLayout>
+        </ScrollView>
     </Grid>
 </ContentPage>

@@ -23,5 +23,6 @@
     <Compile Include="../../src/TravelAgency.App/Services/PhoneNumberFormatter.cs" Link="Production/PhoneNumberFormatter.cs" />
     <Compile Include="../../src/TravelAgency.App/Services/TripContactPolicy.cs" Link="Production/TripContactPolicy.cs" />
     <Compile Include="../../src/TravelAgency.App/Services/PkceChallenge.cs" Link="Production/PkceChallenge.cs" />
+    <Compile Include="../../src/TravelAgency.App/Modules/Admin/AdminDisplay.cs" Link="Production/AdminDisplay.cs" />
   </ItemGroup>
 </Project>

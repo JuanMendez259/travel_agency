@@ -1,4 +1,5 @@
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Controls.Shapes;
 using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
@@ -15,6 +16,8 @@ public partial class AdminTripDetailPage : ContentPage
     private FileResult? _selectedImage;
 
     public string TripId { get; set; } = string.Empty;
+
+    private static Color Resource(string key) => (Color)Application.Current!.Resources[key];
 
     public AdminTripDetailPage(ApiService api, SessionService session)
     {
@@ -66,10 +69,15 @@ public partial class AdminTripDetailPage : ContentPage
         PriceLabel.Text = $"{_trip.Price:C} por asiento";
         if (_trip.ChildPrice.HasValue)
             PriceLabel.Text += $" · Niño: {_trip.ChildPrice.Value:C}";
-        TransportLabel.Text = $"Transporte: {TransportTypeConverter.ToDisplay(_trip.TransportType)}";
-        StatusLabel.Text = _trip.IsActive ? "Estado: Publicado" : "Estado: Inactivo";
+        TransportLabel.Text = TransportTypeConverter.ToDisplay(_trip.TransportType);
+        TransportEmojiLabel.Text = _trip.TransportType == TransportType.Camioneta ? "🚐" : "🚌";
+        StatusLabel.Text = _trip.IsActive ? "Publicado" : "Inactivo";
+        StatusBadge.BackgroundColor = _trip.IsActive ? Resource("SuccessContainer") : Resource("SurfaceContainerHigh");
+        StatusDot.TextColor = _trip.IsActive ? Resource("Secondary") : Resource("Outline");
+        StatusLabel.TextColor = _trip.IsActive ? Resource("Secondary") : Resource("Outline");
         PauseButton.Text = _trip.IsActive ? "Pausar" : "Reactivar";
-        PauseButton.BackgroundColor = _trip.IsActive ? Color.FromArgb("#B7791F") : Color.FromArgb("#2F855A");
+        PauseButton.BackgroundColor = _trip.IsActive ? Resource("WarningContainer") : Resource("SuccessContainer");
+        PauseButton.TextColor = _trip.IsActive ? Resource("OnWarningContainer") : Resource("Secondary");
         if (_trip.CancellationDaysLimit.HasValue)
         {
             CancellationLabel.Text = $"Cancelación del cliente: hasta {_trip.CancellationDaysLimit.Value} día(s) antes de la salida.";
@@ -84,9 +92,11 @@ public partial class AdminTripDetailPage : ContentPage
         SoldLabel.Text = sold.ToString();
         AvailableLabel.Text = Math.Max(0, _trip.AvailableSeats).ToString();
         CapacityLabel.Text = _trip.Capacity.ToString();
+        HeroCapacityLabel.Text = $"Cupo {_trip.Capacity}";
 
         FinalizeButton.Text = _trip.Finalized ? "Reabrir viaje (ya finalizado)" : "Finalizar viaje";
-        FinalizeButton.BackgroundColor = _trip.Finalized ? Colors.Gray : Color.FromArgb("#2B6CB0");
+        FinalizeButton.BackgroundColor = _trip.Finalized ? Resource("SurfaceContainerHigh") : Resource("PrimaryContainer");
+        FinalizeButton.TextColor = _trip.Finalized ? Resource("OnSurfaceVariant") : Resource("OnPrimary");
 
         RenderCapacityRequests();
         RenderPassengers();
@@ -190,7 +200,7 @@ public partial class AdminTripDetailPage : ContentPage
         var plate = TransportPlateEntry.Text?.Trim();
         if (_selectedImage is null && string.IsNullOrWhiteSpace(plate))
         {
-            await DisplayAlertAsync("Falta informacion", "Agrega una foto o las placas de la unidad.", "OK");
+            await DisplayAlertAsync("Falta información", "Agrega una foto o las placas de la unidad.", "OK");
             return;
         }
 
@@ -199,7 +209,7 @@ public partial class AdminTripDetailPage : ContentPage
             var info = await _api.UploadTripTransportAsync(_trip.Id, _selectedImage, plate);
             if (info is null)
             {
-                await DisplayAlertAsync("Error", "No se pudo guardar la informacion de la unidad.", "OK");
+                await DisplayAlertAsync("Error", "No se pudo guardar la información de la unidad.", "OK");
                 return;
             }
 
@@ -209,7 +219,7 @@ public partial class AdminTripDetailPage : ContentPage
             AddTransportUnitButton.IsVisible = _session.IsAdmin;
 
             await ApplyTransportUnitAsync(info);
-            await DisplayAlertAsync("Listo", "Informacion de la unidad guardada.", "OK");
+            await DisplayAlertAsync("Listo", "Información de la unidad guardada.", "OK");
         }
         catch (Exception ex)
         {
@@ -237,55 +247,98 @@ public partial class AdminTripDetailPage : ContentPage
         foreach (var booking in bookings)
         {
             var name = booking.User?.Name ?? booking.User?.Email ?? $"Usuario #{booking.UserId}";
-            var isCancelled = booking.Status == BookingStatus.Cancelled;
+
+            var (statusTextColor, statusBackground) = booking.Status switch
+            {
+                BookingStatus.Confirmed => (Resource("Secondary"), Resource("SuccessContainer")),
+                BookingStatus.Pending => (Resource("OnWarningContainer"), Resource("WarningContainer")),
+                _ => (Resource("Outline"), Resource("SurfaceContainerLow"))
+            };
+
+            var statusText = booking.Status switch
+            {
+                BookingStatus.Confirmed => "Confirmada",
+                BookingStatus.Pending => "Pendiente",
+                BookingStatus.Cancelled => "Cancelada",
+                _ => booking.Status.ToString()
+            };
 
             var row = new Grid
             {
                 ColumnDefinitions =
                 {
+                    new ColumnDefinition(42),
                     new ColumnDefinition(GridLength.Star),
-                    new ColumnDefinition(GridLength.Auto),
                     new ColumnDefinition(GridLength.Auto)
                 },
+                ColumnSpacing = 10,
                 Padding = new Thickness(0, 3)
             };
 
-            var nameLabel = new Label
+            var avatar = new Border
             {
-                Text = name,
-                FontSize = 14,
-                FontAttributes = FontAttributes.Bold,
-                VerticalOptions = LayoutOptions.Center
-            };
-            var seatsLabel = new Label
-            {
-                Text = $"{booking.NumberOfSeats} asiento(s) · {booking.TotalAmount:C}",
-                FontSize = 13,
+                WidthRequest = 42,
+                HeightRequest = 42,
+                StrokeThickness = 0,
+                StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(100) },
+                BackgroundColor = Resource("SuccessContainer"),
                 VerticalOptions = LayoutOptions.Center,
-                Margin = new Thickness(8, 0, 0, 0)
-            };
-            var statusLabel = new Label
-            {
-                Text = booking.Status.ToString(),
-                FontSize = 13,
-                FontAttributes = FontAttributes.Bold,
-                VerticalOptions = LayoutOptions.Center,
-                Margin = new Thickness(8, 0, 0, 0),
-                TextColor = booking.Status switch
+                Content = new Label
                 {
-                    BookingStatus.Confirmed => Color.FromArgb("#2F855A"),
-                    BookingStatus.Pending => Color.FromArgb("#B7791F"),
-                    _ => Colors.Gray
+                    Text = AdminDisplay.Initials(name),
+                    FontFamily = "OpenSansSemibold",
+                    FontSize = 14,
+                    TextColor = Resource("Primary"),
+                    HorizontalOptions = LayoutOptions.Center,
+                    VerticalOptions = LayoutOptions.Center
                 }
             };
 
-            Grid.SetColumn(seatsLabel, 1);
-            Grid.SetColumn(statusLabel, 2);
-            row.Add(nameLabel);
-            row.Add(seatsLabel);
-            row.Add(statusLabel);
+            var info = new VerticalStackLayout
+            {
+                Spacing = 2,
+                VerticalOptions = LayoutOptions.Center,
+                Children =
+                {
+                    new Label
+                    {
+                        Text = name,
+                        FontFamily = "OpenSansSemibold",
+                        FontSize = 14,
+                        TextColor = Resource("OnSurface")
+                    },
+                    new Label
+                    {
+                        Text = $"{booking.NumberOfSeats} asiento(s) · {booking.TotalAmount:C}",
+                        FontSize = 12,
+                        TextColor = Resource("Outline")
+                    }
+                }
+            };
 
-            var rowContent = new VerticalStackLayout { Spacing = 4 };
+            var statusPill = new Border
+            {
+                StrokeThickness = 0,
+                StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(100) },
+                BackgroundColor = statusBackground,
+                Padding = new Thickness(10, 4),
+                VerticalOptions = LayoutOptions.Center,
+                Content = new Label
+                {
+                    Text = statusText,
+                    FontFamily = "OpenSansSemibold",
+                    FontSize = 11,
+                    TextColor = statusTextColor
+                }
+            };
+
+            Grid.SetColumn(info, 1);
+            Grid.SetColumn(statusPill, 2);
+            row.Add(avatar);
+            row.Add(info);
+            row.Add(statusPill);
+
+            var rowContent = new VerticalStackLayout { Spacing = 8 };
             rowContent.Add(row);
 
             if (_trip is not null && TripContactPolicy.CanOfferContact(_trip, booking, DateTime.Today))
@@ -297,7 +350,7 @@ public partial class AdminTripDetailPage : ContentPage
                     {
                         Text = "Sin teléfono registrado",
                         FontSize = 11,
-                        TextColor = Color.FromArgb("#717970"),
+                        TextColor = Resource("Outline"),
                         HorizontalOptions = LayoutOptions.End
                     });
                 }
@@ -315,8 +368,8 @@ public partial class AdminTripDetailPage : ContentPage
                         HeightRequest = 40,
                         Padding = new Thickness(10, 0),
                         CornerRadius = 10,
-                        BackgroundColor = Color.FromArgb("#F2F3FF"),
-                        TextColor = Color.FromArgb("#003B1B"),
+                        BackgroundColor = Resource("SurfaceContainerLow"),
+                        TextColor = Resource("Primary"),
                         CommandParameter = phone
                     };
                     callButton.Clicked += OnCallClientClicked;
@@ -328,8 +381,8 @@ public partial class AdminTripDetailPage : ContentPage
                         HeightRequest = 40,
                         Padding = new Thickness(10, 0),
                         CornerRadius = 10,
-                        BackgroundColor = Color.FromArgb("#6CF8BB"),
-                        TextColor = Color.FromArgb("#003B1B"),
+                        BackgroundColor = Resource("SecondaryContainer"),
+                        TextColor = Resource("Primary"),
                         CommandParameter = booking
                     };
                     whatsappButton.Clicked += OnWhatsAppClientClicked;
@@ -401,16 +454,59 @@ public partial class AdminTripDetailPage : ContentPage
         foreach (var request in requests)
         {
             var name = request.User?.Name ?? request.User?.Email ?? $"Usuario #{request.UserId}";
-            var status = request.IsResolved ? " · atendida" : "";
-            var text = $"{name} pidió {request.RequestedSeats} asiento(s){status}";
-            if (!string.IsNullOrWhiteSpace(request.Message))
-                text += $"\n\"{request.Message}\"";
 
-            CapacityRequestsLayout.Children.Add(new Label
+            var header = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) } };
+            header.Add(new Label
             {
-                Text = text,
-                FontSize = 14,
-                TextColor = request.IsResolved ? Colors.Gray : null
+                Text = name,
+                FontFamily = "OpenSansSemibold",
+                FontSize = 13,
+                TextColor = Resource("OnSurface"),
+                VerticalOptions = LayoutOptions.Center
+            });
+
+            var statusPill = new Border
+            {
+                StrokeThickness = 0,
+                StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(100) },
+                BackgroundColor = request.IsResolved ? Resource("SuccessContainer") : Resource("WarningContainer"),
+                Padding = new Thickness(10, 4),
+                Content = new Label
+                {
+                    Text = request.IsResolved ? "Atendida" : "Pendiente",
+                    FontFamily = "OpenSansSemibold",
+                    FontSize = 10,
+                    TextColor = request.IsResolved ? Resource("Secondary") : Resource("OnWarningContainer")
+                }
+            };
+            Grid.SetColumn(statusPill, 1);
+            header.Add(statusPill);
+
+            var card = new VerticalStackLayout { Spacing = 4 };
+            card.Add(header);
+            card.Add(new Label
+            {
+                Text = $"Pidió {request.RequestedSeats} asiento(s)",
+                FontSize = 12,
+                TextColor = Resource("OnSurfaceVariant")
+            });
+            if (!string.IsNullOrWhiteSpace(request.Message))
+            {
+                card.Add(new Label
+                {
+                    Text = $"\"{request.Message}\"",
+                    FontSize = 12,
+                    TextColor = Resource("Outline")
+                });
+            }
+
+            CapacityRequestsLayout.Children.Add(new Border
+            {
+                StrokeThickness = 0,
+                StrokeShape = new RoundRectangle { CornerRadius = new CornerRadius(14) },
+                BackgroundColor = Resource("SurfaceContainerLow"),
+                Padding = 12,
+                Content = card
             });
         }
     }
@@ -438,13 +534,14 @@ public partial class AdminTripDetailPage : ContentPage
                 {
                     Text = $"{new string('★', rating.Rating)}{new string('☆', 5 - rating.Rating)} {rating.Rating}/5",
                     FontSize = 15,
-                    FontAttributes = FontAttributes.Bold
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Resource("Primary")
                 });
                 RatingsLayout.Children.Add(new Label
                 {
                     Text = $"{name} · {rating.CreatedAt:dd/MM/yyyy HH:mm}",
                     FontSize = 12,
-                    TextColor = Colors.Gray
+                    TextColor = Resource("Outline")
                 });
                 if (!string.IsNullOrWhiteSpace(rating.Comment))
                 {
@@ -452,7 +549,7 @@ public partial class AdminTripDetailPage : ContentPage
                     {
                         Text = $"\"{rating.Comment}\"",
                         FontSize = 14,
-                        TextColor = Colors.Gray,
+                        TextColor = Resource("OnSurfaceVariant"),
                         Margin = new Thickness(0, 0, 0, 6)
                     });
                 }
@@ -631,7 +728,7 @@ public partial class AdminTripDetailPage : ContentPage
             {
                 Text = $"{opt.Name} · {opt.PriceAdult:C} adulto · {child} · {state}",
                 FontSize = 13,
-                TextColor = Color.FromArgb("#404941")
+                TextColor = Resource("OnSurfaceVariant")
             });
         }
     }

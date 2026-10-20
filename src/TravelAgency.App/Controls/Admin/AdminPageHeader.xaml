@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentView
+    x:Class="TravelAgency.App.Controls.Admin.AdminPageHeader"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Name="Root"
+    BackgroundColor="{StaticResource Surface}">
+
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" Padding="16,12,16,8">
+        <Button
+            Grid.Column="0"
+            Text="←"
+            WidthRequest="44"
+            HeightRequest="44"
+            MinimumWidthRequest="44"
+            MinimumHeightRequest="44"
+            Padding="0"
+            BackgroundColor="Transparent"
+            BorderWidth="0"
+            TextColor="{StaticResource Primary}"
+            SemanticProperties.Description="Volver"
+            IsVisible="{Binding ShowBack, Source={x:Reference Root}}"
+            Clicked="OnBackClicked" />
+
+        <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+            <Label
+                Text="{Binding Eyebrow, Source={x:Reference Root}}"
+                FontFamily="OpenSansSemibold"
+                FontSize="11"
+                TextColor="{StaticResource Primary}"
+                TextTransform="Uppercase" />
+            <Label
+                Text="{Binding PageTitle, Source={x:Reference Root}}"
+                FontFamily="OpenSansSemibold"
+                FontSize="26"
+                TextColor="{StaticResource OnSurface}"
+                SemanticProperties.HeadingLevel="Level1" />
+        </VerticalStackLayout>
+
+        <Button
+            Grid.Column="2"
+            Text="Salir"
+            Style="{StaticResource AdminTonalButton}"
+            IsVisible="{Binding ShowLogout, Source={x:Reference Root}}"
+            Clicked="OnLogoutClicked" />
+    </Grid>
+</ContentView>

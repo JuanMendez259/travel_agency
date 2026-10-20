@@ -3,66 +3,293 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminCheckinPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Check-in / Salida">
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
+    Title="Check-in / Salida"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
+    BackgroundColor="{StaticResource Surface}">
 
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
-    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,*">
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Gestión de viajes"
+            PageTitle="Check-in / Salida"
+            ShowBack="True"
+            ShowLogout="True"
+            BackRequested="OnBackClicked"
+            LogoutRequested="OnLogoutClicked" />
 
-    <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="10">
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20,4,20,32" Spacing="16">
 
-            <Label x:Name="TripTitleLabel" FontSize="22" FontAttributes="Bold" />
-            <Label x:Name="TripMetaLabel" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" />
+                <Border Style="{StaticResource AdminCard}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+                        <Border
+                            WidthRequest="48"
+                            HeightRequest="48"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 16"
+                            BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                            VerticalOptions="Center">
+                            <Label
+                                Text="🧭"
+                                FontSize="24"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center" />
+                        </Border>
 
-            <Border x:Name="StatusBanner"
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label
+                                x:Name="TripTitleLabel"
+                                FontFamily="OpenSansSemibold"
+                                FontSize="24"
+                                FontAttributes="Bold"
+                                TextColor="{StaticResource OnSurface}"
+                                SemanticProperties.HeadingLevel="Level2" />
+                            <Label
+                                x:Name="TripMetaLabel"
+                                FontSize="12"
+                                LineHeight="1.4"
+                                TextColor="{StaticResource OnSurfaceVariant}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <Border
+                    x:Name="StatusBanner"
+                    Style="{StaticResource AdminCard}"
+                    Padding="18"
+                    StrokeShape="RoundRectangle 24"
+                    BackgroundColor="{StaticResource Primary}">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+                            <Label
+                                x:Name="StatusDotLabel"
+                                Text="●"
+                                FontSize="10"
+                                TextColor="{StaticResource SecondaryContainer}"
+                                VerticalOptions="Center" />
+                            <Label
+                                x:Name="StatusLabel"
+                                Grid.Column="1"
+                                FontFamily="OpenSansSemibold"
+                                FontSize="18"
+                                FontAttributes="Bold"
+                                TextColor="{StaticResource OnPrimary}"
+                                VerticalOptions="Center"
+                                SemanticProperties.HeadingLevel="Level2" />
+                            <Border
+                                Grid.Column="2"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 100"
+                                BackgroundColor="{StaticResource PrimaryContainer}"
+                                Padding="9,5"
+                                VerticalOptions="Center">
+                                <Label
+                                    x:Name="DepartureTimeLabel"
+                                    Text="Salida"
+                                    FontFamily="OpenSansSemibold"
+                                    FontSize="10"
+                                    TextColor="{StaticResource OnPrimary}" />
+                            </Border>
+                        </Grid>
+
+                        <Label
+                            x:Name="ProgressLabel"
+                            FontSize="12"
+                            LineHeight="1.4"
+                            TextColor="{StaticResource OnPrimary}" />
+
+                        <ProgressBar
+                            x:Name="StatusProgressBar"
+                            HeightRequest="8"
+                            BackgroundColor="{StaticResource PrimaryContainer}"
+                            ProgressColor="{StaticResource SecondaryContainer}" />
+
+                        <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,4,0,0">
+                            <Border
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="{StaticResource PrimaryContainer}"
+                                Padding="8,10">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label
+                                        x:Name="PassengersStatLabel"
+                                        Text="0/0"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="18"
+                                        FontAttributes="Bold"
+                                        TextColor="{StaticResource OnPrimary}"
+                                        HorizontalOptions="Center" />
+                                    <Label
+                                        Text="Pasajeros"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="9"
+                                        TextTransform="Uppercase"
+                                        TextColor="{StaticResource OnPrimaryContainer}"
+                                        HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <Border
+                                Grid.Column="1"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="{StaticResource PrimaryContainer}"
+                                Padding="8,10">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label
+                                        x:Name="SeatsStatLabel"
+                                        Text="0/0"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="18"
+                                        FontAttributes="Bold"
+                                        TextColor="{StaticResource OnPrimary}"
+                                        HorizontalOptions="Center" />
+                                    <Label
+                                        Text="Asientos"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="9"
+                                        TextTransform="Uppercase"
+                                        TextColor="{StaticResource OnPrimaryContainer}"
+                                        HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+
+                            <Border
+                                Grid.Column="2"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 14"
+                                BackgroundColor="{StaticResource PrimaryContainer}"
+                                Padding="8,10">
+                                <VerticalStackLayout Spacing="2">
+                                    <Label
+                                        x:Name="PendingStatLabel"
+                                        Text="0"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="18"
+                                        FontAttributes="Bold"
+                                        TextColor="{StaticResource OnPrimary}"
+                                        HorizontalOptions="Center" />
+                                    <Label
+                                        Text="Pendientes"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="9"
+                                        TextTransform="Uppercase"
+                                        TextColor="{StaticResource OnPrimaryContainer}"
+                                        HorizontalOptions="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,*" RowSpacing="8" ColumnSpacing="8">
+                    <Button
+                        x:Name="ScanButton"
+                        Grid.Row="0"
+                        Grid.ColumnSpan="2"
+                        Text="📷 Escanear QR con cámara"
+                        Clicked="OnScanClicked" />
+
+                    <Button
+                        x:Name="OpenCheckinButton"
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Text="▶️ Abrir check-in"
+                        Style="{StaticResource AdminTonalButton}"
+                        BackgroundColor="{StaticResource SuccessContainer}"
+                        TextColor="{StaticResource OnSuccessContainer}"
+                        Clicked="OnOpenCheckinClicked" />
+
+                    <Button
+                        x:Name="CloseCheckinButton"
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Text="⏸️ Cerrar check-in"
+                        Style="{StaticResource AdminTonalButton}"
+                        BackgroundColor="{StaticResource WarningContainer}"
+                        TextColor="{StaticResource OnWarningContainer}"
+                        IsVisible="False"
+                        Clicked="OnCloseCheckinClicked" />
+
+                    <Button
+                        x:Name="CompleteButton"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Text="✅ Marcar salida"
+                        Style="{StaticResource AdminTonalButton}"
+                        BackgroundColor="{StaticResource SuccessContainer}"
+                        TextColor="{StaticResource OnSuccessContainer}"
+                        Clicked="OnCompleteClicked" />
+
+                    <Button
+                        x:Name="ReopenButton"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Text="🔄 Reabrir salida"
+                        Style="{StaticResource AdminTonalButton}"
+                        IsVisible="False"
+                        Clicked="OnReopenClicked" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="2,8,2,0">
+                    <Label
+                        Text="Pasajeros"
+                        FontFamily="OpenSansSemibold"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        TextColor="{StaticResource OnSurface}"
+                        VerticalOptions="Center"
+                        SemanticProperties.HeadingLevel="Level2" />
+                    <Border
+                        Grid.Column="1"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 100"
+                        BackgroundColor="{StaticResource SuccessContainer}"
+                        Padding="9,5"
+                        VerticalOptions="Center">
+                        <Label
+                            x:Name="PassengersCountLabel"
+                            Text="0 personas"
+                            FontFamily="OpenSansSemibold"
+                            FontSize="10"
+                            TextColor="{StaticResource Secondary}" />
+                    </Border>
+                </Grid>
+
+                <VerticalStackLayout x:Name="PassengersLayout" Spacing="8" />
+
+                <Border
+                    IsVisible="{Binding Source={x:Reference NoPassengersLabel}, Path=IsVisible}"
+                    Style="{StaticResource AdminCard}"
+                    Padding="16">
+                    <Label
+                        x:Name="NoPassengersLabel"
+                        Text="Este viaje no tiene reservas para controlar."
+                        FontSize="13"
+                        TextColor="{StaticResource OnSurfaceVariant}"
+                        HorizontalTextAlignment="Center"
+                        IsVisible="False" />
+                </Border>
+
+                <Border
                     StrokeThickness="0"
-                    Padding="16"
-                    Margin="0,6,0,0">
-                <VerticalStackLayout Spacing="4">
-                    <Label x:Name="StatusLabel" FontSize="17" FontAttributes="Bold" TextColor="White" />
-                    <Label x:Name="ProgressLabel" FontSize="14" TextColor="White" />
-                </VerticalStackLayout>
-            </Border>
+                    StrokeShape="RoundRectangle 14"
+                    BackgroundColor="{StaticResource SurfaceContainerLow}"
+                    Padding="12">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Text="ℹ️" FontSize="13" VerticalOptions="Start" />
+                        <Label
+                            Grid.Column="1"
+                            Text="Toca el interruptor para marcar el abordaje. Los acompañantes se controlan por separado y cada uno tiene su propio QR."
+                            FontSize="11"
+                            LineHeight="1.5"
+                            TextColor="{StaticResource OnSurfaceVariant}" />
+                    </Grid>
+                </Border>
 
-            <Button x:Name="ScanButton"
-                    Text="Escanear QR con cámara"
-                    Clicked="OnScanClicked"
-                    BackgroundColor="#1976D2"
-                    TextColor="White"
-                    Margin="0,6,0,0" />
-
-            <Button x:Name="OpenCheckinButton"
-                    Text="Abrir check-in"
-                    Clicked="OnOpenCheckinClicked"
-                    BackgroundColor="{StaticResource Primary}" TextColor="{StaticResource OnPrimary}" />
-
-            <Button x:Name="CloseCheckinButton"
-                    Text="Cerrar check-in"
-                    Clicked="OnCloseCheckinClicked"
-                    IsVisible="False"
-                    BackgroundColor="#B7791F" TextColor="White" />
-
-            <Button x:Name="CompleteButton"
-                    Text="Marcar salida completada"
-                    Clicked="OnCompleteClicked"
-                    BackgroundColor="#2F855A" TextColor="White" />
-
-            <Button x:Name="ReopenButton"
-                    Text="Reabrir salida"
-                    Clicked="OnReopenClicked"
-                    IsVisible="False"
-                    BackgroundColor="{StaticResource Primary}" TextColor="{StaticResource OnPrimary}" />
-
-            <Label Text="Pasajeros" FontSize="16" FontAttributes="Bold" Margin="0,15,0,0" />
-            <VerticalStackLayout x:Name="PassengersLayout" Spacing="6" />
-
-            <Label x:Name="NoPassengersLabel"
-                   Text="Este viaje no tiene reservas para controlar."
-                   TextColor="{StaticResource OnSurfaceVariant}"
-                   IsVisible="False" />
-
-            <Button Text="Volver" Clicked="OnBackClicked" Margin="0,15,0,0" />
-        </VerticalStackLayout>
-    </ScrollView>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>

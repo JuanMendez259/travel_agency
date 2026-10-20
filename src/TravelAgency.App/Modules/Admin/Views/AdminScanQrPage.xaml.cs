@@ -32,22 +32,27 @@ public partial class AdminScanQrPage : ContentPage
         base.OnAppearing();
         try
         {
+            CameraStatusBadge.IsVisible = false;
             await LoadTripAsync();
             var granted = await EnsureCameraPermissionAsync();
             if (granted)
             {
                 ScannerView.IsDetecting = true;
+                CameraStatusBadge.IsVisible = true;
             }
             else
             {
                 ResultLabel.Text = "Cámara no disponible";
+                ResultLabel.TextColor = Res("OnSurface");
                 DetailLabel.Text = "Usa el código del QR en el campo de abajo.";
                 DetailLabel.IsVisible = true;
             }
         }
         catch (Exception ex)
         {
+            CameraStatusBadge.IsVisible = false;
             ResultLabel.Text = "Error al iniciar la cámara";
+            ResultLabel.TextColor = Res("OnSurface");
             DetailLabel.Text = ex.Message;
             DetailLabel.IsVisible = true;
         }
@@ -66,7 +71,10 @@ public partial class AdminScanQrPage : ContentPage
         var trips = await _api.GetAdminTripsAsync();
         _trip = trips?.FirstOrDefault(t => t.Id == id);
         if (_trip is not null)
-            TripLabel.Text = $"{_trip.Title} · {_trip.Destination}";
+        {
+            TripLabel.Text = _trip.Title;
+            HintLabel.Text = _trip.Destination;
+        }
     }
 
     private async Task<bool> EnsureCameraPermissionAsync()
@@ -122,12 +130,12 @@ public partial class AdminScanQrPage : ContentPage
             if (result?.AlreadyCheckedIn == true)
             {
                 ResultLabel.Text = $"{name} ya había abordado";
-                ResultLabel.TextColor = Color.FromArgb("#2B6CB0");
+                ResultLabel.TextColor = Res("OnWarningContainer");
             }
             else
             {
                 ResultLabel.Text = $"{name} abordó correctamente";
-                ResultLabel.TextColor = Color.FromArgb("#2F855A");
+                ResultLabel.TextColor = Res("OnSuccessContainer");
             }
 
             DetailLabel.Text = result?.Kind == "passenger"
@@ -139,7 +147,7 @@ public partial class AdminScanQrPage : ContentPage
         {
             AppHaptics.Reject();
             ResultLabel.Text = "No se pudo registrar";
-            ResultLabel.TextColor = Color.FromArgb("#C53030");
+            ResultLabel.TextColor = Res("Error");
             DetailLabel.Text = ex.Message;
             DetailLabel.IsVisible = true;
         }
@@ -153,12 +161,22 @@ public partial class AdminScanQrPage : ContentPage
     private async void OnResumeClicked(object? sender, EventArgs e)
     {
         ResultLabel.Text = "Apunta la cámara al código QR…";
-        ResultLabel.TextColor = Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black;
+        ResultLabel.TextColor = Res("OnSurface");
         DetailLabel.IsVisible = false;
         ResumeButton.IsVisible = false;
         ManualTokenEntry.Text = string.Empty;
 
         if (await EnsureCameraPermissionAsync())
+        {
             ScannerView.IsDetecting = true;
+            CameraStatusBadge.IsVisible = true;
+        }
+    }
+
+    private static Color Res(string key)
+    {
+        if (Application.Current?.Resources.TryGetValue(key, out var value) == true && value is Color color)
+            return color;
+        return Colors.Transparent;
     }
 }

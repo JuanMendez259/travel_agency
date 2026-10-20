@@ -17,6 +17,7 @@ public partial class AdminTripsPage : ContentPage
         InitializeComponent();
         _api = api;
         _session = session;
+        StyleChips();
     }
 
     protected override async void OnAppearing()
@@ -117,16 +118,25 @@ public partial class AdminTripsPage : ContentPage
     private void StyleChips()
     {
         var (isAll, isActive, isPaused) = (_statusFilter == "All", _statusFilter == "Active", _statusFilter == "Paused");
+        var selectedBackground = GetColor("Primary");
+        var selectedText = GetColor("OnPrimary");
+        var unselectedBackground = GetColor("SurfaceContainerHigh");
+        var unselectedText = GetColor("OnSurface");
 
-        ChipTripsAll.TextColor = isAll ? Colors.White : Colors.Black;
-        ChipTripsAll.BackgroundColor = isAll ? Colors.DodgerBlue : Colors.LightGray;
+        ChipTripsAll.TextColor = isAll ? selectedText : unselectedText;
+        ChipTripsAll.BackgroundColor = isAll ? selectedBackground : unselectedBackground;
 
-        ChipTripsActive.TextColor = isActive ? Colors.White : Colors.Black;
-        ChipTripsActive.BackgroundColor = isActive ? Colors.DodgerBlue : Colors.LightGray;
+        ChipTripsActive.TextColor = isActive ? selectedText : unselectedText;
+        ChipTripsActive.BackgroundColor = isActive ? selectedBackground : unselectedBackground;
 
-        ChipTripsPaused.TextColor = isPaused ? Colors.White : Colors.Black;
-        ChipTripsPaused.BackgroundColor = isPaused ? Colors.DodgerBlue : Colors.LightGray;
+        ChipTripsPaused.TextColor = isPaused ? selectedText : unselectedText;
+        ChipTripsPaused.BackgroundColor = isPaused ? selectedBackground : unselectedBackground;
     }
+
+    private static Color GetColor(string key) =>
+        Application.Current?.Resources.TryGetValue(key, out var value) == true && value is Color color
+            ? color
+            : Colors.Transparent;
 
     private async void OnSeatsClicked(object? sender, EventArgs e)
     {

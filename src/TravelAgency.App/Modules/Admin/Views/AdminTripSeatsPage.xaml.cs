@@ -81,11 +81,12 @@ public partial class AdminTripSeatsPage : ContentPage
 
         TripLabel.Text = map.TripTitle;
         FloorBadgeLabel.Text = map.HasTwoFloors ? "Dos pisos" : "Planta única";
-        var floorsText = map.HasTwoFloors
-            ? $" · Piso 1: {map.Floor1Capacity ?? 0} · Piso 2: {map.Floor2Capacity ?? 0}"
-            : string.Empty;
         SummaryLabel.Text = $"{TransportTypeConverter.ToDisplay(map.TransportType)} · "
-            + $"{map.Capacity} asientos · {map.OccupiedCount} ocupados · {map.AvailableCount} libres{floorsText}";
+            + $"{map.Capacity} asientos · {map.OccupiedCount} ocupados · {map.AvailableCount} libres";
+        FloorCapacityLabel.Text = map.HasTwoFloors
+            ? $"Piso 1: {map.Floor1Capacity ?? 0} · Piso 2: {map.Floor2Capacity ?? 0}"
+            : string.Empty;
+        FloorCapacityLabel.IsVisible = map.HasTwoFloors;
 
         FloorSelector.IsVisible = _twoFloors;
         UpdateFloorButtons();
@@ -106,7 +107,7 @@ public partial class AdminTripSeatsPage : ContentPage
             {
                 Text = "Todavía no hay asientos ocupados.",
                 FontSize = 13,
-                TextColor = OnSurfaceVariantColor,
+                TextColor = Res("OnSurfaceVariant"),
                 Margin = new Thickness(0, 2)
             });
             return;
@@ -114,24 +115,24 @@ public partial class AdminTripSeatsPage : ContentPage
 
         foreach (var seat in occupied)
         {
-            var who = seat.CheckedIn
-                ? $"{seat.OccupiedBy} (check-in hecho)"
-                : seat.OccupiedBy;
-
-            var detailColor = seat.CheckedIn ? CheckedInColor : Color.FromArgb("#8A6400");
+            var who = seat.OccupiedBy ?? "Sin nombre registrado";
+            var stateText = seat.CheckedIn
+                ? "Check-in hecho"
+                : seat.IsAssigned ? "Pasajero registrado · falta check-in" : "Reserva sin pasajero registrado";
+            var detailColor = seat.CheckedIn ? Res("Secondary") : Res("OnWarningContainer");
             var badge = new Border
             {
                 WidthRequest = 36,
                 HeightRequest = 36,
                 StrokeThickness = 0,
                 StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-                BackgroundColor = seat.CheckedIn ? Color.FromArgb("#6CF8BB") : Color.FromArgb("#F8E8A7"),
+                BackgroundColor = seat.CheckedIn ? Res("SecondaryContainer") : Res("WarningContainer"),
                 Content = new Label
                 {
                     Text = seat.CheckedIn ? "✓" : "•",
                     FontSize = seat.CheckedIn ? 17 : 20,
                     FontAttributes = FontAttributes.Bold,
-                    TextColor = seat.CheckedIn ? CheckedInColor : detailColor,
+                    TextColor = detailColor,
                     HorizontalOptions = LayoutOptions.Center,
                     VerticalOptions = LayoutOptions.Center
                 }
@@ -143,21 +144,19 @@ public partial class AdminTripSeatsPage : ContentPage
                 Text = who,
                 FontSize = 14,
                 FontAttributes = FontAttributes.Bold,
-                TextColor = OnSurfaceColor
+                TextColor = Res("OnSurface")
             });
             details.Add(new Label
             {
                 Text = _twoFloors
-                    ? $"Piso {FloorOf(seat.Number)} · Asiento {seat.Number} · Reserva #{seat.BookingId}"
-                    : $"Asiento {seat.Number} · Reserva #{seat.BookingId}",
+                    ? $"Piso {FloorOf(seat.Number)} · Asiento {seat.Number}"
+                    : $"Asiento {seat.Number}",
                 FontSize = 11,
-                TextColor = OnSurfaceVariantColor
+                TextColor = Res("OnSurfaceVariant")
             });
             details.Add(new Label
             {
-                Text = seat.CheckedIn
-                    ? "Check-in hecho"
-                    : seat.IsAssigned ? "Pasajero registrado · falta check-in" : "Titular · falta check-in",
+                Text = stateText,
                 FontSize = 11,
                 FontAttributes = FontAttributes.Bold,
                 TextColor = detailColor
@@ -177,11 +176,11 @@ public partial class AdminTripSeatsPage : ContentPage
 
             OccupiedList.Add(new Border
             {
-                Stroke = Color.FromArgb("#E2E7FF"),
+                Stroke = Res("SurfaceContainerHigh"),
                 StrokeThickness = 1,
                 StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
                 Padding = new Thickness(10),
-                BackgroundColor = Color.FromArgb("#F2F3FF"),
+                BackgroundColor = Res("SurfaceContainerLow"),
                 Content = occupiedRow
             });
         }
@@ -327,12 +326,19 @@ public partial class AdminTripSeatsPage : ContentPage
 
     private void UpdateFloorButtons()
     {
-        var activeBg = Color.FromArgb("#003B1B");
-        var inactiveBg = Color.FromArgb("#DAE2FD");
+        var activeBg = Res("Primary");
+        var inactiveBg = Res("SurfaceContainerHighest");
         Floor1Button.BackgroundColor = _currentFloor == 1 ? activeBg : inactiveBg;
         Floor1Button.TextColor = _currentFloor == 1 ? Colors.White : OnSurfaceColor;
         Floor2Button.BackgroundColor = _currentFloor == 2 ? activeBg : inactiveBg;
         Floor2Button.TextColor = _currentFloor == 2 ? Colors.White : OnSurfaceColor;
+    }
+
+    private static Color Res(string key)
+    {
+        if (Application.Current?.Resources.TryGetValue(key, out var value) == true && value is Color color)
+            return color;
+        return Colors.Transparent;
     }
 
     private async void OnRefreshing(object? sender, EventArgs e)

@@ -3,188 +3,267 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripSeatsPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
     Title="Mapa de asientos"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
     BackgroundColor="{StaticResource Surface}">
 
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
-    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,Auto,*">
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Operación"
+            PageTitle="Mapa de asientos"
+            ShowBack="True"
+            ShowLogout="True"
+            LogoutRequested="OnLogoutClicked" />
 
-    <Grid RowDefinitions="Auto,*">
-        <!-- Contexto del viaje -->
-        <Border Grid.Row="0"
-                Margin="16,12,16,8"
-                Padding="16"
-                StrokeThickness="0"
-                StrokeShape="RoundRectangle 16"
-                BackgroundColor="{StaticResource Primary}">
+        <Border
+            Grid.Row="1"
+            Margin="20,0,20,8"
+            Padding="14"
+            StrokeThickness="0"
+            StrokeShape="RoundRectangle 18">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="{StaticResource PrimaryContainer}" Offset="0.0" />
+                    <GradientStop Color="{StaticResource Primary}" Offset="0.78" />
+                </LinearGradientBrush>
+            </Border.Background>
             <Border.Shadow>
-                <Shadow Brush="#0F172A" Opacity="0.12" Radius="12" Offset="0,3" />
+                <Shadow Brush="{StaticResource OnSurface}" Offset="0,6" Radius="18" Opacity="0.16" />
             </Border.Shadow>
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                <Border WidthRequest="42" HeightRequest="42"
-                        StrokeThickness="0"
-                        StrokeShape="RoundRectangle 14"
-                        BackgroundColor="{StaticResource SecondaryContainer}"
-                        VerticalOptions="Center">
-                    <Label Text="🚌" FontSize="22"
-                           HorizontalOptions="Center" VerticalOptions="Center" />
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="11">
+                <Border
+                    WidthRequest="42"
+                    HeightRequest="42"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 14"
+                    BackgroundColor="{StaticResource SecondaryContainer}"
+                    VerticalOptions="Center">
+                    <Label
+                        Text="🚌"
+                        FontSize="20"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
                 </Border>
-                <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
-                    <Label x:Name="TripLabel"
-                           FontSize="18" FontAttributes="Bold"
-                           TextColor="{StaticResource OnPrimary}"
-                           SemanticProperties.HeadingLevel="Level1" />
-                    <Label x:Name="SummaryLabel"
-                           FontSize="12"
-                           TextColor="{StaticResource OnPrimaryContainer}" />
+
+                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                    <Label
+                        x:Name="TripLabel"
+                        FontFamily="OpenSansSemibold"
+                        FontSize="18"
+                        FontAttributes="Bold"
+                        TextColor="{StaticResource OnPrimary}"
+                        LineBreakMode="TailTruncation"
+                        SemanticProperties.HeadingLevel="Level2" />
+                    <Label
+                        x:Name="SummaryLabel"
+                        FontSize="11"
+                        LineHeight="1.45"
+                        TextColor="{StaticResource OnPrimaryContainer}" />
+                    <Label
+                        x:Name="FloorCapacityLabel"
+                        FontSize="11"
+                        LineHeight="1.45"
+                        TextColor="{StaticResource OnPrimaryContainer}"
+                        IsVisible="False" />
                 </VerticalStackLayout>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2">
             <RefreshView x:Name="SeatsRefresh" Refreshing="OnRefreshing">
                 <ScrollView>
-                    <VerticalStackLayout Padding="16,0,16,24" Spacing="12">
+                    <VerticalStackLayout Padding="20,4,20,32" Spacing="12">
 
-                        <!-- Leyenda compacta de estados -->
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 12"
-                                BackgroundColor="{StaticResource SurfaceContainerLow}"
-                                Padding="12,10">
+                        <Border
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 12"
+                            BackgroundColor="{StaticResource SurfaceContainerLow}"
+                            Padding="12,10">
                             <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6">
                                 <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
-                                    <Border WidthRequest="20" HeightRequest="20"
-                                            StrokeThickness="0"
-                                            StrokeShape="RoundRectangle 6"
-                                            BackgroundColor="{StaticResource SurfaceContainerHighest}" />
-                                    <Label Text="Libre" FontSize="11"
-                                           TextColor="{StaticResource OnSurfaceVariant}"
-                                           VerticalOptions="Center" />
+                                    <Border
+                                        WidthRequest="20"
+                                        HeightRequest="20"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 6"
+                                        BackgroundColor="{StaticResource SurfaceContainerHighest}" />
+                                    <Label
+                                        Text="Libre"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="11"
+                                        TextColor="{StaticResource OnSurfaceVariant}"
+                                        VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
-                                    <Border WidthRequest="20" HeightRequest="20"
-                                            StrokeThickness="0"
-                                            StrokeShape="RoundRectangle 6"
-                                            BackgroundColor="#DBB92A" />
-                                    <Label Text="Ocupado" FontSize="11"
-                                           TextColor="{StaticResource OnSurfaceVariant}"
-                                           VerticalOptions="Center" />
+                                    <Border
+                                        WidthRequest="20"
+                                        HeightRequest="20"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 6"
+                                        BackgroundColor="#DBB92A" />
+                                    <Label
+                                        Text="Ocupado"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="11"
+                                        TextColor="{StaticResource OnSurfaceVariant}"
+                                        VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                                 <HorizontalStackLayout Grid.Column="2" Spacing="6" VerticalOptions="Center">
-                                    <Border WidthRequest="20" HeightRequest="20"
-                                            StrokeThickness="0"
-                                            StrokeShape="RoundRectangle 6"
-                                            BackgroundColor="{StaticResource Secondary}" />
-                                    <Label Text="Check-in" FontSize="11"
-                                           TextColor="{StaticResource OnSurfaceVariant}"
-                                           VerticalOptions="Center" />
+                                    <Border
+                                        WidthRequest="20"
+                                        HeightRequest="20"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 6"
+                                        BackgroundColor="{StaticResource Secondary}" />
+                                    <Label
+                                        Text="Check-in"
+                                        FontFamily="OpenSansSemibold"
+                                        FontSize="11"
+                                        TextColor="{StaticResource OnSurfaceVariant}"
+                                        VerticalOptions="Center" />
                                 </HorizontalStackLayout>
                             </Grid>
                         </Border>
 
-                        <!-- Distribución del autobús -->
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 16"
-                                BackgroundColor="{StaticResource SurfaceContainerLowest}"
-                                Padding="16">
-                            <Border.Shadow>
-                                <Shadow Brush="#0F172A" Opacity="0.05" Radius="10" Offset="0,2" />
-                            </Border.Shadow>
+                        <Border Style="{StaticResource AdminCard}">
                             <VerticalStackLayout Spacing="12">
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                     <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
-                                        <Label Text="💺" FontSize="18" VerticalOptions="Center" />
-                                        <Label Text="Distribución de asientos"
-                                               FontSize="16" FontAttributes="Bold"
-                                               TextColor="{StaticResource OnSurface}"
-                                               VerticalOptions="Center"
-                                               SemanticProperties.HeadingLevel="Level2" />
+                                        <Label Text="💺" FontSize="17" VerticalOptions="Center" />
+                                        <Label
+                                            Text="Distribución de asientos"
+                                            Style="{StaticResource AdminCardTitle}"
+                                            VerticalOptions="Center"
+                                            SemanticProperties.HeadingLevel="Level2" />
                                     </HorizontalStackLayout>
-                                    <Border Grid.Column="1"
-                                            StrokeThickness="0"
-                                            StrokeShape="RoundRectangle 10"
-                                            BackgroundColor="{StaticResource SurfaceContainerHigh}"
-                                            Padding="9,4"
-                                            VerticalOptions="Center">
-                                        <Label x:Name="FloorBadgeLabel"
-                                               Text="Planta única"
-                                               FontSize="11" FontAttributes="Bold"
-                                               TextColor="{StaticResource OnSurfaceVariant}" />
+
+                                    <Border
+                                        Grid.Column="1"
+                                        Padding="9,4"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 10"
+                                        BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                                        VerticalOptions="Center">
+                                        <Label
+                                            x:Name="FloorBadgeLabel"
+                                            Text="Planta única"
+                                            Style="{StaticResource AdminBadge}"
+                                            Padding="0"
+                                            BackgroundColor="Transparent" />
                                     </Border>
                                 </Grid>
 
-                                <HorizontalStackLayout x:Name="FloorSelector"
-                                                       Spacing="8"
-                                                       HorizontalOptions="Center"
-                                                       IsVisible="False">
-                                    <Button x:Name="Floor1Button" Text="Piso 1" Clicked="OnFloor1Clicked"
-                                            FontSize="13" FontAttributes="Bold"
-                                            CornerRadius="16" Padding="18,6"
-                                            MinimumHeightRequest="44"
-                                            BackgroundColor="{StaticResource Primary}"
-                                            TextColor="{StaticResource OnPrimary}" />
-                                    <Button x:Name="Floor2Button" Text="Piso 2" Clicked="OnFloor2Clicked"
-                                            FontSize="13" FontAttributes="Bold"
-                                            CornerRadius="16" Padding="18,6"
-                                            MinimumHeightRequest="44"
-                                            BackgroundColor="{StaticResource SurfaceContainerHighest}"
-                                            TextColor="{StaticResource OnSurface}" />
+                                <HorizontalStackLayout
+                                    x:Name="FloorSelector"
+                                    Spacing="8"
+                                    HorizontalOptions="Center"
+                                    IsVisible="False">
+                                    <Button
+                                        x:Name="Floor1Button"
+                                        Text="Piso 1"
+                                        Clicked="OnFloor1Clicked"
+                                        Style="{StaticResource AdminChip}"
+                                        Padding="18,6"
+                                        BackgroundColor="{StaticResource Primary}"
+                                        TextColor="{StaticResource OnPrimary}" />
+                                    <Button
+                                        x:Name="Floor2Button"
+                                        Text="Piso 2"
+                                        Clicked="OnFloor2Clicked"
+                                        Style="{StaticResource AdminChip}"
+                                        Padding="18,6"
+                                        BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                                        TextColor="{StaticResource OnSurface}" />
                                 </HorizontalStackLayout>
 
-                                <Border StrokeThickness="0"
-                                        StrokeShape="RoundRectangle 24"
-                                        BackgroundColor="{StaticResource SurfaceContainerLow}"
-                                        Padding="12"
-                                        HorizontalOptions="Center"
-                                        MaximumWidthRequest="420">
+                                <Border
+                                    StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 24"
+                                    BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                    Padding="8"
+                                    HorizontalOptions="Center"
+                                    MaximumWidthRequest="420">
                                     <VerticalStackLayout Spacing="10">
-                                        <Border StrokeThickness="0"
-                                                StrokeShape="RoundRectangle 18"
-                                                BackgroundColor="{StaticResource SurfaceContainer}"
-                                                Padding="12">
+                                        <Border
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 18"
+                                            BackgroundColor="{StaticResource SurfaceContainer}"
+                                            Padding="12">
                                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                                                 <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
-                                                    <Label Text="🏎️" FontSize="16" VerticalOptions="Center" />
-                                                    <Label Text="Cabina del conductor"
-                                                           FontSize="11" FontAttributes="Bold"
-                                                           TextColor="{StaticResource OnSurface}"
-                                                           VerticalOptions="Center" />
+                                                    <Label Text="🏎️" FontSize="15" VerticalOptions="Center" />
+                                                    <Label
+                                                        Text="Cabina del conductor"
+                                                        FontFamily="OpenSansSemibold"
+                                                        FontSize="10"
+                                                        FontAttributes="Bold"
+                                                        TextColor="{StaticResource OnSurface}"
+                                                        VerticalOptions="Center" />
                                                 </HorizontalStackLayout>
                                                 <HorizontalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
-                                                    <Label Text="Puerta frontal" FontSize="10" FontAttributes="Bold"
-                                                           TextColor="{StaticResource OnSurfaceVariant}"
-                                                           VerticalOptions="Center" />
+                                                    <Label
+                                                        Text="Puerta frontal"
+                                                        FontFamily="OpenSansSemibold"
+                                                        FontSize="9"
+                                                        FontAttributes="Bold"
+                                                        TextColor="{StaticResource OnSurfaceVariant}"
+                                                        VerticalOptions="Center" />
                                                     <Label Text="🔒" FontSize="12" VerticalOptions="Center" />
                                                 </HorizontalStackLayout>
                                             </Grid>
                                         </Border>
 
-                                        <Grid ColumnDefinitions="*,Auto,*" ColumnSpacing="6">
-                                            <Label Text="Fila izq." FontSize="10" FontAttributes="Bold"
-                                                   TextColor="{StaticResource Outline}"
-                                                   HorizontalTextAlignment="End" />
-                                            <Label Grid.Column="1" Text="Pasillo" FontSize="10" FontAttributes="Bold"
-                                                   TextColor="{StaticResource Secondary}"
-                                                   HorizontalTextAlignment="Center" />
-                                            <Label Grid.Column="2" Text="Fila der." FontSize="10" FontAttributes="Bold"
-                                                   TextColor="{StaticResource Outline}" />
+                                        <Grid ColumnDefinitions="*,24,*" ColumnSpacing="4">
+                                            <Label
+                                                Text="Fila izq."
+                                                FontFamily="OpenSansSemibold"
+                                                FontSize="9"
+                                                FontAttributes="Bold"
+                                                TextColor="{StaticResource Outline}"
+                                                HorizontalTextAlignment="End"
+                                                VerticalOptions="Center" />
+                                            <Label
+                                                Grid.Column="1"
+                                                Text="↕"
+                                                FontSize="11"
+                                                FontAttributes="Bold"
+                                                TextColor="{StaticResource Secondary}"
+                                                HorizontalTextAlignment="Center"
+                                                VerticalOptions="Center" />
+                                            <Label
+                                                Grid.Column="2"
+                                                Text="Fila der."
+                                                FontFamily="OpenSansSemibold"
+                                                FontSize="9"
+                                                FontAttributes="Bold"
+                                                TextColor="{StaticResource Outline}"
+                                                VerticalOptions="Center" />
                                         </Grid>
 
                                         <VerticalStackLayout x:Name="RowsContainer" Spacing="8" />
 
                                         <Grid ColumnDefinitions="*,Auto" Margin="4,2,4,0">
-                                            <HorizontalStackLayout Spacing="6">
-                                                <Label Text="🧳" FontSize="14" VerticalOptions="Center" />
-                                                <Label Text="Maletero bajo piso" FontSize="11"
-                                                       TextColor="{StaticResource Outline}"
-                                                       VerticalOptions="Center" />
+                                            <HorizontalStackLayout Spacing="5">
+                                                <Label Text="🧳" FontSize="13" VerticalOptions="Center" />
+                                                <Label
+                                                    Text="Maletero bajo piso"
+                                                    FontFamily="OpenSansSemibold"
+                                                    FontSize="10"
+                                                    TextColor="{StaticResource Outline}"
+                                                    VerticalOptions="Center" />
                                             </HorizontalStackLayout>
-                                            <HorizontalStackLayout Grid.Column="1" Spacing="6">
-                                                <Label Text="🚻" FontSize="14" VerticalOptions="Center" />
-                                                <Label Text="Sanitario" FontSize="11"
-                                                       TextColor="{StaticResource Outline}"
-                                                       VerticalOptions="Center" />
+                                            <HorizontalStackLayout Grid.Column="1" Spacing="5">
+                                                <Label Text="🚻" FontSize="13" VerticalOptions="Center" />
+                                                <Label
+                                                    Text="Sanitario"
+                                                    FontFamily="OpenSansSemibold"
+                                                    FontSize="10"
+                                                    TextColor="{StaticResource Outline}"
+                                                    VerticalOptions="Center" />
                                             </HorizontalStackLayout>
                                         </Grid>
                                     </VerticalStackLayout>
@@ -192,28 +271,27 @@
                             </VerticalStackLayout>
                         </Border>
 
-                        <!-- Nombres y estado de check-in: información exclusiva del staff -->
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 16"
-                                BackgroundColor="{StaticResource SurfaceContainerLowest}"
-                                Padding="16">
-                            <Border.Shadow>
-                                <Shadow Brush="#0F172A" Opacity="0.05" Radius="10" Offset="0,2" />
-                            </Border.Shadow>
+                        <Border Style="{StaticResource AdminCard}">
                             <VerticalStackLayout Spacing="8">
                                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                                    <Label Text="Detalle de ocupación"
-                                           FontSize="15" FontAttributes="Bold"
-                                           TextColor="{StaticResource OnSurface}"
-                                           SemanticProperties.HeadingLevel="Level2" />
-                                    <Border Grid.Column="1"
-                                            StrokeThickness="0"
-                                            StrokeShape="RoundRectangle 10"
-                                            BackgroundColor="{StaticResource SurfaceContainerLow}"
-                                            Padding="8,3">
-                                        <Label x:Name="OccupiedCountLabel" Text="0 ocupados"
-                                               FontSize="11" FontAttributes="Bold"
-                                               TextColor="{StaticResource OnSurfaceVariant}" />
+                                    <Label
+                                        Text="Detalle de ocupación"
+                                        Style="{StaticResource AdminCardTitle}"
+                                        VerticalOptions="Center"
+                                        SemanticProperties.HeadingLevel="Level2" />
+                                    <Border
+                                        Grid.Column="1"
+                                        Padding="8,3"
+                                        StrokeThickness="0"
+                                        StrokeShape="RoundRectangle 10"
+                                        BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                        VerticalOptions="Center">
+                                        <Label
+                                            x:Name="OccupiedCountLabel"
+                                            Text="0 ocupados"
+                                            Style="{StaticResource AdminBadge}"
+                                            Padding="0"
+                                            BackgroundColor="Transparent" />
                                     </Border>
                                 </Grid>
                                 <VerticalStackLayout x:Name="OccupiedList" Spacing="8" />
@@ -223,13 +301,13 @@
                 </ScrollView>
             </RefreshView>
 
-            <ActivityIndicator x:Name="Loading"
-                               Grid.Row="1"
-                               IsRunning="False"
-                               IsVisible="False"
-                               VerticalOptions="Start"
-                               HorizontalOptions="Center"
-                               Margin="0,12" />
+            <ActivityIndicator
+                x:Name="Loading"
+                IsRunning="False"
+                IsVisible="False"
+                VerticalOptions="Start"
+                HorizontalOptions="Center"
+                Margin="0,12" />
         </Grid>
     </Grid>
 </ContentPage>
