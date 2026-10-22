@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using CommunityToolkit.Maui;
+using Microsoft.Extensions.Logging;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 using TravelAgency.App.Modules.Admin.Views;
 using TravelAgency.App.Modules.Auth.Views;
@@ -17,6 +18,7 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
+			.UseMauiCommunityToolkit()
 			.UseSkiaSharp()
 			.UseBarcodeReader()
 			.ConfigureFonts(fonts =>

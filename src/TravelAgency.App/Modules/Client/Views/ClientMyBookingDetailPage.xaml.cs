@@ -315,8 +315,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         // El bloque arranca plegado en cada carga para que la cancelacion no
         // compita visualmente con las acciones utiles de la reserva.
-        CancelBody.IsVisible = false;
-        CancelToggleChevron.Text = "🔽";
+        CancelExpander.IsExpanded = false;
 
         if (!canCancel) return;
 
@@ -340,13 +339,6 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 ? $"Sin multa: se reembolsa el 100% de {_paidTotal:C} abonados."
                 : $"Multa por cancelación 30%: -{_cancelPenalty:C}. Reembolso: {_cancelRefund:C} de {_paidTotal:C} abonados.";
         CancelButton.IsVisible = true;
-    }
-
-    private void OnCancelToggleTapped(object? sender, TappedEventArgs e)
-    {
-        var open = !CancelBody.IsVisible;
-        CancelBody.IsVisible = open;
-        CancelToggleChevron.Text = open ? "🔼" : "🔽";
     }
 
     // Muestra, cuando la reserva aun se puede cancelar, una fila por acompanante
