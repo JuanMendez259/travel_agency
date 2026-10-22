@@ -80,6 +80,32 @@ public partial class App : Application
         Application.Current!.Windows[0].Page = shell;
     }
 
+    public static void RecoverShell(string route)
+    {
+        try
+        {
+            GoToMainShell();
+            if (Application.Current?.Windows.FirstOrDefault()?.Page is not Shell shell)
+                return;
+
+            shell.Dispatcher.Dispatch(async () =>
+            {
+                try
+                {
+                    await shell.GoToAsync(route, false);
+                }
+                catch (Exception ex)
+                {
+                    CrashLogger.Write("RecoverShell.Navigate", ex);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            CrashLogger.Write("RecoverShell", ex);
+        }
+    }
+
     public static void GoToLogin()
     {
         var session = Services.GetRequiredService<SessionService>();

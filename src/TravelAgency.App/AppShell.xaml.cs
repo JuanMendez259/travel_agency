@@ -2,9 +2,14 @@ namespace TravelAgency.App;
 
 public partial class AppShell : Shell
 {
+    private readonly HashSet<Page> _seenPages = new();
+    private readonly HashSet<Page> _attachedPages = new();
+    private bool _recovering;
+
     public AppShell()
     {
         InitializeComponent();
+        Navigated += (_, _) => CheckCurrentPageHandler();
         Routing.RegisterRoute("profilesetup", typeof(TravelAgency.App.Modules.Auth.Views.ProfileSetupPage));
         Routing.RegisterRoute("trip", typeof(TravelAgency.App.Modules.Client.Views.ClientTripDetailPage));
         Routing.RegisterRoute("favorites", typeof(TravelAgency.App.Modules.Client.Views.ClientFavoritesPage));
@@ -24,5 +29,52 @@ public partial class AppShell : Shell
         Routing.RegisterRoute("checkin", typeof(TravelAgency.App.Modules.Admin.Views.AdminCheckinPage));
         Routing.RegisterRoute("scancheckin", typeof(TravelAgency.App.Modules.Admin.Views.AdminScanQrPage));
         Routing.RegisterRoute("bookingqr", typeof(TravelAgency.App.Modules.Admin.Views.AdminBookingQrPage));
+    }
+
+    private void CheckCurrentPageHandler()
+    {
+        if (_recovering)
+            return;
+
+        var page = CurrentPage;
+        if (page is null)
+            return;
+
+        if (_seenPages.Add(page))
+        {
+            page.HandlerChanged += (_, _) =>
+            {
+                if (page.Handler is not null)
+                    _attachedPages.Add(page);
+            };
+        }
+
+        if (page.Handler is not null)
+        {
+            _attachedPages.Add(page);
+            return;
+        }
+
+        if (!_attachedPages.Contains(page))
+            return;
+
+        var route = CurrentState?.Location?.OriginalString;
+        if (string.IsNullOrWhiteSpace(route))
+            return;
+
+        _recovering = true;
+        Dispatcher.Dispatch(async () =>
+        {
+            try
+            {
+                await Task.Delay(50);
+                if (ReferenceEquals(CurrentPage, page) && page.Handler is null)
+                    App.RecoverShell(route);
+            }
+            finally
+            {
+                _recovering = false;
+            }
+        });
     }
 }
