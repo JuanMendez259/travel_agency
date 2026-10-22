@@ -3,97 +3,153 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminBookingsPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
     xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
-    Title="Reservas">
+    Title="Reservas"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
+    BackgroundColor="{StaticResource Surface}">
 
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
-    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,*">
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Admin · Reservas"
+            PageTitle="Reservas"
+            ShowBack="False"
+            ShowLogout="True"
+            LogoutRequested="OnLogoutClicked" />
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
-        <Border Grid.Row="0"
-                StrokeShape="RoundRectangle 10"
-                Stroke="{StaticResource Gray200}"
-                BackgroundColor="{StaticResource Gray100}"
-                Padding="12,0"
-                Margin="12,8,12,4">
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                <Label Text="🔍" FontSize="15" VerticalOptions="Center" />
-                <Entry x:Name="SearchEntry"
-                       Grid.Column="1"
-                       Placeholder="Buscar por viaje, cliente o pasajero"
-                       BackgroundColor="Transparent"
-                       TextColor="{StaticResource Gray950}"
-                       PlaceholderColor="{StaticResource Gray500}"
-                       FontSize="14"
-                       HeightRequest="44"
-                       TextChanged="OnSearchTextChanged" />
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="8" Padding="20,0,20,0">
+
+            <Border Grid.Row="0" Style="{StaticResource AdminCard}" Padding="12,0">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                    <Label Text="🔍" FontSize="15" VerticalOptions="Center" />
+                    <Entry x:Name="SearchEntry"
+                           Grid.Column="1"
+                           Placeholder="Buscar por viaje, cliente o pasajero"
+                           BackgroundColor="Transparent"
+                           TextColor="{StaticResource OnSurface}"
+                           PlaceholderColor="{StaticResource OnSurfaceVariant}"
+                           FontSize="14"
+                           HeightRequest="44"
+                           TextChanged="OnSearchTextChanged" />
+                </Grid>
+            </Border>
+
+            <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
+                <HorizontalStackLayout Spacing="8">
+                    <Button x:Name="ChipPending"
+                            Text="Pendientes"
+                            Style="{StaticResource AdminChip}"
+                            Clicked="OnStatusChipClicked"
+                            CommandParameter="Pending" />
+                    <Button x:Name="ChipConfirmed"
+                            Text="Confirmadas"
+                            Style="{StaticResource AdminChip}"
+                            Clicked="OnStatusChipClicked"
+                            CommandParameter="Confirmed" />
+                    <Button x:Name="ChipCancelled"
+                            Text="Canceladas"
+                            Style="{StaticResource AdminChip}"
+                            Clicked="OnStatusChipClicked"
+                            CommandParameter="Cancelled" />
+                    <Button x:Name="ChipAll"
+                            Text="Todas"
+                            Style="{StaticResource AdminChip}"
+                            Clicked="OnStatusChipClicked"
+                            CommandParameter="All" />
+                </HorizontalStackLayout>
+            </ScrollView>
+
+            <Border Grid.Row="2" Style="{StaticResource AdminCard}" Padding="12,8">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                    <Label Text="Salida desde"
+                           FontSize="13"
+                           TextColor="{StaticResource OnSurfaceVariant}"
+                           VerticalOptions="Center" />
+                    <DatePicker x:Name="FromDatePicker"
+                                Grid.Column="1"
+                                Format="dd/MM/yyyy"
+                                DateSelected="OnFromDateSelected"
+                                VerticalOptions="Center" />
+                    <Button x:Name="ClearDateBtn"
+                            Grid.Column="2"
+                            Text="Limpiar"
+                            Style="{StaticResource AdminChip}"
+                            Clicked="OnClearDateClicked"
+                            VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="3">
+                <ActivityIndicator x:Name="Loading"
+                                   IsRunning="False"
+                                   IsVisible="False"
+                                   Margin="0,10"
+                                   VerticalOptions="Start"
+                                   HorizontalOptions="Center" />
+
+                <RefreshView x:Name="BookingsRefresh" Refreshing="OnRefreshing">
+                    <CollectionView x:Name="BookingsList"
+                                    SelectionMode="None"
+                                    Footer=" ">
+                        <CollectionView.EmptyView>
+                            <Label Text="Aún no hay reservas."
+                                   FontSize="14"
+                                   TextColor="{StaticResource OnSurfaceVariant}"
+                                   HorizontalTextAlignment="Center"
+                                   Margin="20,24" />
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Booking">
+                                <Border Style="{StaticResource AdminCard}" Margin="0,4">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <Label Text="{Binding Trip.Title}"
+                                                   FontFamily="OpenSansSemibold"
+                                                   FontSize="16"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{StaticResource OnSurface}"
+                                                   LineBreakMode="TailTruncation" />
+                                            <Border Grid.Column="1"
+                                                    Padding="8,3"
+                                                    StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 100"
+                                                    BackgroundColor="{StaticResource SurfaceContainerHigh}">
+                                                <Label Text="{Binding Status}"
+                                                       FontFamily="OpenSansSemibold"
+                                                       FontSize="11"
+                                                       FontAttributes="Bold"
+                                                       TextColor="{StaticResource Primary}" />
+                                            </Border>
+                                        </Grid>
+
+                                        <Label Text="{Binding User.Name}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource OnSurfaceVariant}" />
+
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Label Text="{Binding NumberOfSeats}" FontSize="13" />
+                                            <Label Text="asientos ·" FontSize="13" />
+                                            <Label Text="{Binding TotalAmount, StringFormat='{0:C}'}"
+                                                   FontFamily="OpenSansSemibold"
+                                                   FontSize="13"
+                                                   TextColor="{StaticResource Primary}" />
+                                        </HorizontalStackLayout>
+
+                                        <Button Text="Ver detalle"
+                                                Style="{StaticResource AdminTonalButton}"
+                                                FontSize="14"
+                                                Clicked="OnDetailClicked"
+                                                CommandParameter="{Binding .}"
+                                                Margin="0,2,0,0" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </RefreshView>
             </Grid>
-        </Border>
-
-        <ScrollView Grid.Row="1" Orientation="Horizontal" HorizontalScrollBarVisibility="Never">
-            <HorizontalStackLayout Padding="12,4" Spacing="8">
-                <Button x:Name="ChipPending" Text="Pendientes" Clicked="OnStatusChipClicked" CommandParameter="Pending"
-                        FontSize="13" Padding="16,6" CornerRadius="16" />
-                <Button x:Name="ChipConfirmed" Text="Confirmadas" Clicked="OnStatusChipClicked" CommandParameter="Confirmed"
-                        FontSize="13" Padding="16,6" CornerRadius="16" />
-                <Button x:Name="ChipCancelled" Text="Canceladas" Clicked="OnStatusChipClicked" CommandParameter="Cancelled"
-                        FontSize="13" Padding="16,6" CornerRadius="16" />
-                <Button x:Name="ChipAll" Text="Todas" Clicked="OnStatusChipClicked" CommandParameter="All"
-                        FontSize="13" Padding="16,6" CornerRadius="16" />
-            </HorizontalStackLayout>
-        </ScrollView>
-
-        <HorizontalStackLayout Grid.Row="2" Padding="12,2" Spacing="8">
-            <Label Text="Salida desde:" VerticalOptions="Center" FontSize="13" />
-            <DatePicker x:Name="FromDatePicker"
-                        Format="dd/MM/yyyy"
-                        DateSelected="OnFromDateSelected"
-                        VerticalOptions="Center" />
-            <Button x:Name="ClearDateBtn"
-                    Text="Limpiar"
-                    Clicked="OnClearDateClicked"
-                    FontSize="13" Padding="12,4" CornerRadius="12"
-                    VerticalOptions="Center" />
-        </HorizontalStackLayout>
-
-        <ActivityIndicator x:Name="Loading"
-                           Grid.Row="3"
-                           IsRunning="False"
-                           IsVisible="False"
-                           Margin="0,10"
-                           VerticalOptions="Start"
-                           HorizontalOptions="Center" />
-
-        <RefreshView x:Name="BookingsRefresh"
-                     Grid.Row="3"
-                     Refreshing="OnRefreshing">
-            <CollectionView x:Name="BookingsList"
-                            SelectionMode="None"
-                            Footer=" "
-                            EmptyView="Aún no hay reservas.">
-            <CollectionView.ItemTemplate>
-                <DataTemplate x:DataType="models:Booking">
-                    <Border Margin="10,5" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
-                        <VerticalStackLayout Padding="12" Spacing="4">
-                            <Label Text="{Binding Trip.Title}" FontSize="17" FontAttributes="Bold" />
-                            <Label Text="{Binding User.Name}" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" />
-                            <HorizontalStackLayout Spacing="4">
-                                <Label Text="{Binding NumberOfSeats}" />
-                                <Label Text="asientos ·" />
-                                <Label Text="{Binding TotalAmount, StringFormat='{0:C}'}" FontAttributes="Bold" />
-                                <Label Text="·" />
-                                <Label Text="{Binding Status}" TextColor="{AppThemeBinding Light=#1976D2, Dark=#82B1FF}" />
-                            </HorizontalStackLayout>
-                            <Button Text="Ver detalle"
-                                    Clicked="OnDetailClicked"
-                                    CommandParameter="{Binding .}"
-                                    Margin="0,8,0,0" />
-                        </VerticalStackLayout>
-                    </Border>
-                </DataTemplate>
-            </CollectionView.ItemTemplate>
-        </CollectionView>
-        </RefreshView>
+        </Grid>
     </Grid>
 </ContentPage>

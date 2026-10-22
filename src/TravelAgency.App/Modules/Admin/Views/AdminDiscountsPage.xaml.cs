@@ -81,12 +81,12 @@ public partial class AdminDiscountsPage : ContentPage
     {
         var border = new Border
         {
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            BackgroundColor = Color.FromArgb("#F2F3FF"),
-            Stroke = Color.FromArgb("#E2E7FF"),
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 16 },
+            BackgroundColor = Color.FromArgb("#FFFFFF"),
+            Stroke = Color.FromArgb("#DAE2FD"),
             StrokeThickness = 1,
-            Padding = new Thickness(14, 12),
-            Margin = new Thickness(0, 4)
+            Padding = new Thickness(14),
+            Margin = new Thickness(0, 2)
         };
 
         var stack = new VerticalStackLayout { Spacing = 4 };
@@ -170,22 +170,50 @@ public partial class AdminDiscountsPage : ContentPage
             });
         }
 
-        var actions = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 8, 0, 0) };
-        var edit = new Button { Text = "Editar", FontSize = 12, HeightRequest = 34, CornerRadius = 8, Padding = new Thickness(12, 0) };
-        var toggle = new Button { Text = discount.IsActive ? "Desactivar" : "Activar", FontSize = 12, HeightRequest = 34, CornerRadius = 8, Padding = new Thickness(12, 0) };
+        var actions = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star)
+            },
+            ColumnSpacing = 6,
+            Margin = new Thickness(0, 10, 0, 0)
+        };
+        var edit = new Button
+        {
+            Text = "Editar",
+            FontSize = 12,
+            MinimumHeightRequest = 44,
+            CornerRadius = 14,
+            Padding = new Thickness(4, 0),
+            BackgroundColor = Color.FromArgb("#003B1B"),
+            TextColor = Colors.White
+        };
+        var toggle = new Button
+        {
+            Text = discount.IsActive ? "Desactivar" : "Activar",
+            FontSize = 12,
+            MinimumHeightRequest = 44,
+            CornerRadius = 14,
+            Padding = new Thickness(4, 0),
+            BackgroundColor = Color.FromArgb("#DAE2FD"),
+            TextColor = Color.FromArgb("#131B2E")
+        };
         var del = new Button
         {
             Text = "Eliminar",
             FontSize = 12,
-            HeightRequest = 34,
-            CornerRadius = 8,
-            Padding = new Thickness(12, 0),
+            MinimumHeightRequest = 44,
+            CornerRadius = 14,
+            Padding = new Thickness(4, 0),
             BackgroundColor = Color.FromArgb("#BA1A1A"),
             TextColor = Colors.White
         };
-        actions.Children.Add(edit);
-        actions.Children.Add(toggle);
-        actions.Children.Add(del);
+        actions.Add(edit, 0, 0);
+        actions.Add(toggle, 1, 0);
+        actions.Add(del, 2, 0);
         stack.Children.Add(actions);
 
         edit.Clicked += (_, _) => StartEdit(discount);

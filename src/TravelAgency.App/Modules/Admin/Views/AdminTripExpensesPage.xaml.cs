@@ -151,12 +151,12 @@ public partial class AdminTripExpensesPage : ContentPage
     {
         var border = new Border
         {
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            BackgroundColor = Color.FromArgb("#F2F3FF"),
-            Stroke = Color.FromArgb("#E2E7FF"),
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 16 },
+            BackgroundColor = Color.FromArgb("#FFFFFF"),
+            Stroke = Color.FromArgb("#DAE2FD"),
             StrokeThickness = 1,
-            Padding = new Thickness(14, 12),
-            Margin = new Thickness(0, 4)
+            Padding = new Thickness(14),
+            Margin = new Thickness(0, 2)
         };
 
         var stack = new VerticalStackLayout { Spacing = 4 };
@@ -194,16 +194,34 @@ public partial class AdminTripExpensesPage : ContentPage
             TextColor = Color.FromArgb("#404941")
         });
 
-        var actions = new HorizontalStackLayout { Spacing = 6, Margin = new Thickness(0, 8, 0, 0) };
+        var actions = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star)
+            },
+            ColumnSpacing = 8,
+            Margin = new Thickness(0, 10, 0, 0)
+        };
 
-        var edit = new Button { Text = "Editar", FontSize = 12, HeightRequest = 34, CornerRadius = 8, Padding = new Thickness(12, 0) };
+        var edit = new Button
+        {
+            Text = "Editar",
+            FontSize = 12,
+            MinimumHeightRequest = 44,
+            CornerRadius = 14,
+            Padding = new Thickness(4, 0),
+            BackgroundColor = Color.FromArgb("#003B1B"),
+            TextColor = Colors.White
+        };
         var del = new Button
         {
             Text = "Eliminar",
             FontSize = 12,
-            HeightRequest = 34,
-            CornerRadius = 8,
-            Padding = new Thickness(12, 0),
+            MinimumHeightRequest = 44,
+            CornerRadius = 14,
+            Padding = new Thickness(4, 0),
             BackgroundColor = Color.FromArgb("#BA1A1A"),
             TextColor = Colors.White
         };
@@ -211,8 +229,8 @@ public partial class AdminTripExpensesPage : ContentPage
         edit.Clicked += (_, _) => StartEdit(expense);
         del.Clicked += async (_, _) => await DeleteAsync(expense);
 
-        actions.Children.Add(edit);
-        actions.Children.Add(del);
+        actions.Add(edit, 0, 0);
+        actions.Add(del, 1, 0);
         stack.Children.Add(actions);
 
         border.Content = stack;
@@ -225,7 +243,7 @@ public partial class AdminTripExpensesPage : ContentPage
         ConceptEntry.Text = expense.Concept;
         AmountEntry.Text = expense.Amount.ToString("0.00");
 
-        FormTitleLabel.Text = "Editar gasto o inversion";
+        FormTitleLabel.Text = "Editar gasto o inversión";
         AddButton.Text = "Guardar";
         CancelEditButton.IsVisible = true;
         FeedbackLabel.IsVisible = false;
@@ -237,8 +255,8 @@ public partial class AdminTripExpensesPage : ContentPage
         ConceptEntry.Text = string.Empty;
         AmountEntry.Text = string.Empty;
 
-        FormTitleLabel.Text = "Agregar gasto o inversion";
-        AddButton.Text = "+";
+        FormTitleLabel.Text = "Agregar gasto o inversión";
+        AddButton.Text = "Agregar gasto";
         CancelEditButton.IsVisible = false;
         FeedbackLabel.IsVisible = false;
     }

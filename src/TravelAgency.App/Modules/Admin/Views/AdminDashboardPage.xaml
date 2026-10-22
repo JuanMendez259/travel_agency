@@ -3,147 +3,249 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminDashboardPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
     xmlns:controls="clr-namespace:TravelAgency.App.Controls"
-    Title="Publicar Viaje">
+    Title="Publicar Viaje"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
+    BackgroundColor="{StaticResource Surface}">
 
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
-    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,*">
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Admin · Publicar Viaje"
+            PageTitle="Publicar Viaje"
+            ShowBack="False"
+            ShowLogout="True"
+            LogoutRequested="OnLogoutClicked" />
 
-    <ScrollView x:Name="PageScroll">
-        <VerticalStackLayout Padding="20" Spacing="10">
+        <ScrollView x:Name="PageScroll" Grid.Row="1">
+            <VerticalStackLayout Padding="20,4,20,32" Spacing="16">
 
-            <Label x:Name="FormTitleLabel" Text="Nuevo viaje" FontSize="20" FontAttributes="Bold" />
+                <Label x:Name="FormTitleLabel"
+                       Text="Nuevo viaje"
+                       Style="{StaticResource AdminCardTitle}"
+                       FontSize="20"
+                       SemanticProperties.HeadingLevel="Level2" />
 
-            <Label Text="Título" />
-            <Entry x:Name="TitleEntry" />
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Datos del viaje" Style="{StaticResource AdminCardTitle}" />
 
-            <Label Text="Destino" />
-            <Entry x:Name="DestinationEntry" />
+                        <Label Text="Título" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Entry x:Name="TitleEntry" HeightRequest="48"
+                               BackgroundColor="{StaticResource SurfaceContainerLow}"
+                               TextColor="{StaticResource OnSurface}"
+                               PlaceholderColor="{StaticResource Outline}" />
 
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <VerticalStackLayout Spacing="4">
-                    <Label Text="Fecha y hora de inicio" />
-                    <DatePicker x:Name="StartDatePicker" />
-                    <TimePicker x:Name="StartTimePicker" Format="t" />
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="1" Spacing="4">
-                    <Label Text="Fecha y hora de fin" />
-                    <DatePicker x:Name="EndDatePicker" />
-                    <TimePicker x:Name="EndTimePicker" Format="t" />
-                </VerticalStackLayout>
-            </Grid>
+                        <Label Text="Destino" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Entry x:Name="DestinationEntry" HeightRequest="48"
+                               BackgroundColor="{StaticResource SurfaceContainerLow}"
+                               TextColor="{StaticResource OnSurface}"
+                               PlaceholderColor="{StaticResource Outline}" />
 
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                <VerticalStackLayout>
-                    <Label Text="Precio (por asiento)" />
-                    <Entry x:Name="PriceEntry" Keyboard="Numeric" />
-                     <Label Text="Precio niño (opcional)" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-                    <Entry x:Name="ChildPriceEntry" Keyboard="Numeric" />
-                </VerticalStackLayout>
-                <VerticalStackLayout Grid.Column="1" x:Name="SingleCapacityLayout">
-                    <Label Text="Capacidad total (asientos)" />
-                    <Entry x:Name="CapacityEntry" Keyboard="Numeric" />
-                </VerticalStackLayout>
-            </Grid>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="Fecha y hora de inicio" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                                <DatePicker x:Name="StartDatePicker" />
+                                <TimePicker x:Name="StartTimePicker" Format="t" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                <Label Text="Fecha y hora de fin" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                                <DatePicker x:Name="EndDatePicker" />
+                                <TimePicker x:Name="EndTimePicker" Format="t" />
+                            </VerticalStackLayout>
+                        </Grid>
 
-            <VerticalStackLayout x:Name="TwoFloorsSection" Spacing="6" IsVisible="False">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                    <VerticalStackLayout Spacing="1" VerticalOptions="Center">
-                        <Label Text="Autobus de dos pisos" />
-                        <Label Text="Activalo y define el cupo de cada piso."
-                               FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="Precio (por asiento)" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                                <Entry x:Name="PriceEntry" Keyboard="Numeric" HeightRequest="48"
+                                       BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                       TextColor="{StaticResource OnSurface}"
+                                       PlaceholderColor="{StaticResource Outline}" />
+                                <Label Text="Precio niño (opcional)" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                                <Entry x:Name="ChildPriceEntry" Keyboard="Numeric" HeightRequest="48"
+                                       BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                       TextColor="{StaticResource OnSurface}"
+                                       PlaceholderColor="{StaticResource Outline}" />
+                            </VerticalStackLayout>
+                            <VerticalStackLayout Grid.Column="1" x:Name="SingleCapacityLayout" Spacing="4">
+                                <Label Text="Capacidad total (asientos)" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                                <Entry x:Name="CapacityEntry" Keyboard="Numeric" HeightRequest="48"
+                                       BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                       TextColor="{StaticResource OnSurface}"
+                                       PlaceholderColor="{StaticResource Outline}" />
+                            </VerticalStackLayout>
+                        </Grid>
                     </VerticalStackLayout>
-                    <Switch x:Name="TwoFloorsSwitch" Grid.Column="1" Toggled="OnTwoFloorsToggled" VerticalOptions="Center" />
-                </Grid>
-                <VerticalStackLayout x:Name="FloorFieldsLayout" Spacing="8" IsVisible="False">
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
-                        <VerticalStackLayout>
-                            <Label Text="Cupo piso 1" />
-                            <Entry x:Name="Floor1CapacityEntry" Keyboard="Numeric" TextChanged="OnFloorCapacityChanged" />
+                </Border>
+
+                <Border x:Name="TwoFloorsSection"
+                        Style="{StaticResource AdminCard}"
+                        IsVisible="False">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                                <Label Text="Autobús de dos pisos" Style="{StaticResource AdminCardTitle}" />
+                                <Label Text="Actívalo y define el cupo de cada piso."
+                                       FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                            <Switch x:Name="TwoFloorsSwitch" Grid.Column="1"
+                                    Toggled="OnTwoFloorsToggled" VerticalOptions="Center" />
+                        </Grid>
+
+                        <VerticalStackLayout x:Name="FloorFieldsLayout" Spacing="8" IsVisible="False">
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="Cupo piso 1" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                                    <Entry x:Name="Floor1CapacityEntry" Keyboard="Numeric" TextChanged="OnFloorCapacityChanged"
+                                           HeightRequest="48" BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                           TextColor="{StaticResource OnSurface}" PlaceholderColor="{StaticResource Outline}" />
+                                </VerticalStackLayout>
+                                <VerticalStackLayout Grid.Column="1" Spacing="4">
+                                    <Label Text="Cupo piso 2" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                                    <Entry x:Name="Floor2CapacityEntry" Keyboard="Numeric" TextChanged="OnFloorCapacityChanged"
+                                           HeightRequest="48" BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                           TextColor="{StaticResource OnSurface}" PlaceholderColor="{StaticResource Outline}" />
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Label x:Name="FloorsTotalLabel" Text="Total: 0 asientos" FontSize="12"
+                                   TextColor="{StaticResource OnSurfaceVariant}" />
                         </VerticalStackLayout>
-                        <VerticalStackLayout Grid.Column="1">
-                            <Label Text="Cupo piso 2" />
-                            <Entry x:Name="Floor2CapacityEntry" Keyboard="Numeric" TextChanged="OnFloorCapacityChanged" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                                <Label Text="Este viaje incluye hotel" Style="{StaticResource AdminCardTitle}" />
+                                <Label Text="Si lo activas, la disponibilidad depende del cupo del hotel."
+                                       FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                            <Switch x:Name="IncludesHotelSwitch" Grid.Column="1"
+                                    Toggled="OnIncludesHotelToggled" VerticalOptions="Center" />
+                        </Grid>
+
+                        <VerticalStackLayout x:Name="HotelFieldsLayout" Spacing="8" IsVisible="False">
+                            <Label Text="Nombre del hotel (opcional)" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                            <Entry x:Name="HotelNameEntry" Placeholder="Ej. Hotel Costa Azul" HeightRequest="48"
+                                   BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                   TextColor="{StaticResource OnSurface}"
+                                   PlaceholderColor="{StaticResource Outline}" />
+                            <Label Text="Lugares disponibles según el hotel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                            <Entry x:Name="HotelCapacityEntry" Keyboard="Numeric" Placeholder="Confírmalo con el hotel"
+                                   HeightRequest="48" BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                   TextColor="{StaticResource OnSurface}" PlaceholderColor="{StaticResource Outline}" />
+                            <Label Text="Este número será el cupo que verán los clientes. Verifícalo con el hotel antes de publicar."
+                                   FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
                         </VerticalStackLayout>
-                    </Grid>
-                    <Label x:Name="FloorsTotalLabel" Text="Total: 0 asientos" FontSize="12"
-                           TextColor="{StaticResource OnSurfaceVariant}" />
-                </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Reservas y cancelación" Style="{StaticResource AdminCardTitle}" />
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                                <Label Text="Fecha límite de reserva" FontSize="14" FontAttributes="Bold" />
+                                <Label x:Name="BookingDeadlineHintLabel"
+                                       Text="Actívalo para cerrar las reservas antes de la salida."
+                                       FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                            <Switch x:Name="BookingDeadlineSwitch" Grid.Column="1"
+                                    Toggled="OnBookingDeadlineToggled" VerticalOptions="Center" />
+                        </Grid>
+                        <DatePicker x:Name="BookingDeadlinePicker" IsVisible="False" />
+
+                        <BoxView HeightRequest="1" Color="{StaticResource SurfaceContainerHigh}" />
+
+                        <Label Text="Cancelación (política del cliente)" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Entry x:Name="CancellationDaysLimitEntry" Keyboard="Numeric"
+                               Placeholder="Obligatorio, ej: 3" HeightRequest="48"
+                               BackgroundColor="{StaticResource SurfaceContainerLow}"
+                               TextColor="{StaticResource OnSurface}"
+                               PlaceholderColor="{StaticResource Outline}" />
+                        <Label x:Name="CancellationHintLabel" FontSize="12"
+                               TextColor="{StaticResource OnSurfaceVariant}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Clasificación" Style="{StaticResource AdminCardTitle}" />
+
+                        <Label Text="Categoría del viaje" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Picker x:Name="CategoryPicker" />
+                        <Label Text="Agrupa el viaje para que los clientes lo encuentren más fácil."
+                               FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+
+                        <Label Text="Descripción" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Editor x:Name="DescriptionEditor" HeightRequest="100"
+                                BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                TextColor="{StaticResource OnSurface}"
+                                PlaceholderColor="{StaticResource Outline}" />
+
+                        <Label Text="Tipo de transporte" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Picker x:Name="TransportTypePicker" SelectedIndexChanged="OnTransportChanged" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Visibilidad" Style="{StaticResource AdminCardTitle}" />
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <Switch x:Name="ActiveSwitch" Toggled="OnActiveToggled" VerticalOptions="Center" />
+                            <VerticalStackLayout Grid.Column="1" Spacing="1">
+                                <Label x:Name="ActiveStateLabel" Text="Activo" FontSize="14" FontAttributes="Bold"
+                                       TextColor="{StaticResource Secondary}" />
+                                <Label x:Name="ActiveHintLabel"
+                                       Text="Los clientes podrán verlo y reservar."
+                                       FontSize="12"
+                                       TextColor="{StaticResource OnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Imagen del viaje" Style="{StaticResource AdminCardTitle}" />
+
+                        <Button Text="📷 Seleccionar imagen"
+                                Style="{StaticResource AdminOutlineButton}"
+                                CornerRadius="14"
+                                Clicked="OnPickImageClicked" />
+                        <controls:NetworkImage x:Name="ImagePreview"
+                                               HeightRequest="140"
+                                               Aspect="AspectFill"
+                                               IsVisible="False" />
+                        <Label x:Name="ImageNameLabel"
+                               FontSize="12"
+                               TextColor="{StaticResource OnSurfaceVariant}"
+                               IsVisible="False" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Button x:Name="SaveButton"
+                        Text="Guardar viaje"
+                        Clicked="OnSaveClicked"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="{StaticResource OnPrimary}"
+                        FontFamily="OpenSansSemibold"
+                        CornerRadius="16"
+                        MinimumHeightRequest="48" />
+
+                <Button x:Name="CancelEditButton"
+                        Text="Cancelar edición"
+                        Clicked="OnCancelEditClicked"
+                        IsVisible="False"
+                        Style="{StaticResource AdminTonalButton}" />
+
             </VerticalStackLayout>
-
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <VerticalStackLayout Spacing="1" VerticalOptions="Center">
-                    <Label Text="Este viaje incluye hotel" />
-                    <Label Text="Si lo activas, la disponibilidad depende del cupo del hotel."
-                           FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-                </VerticalStackLayout>
-                <Switch x:Name="IncludesHotelSwitch" Grid.Column="1" Toggled="OnIncludesHotelToggled" VerticalOptions="Center" />
-            </Grid>
-
-            <VerticalStackLayout x:Name="HotelFieldsLayout" Spacing="8" IsVisible="False">
-                <Label Text="Nombre del hotel (opcional)" />
-                <Entry x:Name="HotelNameEntry" Placeholder="Ej. Hotel Costa Azul" />
-                <Label Text="Lugares disponibles según el hotel" />
-                <Entry x:Name="HotelCapacityEntry" Keyboard="Numeric" Placeholder="Confírmalo con el hotel" />
-                <Label Text="Este número será el cupo que verán los clientes. Verifícalo con el hotel antes de publicar."
-                       FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-            </VerticalStackLayout>
-
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <VerticalStackLayout Spacing="1" VerticalOptions="Center">
-                    <Label Text="Fecha límite de reserva" />
-                    <Label x:Name="BookingDeadlineHintLabel"
-                           Text="Actívalo para cerrar las reservas antes de la salida."
-                           FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-                </VerticalStackLayout>
-                <Switch x:Name="BookingDeadlineSwitch" Grid.Column="1" Toggled="OnBookingDeadlineToggled" VerticalOptions="Center" />
-            </Grid>
-            <DatePicker x:Name="BookingDeadlinePicker" IsVisible="False" Margin="0,6,0,0" />
-
-            <Label Text="Cancelación (política del cliente)" />
-            <Entry x:Name="CancellationDaysLimitEntry" Keyboard="Numeric" Placeholder="Obligatorio, ej: 3" />
-             <Label x:Name="CancellationHintLabel" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-
-            <Label Text="Categoría del viaje" />
-            <Picker x:Name="CategoryPicker" />
-            <Label Text="Agrupa el viaje para que los clientes lo encuentren más fácil."
-                   FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-
-            <Label Text="Descripción" />
-            <Editor x:Name="DescriptionEditor" HeightRequest="100" />
-
-            <Label Text="Tipo de transporte" />
-            <Picker x:Name="TransportTypePicker" SelectedIndexChanged="OnTransportChanged" />
-
-            <Label Text="Estado del viaje" />
-            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                <Switch x:Name="ActiveSwitch" Toggled="OnActiveToggled" VerticalOptions="Center" />
-                <VerticalStackLayout Grid.Column="1" Spacing="1">
-                    <Label x:Name="ActiveStateLabel" Text="Activo" FontSize="14" FontAttributes="Bold" />
-                    <Label x:Name="ActiveHintLabel"
-                           Text="Los clientes podrán verlo y reservar."
-                           FontSize="12"
-                           TextColor="{StaticResource OnSurfaceVariant}" />
-                </VerticalStackLayout>
-            </Grid>
-
-            <Button Text="Seleccionar imagen" Clicked="OnPickImageClicked" />
-            <controls:NetworkImage x:Name="ImagePreview"
-                   HeightRequest="140"
-                   Aspect="AspectFill"
-                   IsVisible="False"
-                   Margin="0,8,0,0" />
-            <Label x:Name="ImageNameLabel"
-                   FontSize="12"
-                   TextColor="{StaticResource OnSurfaceVariant}"
-                   IsVisible="False" />
-
-            <Button x:Name="SaveButton" Text="Guardar viaje" Clicked="OnSaveClicked" />
-            <Button x:Name="CancelEditButton"
-                    Text="Cancelar edición"
-                    Clicked="OnCancelEditClicked"
-                    IsVisible="False" />
-        </VerticalStackLayout>
-    </ScrollView>
+        </ScrollView>
+    </Grid>
 </ContentPage>

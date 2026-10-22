@@ -3,76 +3,139 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripExpensesPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Gastos">
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
+    Title="Gastos"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
+    BackgroundColor="{StaticResource Surface}">
 
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
-    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,*">
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Admin · Gastos"
+            PageTitle="Gastos de Viaje"
+            ShowBack="False"
+            ShowLogout="True"
+            LogoutRequested="OnLogoutClicked" />
 
-    <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="10">
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20,4,20,32" Spacing="16">
 
-            <Label Text="Gastos de Viaje" FontSize="20" FontAttributes="Bold" />
-            <Label Text="Registra los gastos e inversiones de cada viaje para llevar el control del dinero invertido."
-                   FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Viaje" Style="{StaticResource AdminCardTitle}" />
+                        <Picker x:Name="TripPicker" SelectedIndexChanged="OnTripChanged" />
 
-            <Label Text="Viaje" Margin="0,6,0,0" />
-            <Picker x:Name="TripPicker" SelectedIndexChanged="OnTripChanged" />
+                        <Border StrokeShape="RoundRectangle 14"
+                                StrokeThickness="0"
+                                BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                Padding="14,12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="Inversión en viaje"
+                                       FontSize="12"
+                                       TextColor="{StaticResource OnSurfaceVariant}" />
+                                <Label x:Name="TripTitleLabel"
+                                       Text="—"
+                                       FontFamily="OpenSansSemibold"
+                                       FontSize="17"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource OnSurface}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
 
-            <Border StrokeShape="RoundRectangle 12" StrokeThickness="0"
-                    BackgroundColor="{StaticResource SurfaceContainerLow}" Padding="14,10">
-                <VerticalStackLayout Spacing="1">
-                    <Label Text="Inversion en Viaje" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
-                    <Label x:Name="TripTitleLabel" Text="—" FontSize="17" FontAttributes="Bold"
-                           TextColor="{StaticResource OnSurface}" />
-                </VerticalStackLayout>
-            </Border>
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label x:Name="FormTitleLabel"
+                               Text="Agregar gasto o inversión"
+                               Style="{StaticResource AdminCardTitle}"
+                               FontSize="18" />
 
-            <BoxView HeightRequest="1" Color="{StaticResource OutlineVariant}" Margin="0,12,0,4" />
+                        <Label Text="Concepto o descripción de gasto"
+                               FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Entry x:Name="ConceptEntry" Placeholder="Ej. Renta de autobús"
+                               HeightRequest="48" BackgroundColor="{StaticResource SurfaceContainerLow}"
+                               TextColor="{StaticResource OnSurface}" PlaceholderColor="{StaticResource Outline}" />
 
-            <Label x:Name="FormTitleLabel" Text="Agregar gasto o inversion" FontSize="17" FontAttributes="Bold" />
+                        <Label Text="Cantidad" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Entry x:Name="AmountEntry" Placeholder="Ej. 1500.00" Keyboard="Numeric"
+                               TextChanged="OnAmountChanged" HeightRequest="48"
+                               BackgroundColor="{StaticResource SurfaceContainerLow}"
+                               TextColor="{StaticResource OnSurface}" PlaceholderColor="{StaticResource Outline}" />
 
-            <Label Text="Concepto o Descripcion de gasto" />
-            <Entry x:Name="ConceptEntry" Placeholder="Ej. Renta de autobus" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="0,4,0,0">
+                            <Button x:Name="AddButton"
+                                    Text="Agregar gasto"
+                                    FontSize="14"
+                                    FontAttributes="Bold"
+                                    Clicked="OnAddClicked"
+                                    BackgroundColor="{StaticResource Primary}"
+                                    TextColor="{StaticResource OnPrimary}"
+                                    FontFamily="OpenSansSemibold"
+                                    CornerRadius="16"
+                                    MinimumHeightRequest="44" />
+                            <Button x:Name="CancelEditButton"
+                                    Grid.Column="1"
+                                    Text="Cancelar"
+                                    Clicked="OnCancelEditClicked"
+                                    IsVisible="False"
+                                    Style="{StaticResource AdminTonalButton}" />
+                        </Grid>
 
-            <Label Text="Cantidad" />
-            <Entry x:Name="AmountEntry" Placeholder="Ej. 1500.00" Keyboard="Numeric"
-                   TextChanged="OnAmountChanged" />
+                        <Label x:Name="FeedbackLabel" FontSize="13" IsVisible="False" />
+                    </VerticalStackLayout>
+                </Border>
 
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10" Margin="0,6,0,0">
-                <Button x:Name="AddButton" Text="+" FontSize="24" FontAttributes="Bold"
-                        Clicked="OnAddClicked" BackgroundColor="{StaticResource Primary}" TextColor="White" />
-                <Button x:Name="CancelEditButton" Grid.Column="1" Text="Cancelar" Clicked="OnCancelEditClicked"
-                        IsVisible="False" BackgroundColor="{StaticResource SurfaceContainerHigh}"
-                        TextColor="{StaticResource OnSurface}" />
-            </Grid>
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Label Text="Gastos registrados" Style="{StaticResource AdminCardTitle}" />
+                            <Label x:Name="CountLabel"
+                                   Grid.Column="1"
+                                   FontSize="12"
+                                   TextColor="{StaticResource OnSurfaceVariant}"
+                                   VerticalOptions="Center" />
+                        </Grid>
 
-            <Label x:Name="FeedbackLabel" FontSize="13" IsVisible="False" />
+                        <VerticalStackLayout x:Name="ExpensesLayout" Spacing="10" />
 
-            <BoxView HeightRequest="1" Color="{StaticResource OutlineVariant}" Margin="0,20,0,10" />
+                        <Label x:Name="EmptyLabel"
+                               Text="Todavía no hay gastos registrados para este viaje."
+                               FontSize="13"
+                               TextColor="{StaticResource OnSurfaceVariant}"
+                               HorizontalTextAlignment="Center"
+                               Margin="0,12"
+                               IsVisible="False" />
 
-            <Label Text="Seccion Gastos" FontSize="17" FontAttributes="Bold" />
-            <Label x:Name="CountLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Border StrokeShape="RoundRectangle 14"
+                                StrokeThickness="0"
+                                BackgroundColor="{StaticResource SecondaryContainer}"
+                                Padding="14,12"
+                                Margin="0,4,0,0">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Text="Total"
+                                       FontFamily="OpenSansSemibold"
+                                       FontSize="15"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource OnSecondaryContainer}"
+                                       VerticalOptions="Center" />
+                                <Label x:Name="TotalLabel"
+                                       Grid.Column="1"
+                                       Text="$0.00"
+                                       FontFamily="OpenSansSemibold"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource OnSecondaryContainer}"
+                                       VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
 
-            <VerticalStackLayout x:Name="ExpensesLayout" Spacing="8" Margin="0,6,0,0" />
+                        <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" />
+                    </VerticalStackLayout>
+                </Border>
 
-            <Label x:Name="EmptyLabel"
-                   Text="Todavía no hay gastos registrados para este viaje."
-                   FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
-
-            <Border StrokeShape="RoundRectangle 12" StrokeThickness="0"
-                    BackgroundColor="{StaticResource SecondaryContainer}" Padding="14,10" Margin="0,10,0,0">
-                <Grid ColumnDefinitions="*,Auto">
-                    <Label Text="Total" FontSize="16" FontAttributes="Bold"
-                           TextColor="{StaticResource OnSecondaryContainer}" VerticalOptions="Center" />
-                    <Label x:Name="TotalLabel" Grid.Column="1" Text="$0.00" FontSize="18" FontAttributes="Bold"
-                           TextColor="{StaticResource OnSecondaryContainer}" VerticalOptions="Center" />
-                </Grid>
-            </Border>
-
-            <ActivityIndicator x:Name="LoadingIndicator" IsRunning="False" />
-
-        </VerticalStackLayout>
-    </ScrollView>
-
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>

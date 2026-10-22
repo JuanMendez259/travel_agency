@@ -3,32 +3,85 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminBookingQrPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="Código QR">
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
+    Title="Código QR"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
+    BackgroundColor="{StaticResource Surface}">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="12">
+    <Grid RowDefinitions="Auto,*">
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Check-in"
+            PageTitle="Código QR"
+            ShowBack="True"
+            ShowLogout="False"
+            BackRequested="OnBackClicked" />
 
-            <Image x:Name="QrImage" HeightRequest="260" WidthRequest="260" HorizontalOptions="Center" />
-            <Label x:Name="PassengerLabel" FontSize="18" FontAttributes="Bold" HorizontalOptions="Center" />
-            <Label x:Name="TripLabel" FontSize="14" TextColor="{StaticResource OnSurfaceVariant}" HorizontalOptions="Center" />
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20,4,20,32" Spacing="16">
 
-            <Border StrokeThickness="0"
-                    BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}"
-                    Padding="16"
-                    Margin="0,10,0,0">
-                <VerticalStackLayout Spacing="6">
-                    <Label x:Name="SeatsLabel" FontSize="14" />
-                    <Label x:Name="StateLabel" FontSize="14" FontAttributes="Bold" />
-                    <Label x:Name="CheckedInAtLabel" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" IsVisible="False" />
-                </VerticalStackLayout>
-            </Border>
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="12">
+                        <Border StrokeShape="RoundRectangle 20"
+                                StrokeThickness="0"
+                                BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                Padding="16"
+                                HorizontalOptions="Center">
+                            <Image x:Name="QrImage"
+                                   HeightRequest="260"
+                                   WidthRequest="260"
+                                   HorizontalOptions="Center" />
+                        </Border>
 
-            <Button x:Name="BoardButton"
-                    Text="Marcar como abordado"
-                    Clicked="OnBoardClicked"
-                    BackgroundColor="#2F855A" TextColor="White" />
+                        <Label x:Name="PassengerLabel"
+                               FontFamily="OpenSansSemibold"
+                               FontSize="18"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource OnSurface}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center" />
+                        <Label x:Name="TripLabel"
+                               FontSize="13"
+                               TextColor="{StaticResource OnSurfaceVariant}"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center" />
+                    </VerticalStackLayout>
+                </Border>
 
-            <Button Text="Volver" Clicked="OnBackClicked" Margin="0,8,0,0" />
-        </VerticalStackLayout>
-    </ScrollView>
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Estado del boleto" Style="{StaticResource AdminCardTitle}" />
+                        <Label x:Name="SeatsLabel"
+                               FontSize="14"
+                               TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Label x:Name="StateLabel"
+                               FontFamily="OpenSansSemibold"
+                               FontSize="14"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Primary}" />
+                        <Label x:Name="CheckedInAtLabel"
+                               FontSize="12"
+                               TextColor="{StaticResource OnSurfaceVariant}"
+                               IsVisible="False" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Button x:Name="BoardButton"
+                        Text="✅ Marcar como abordado"
+                        Clicked="OnBoardClicked"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="{StaticResource OnPrimary}"
+                        FontFamily="OpenSansSemibold"
+                        CornerRadius="16"
+                        MinimumHeightRequest="48" />
+
+                <Label Text="Cada código registra un pasajero. Si el boleto ya fue abordado, se mostrará el aviso correspondiente."
+                       FontSize="12"
+                       TextColor="{StaticResource OnSurfaceVariant}"
+                       HorizontalTextAlignment="Center" />
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>
