@@ -1,3 +1,4 @@
+using TravelAgency.App.Modules.Admin;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
 using System.Security.Cryptography;
@@ -73,38 +74,67 @@ public partial class AdminCoordinadoresPage : ContentPage
         var email = string.IsNullOrWhiteSpace(user.Email) ? "Sin correo" : user.Email;
         var phone = string.IsNullOrWhiteSpace(user.Phone) ? "Sin teléfono" : user.Phone;
 
+        var avatar = new Border
+        {
+            WidthRequest = 44,
+            HeightRequest = 44,
+            Padding = 0,
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 22 },
+            BackgroundColor = Color.FromArgb("#E2E7FF"),
+            Content = new Label
+            {
+                Text = AdminDisplay.Initials(name),
+                FontSize = 14,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#003B1B"),
+                HorizontalOptions = LayoutOptions.Center,
+                VerticalOptions = LayoutOptions.Center
+            }
+        };
+
         var info = new VerticalStackLayout { Spacing = 2 };
-        info.Add(new Label { Text = name, FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#131B2E") });
+        info.Add(new Label { Text = name, FontSize = 15, FontAttributes = FontAttributes.Bold, TextColor = Color.FromArgb("#131B2E") });
         info.Add(new Label { Text = email, FontSize = 12, TextColor = Color.FromArgb("#404941") });
         info.Add(new Label { Text = phone, FontSize = 12, TextColor = Color.FromArgb("#404941") });
 
-        var roleLabel = new Label
+        var roleBadge = new Border
         {
-            Text = "Coordinador",
-            FontSize = 11,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = Color.FromArgb("#006C49"),
-            VerticalOptions = LayoutOptions.Start
+            Padding = new Thickness(8, 3),
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 100 },
+            BackgroundColor = Color.FromArgb("#E6F4EA"),
+            VerticalOptions = LayoutOptions.Start,
+            Content = new Label
+            {
+                Text = "Coordinador",
+                FontSize = 10,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#14532D")
+            }
         };
 
         var header = new Grid
         {
             ColumnDefinitions =
             {
+                new ColumnDefinition(GridLength.Auto),
                 new ColumnDefinition(GridLength.Star),
                 new ColumnDefinition(GridLength.Auto)
-            }
+            },
+            ColumnSpacing = 10
         };
-        header.Add(info, 0, 0);
-        header.Add(roleLabel, 1, 0);
+        header.Add(avatar, 0, 0);
+        header.Add(info, 1, 0);
+        header.Add(roleBadge, 2, 0);
 
         var editButton = new Button
         {
             Text = "Editar",
             FontSize = 12,
-            HeightRequest = 34,
-            CornerRadius = 8,
-            Padding = new Thickness(12, 0),
+            MinimumHeightRequest = 44,
+            CornerRadius = 14,
+            Padding = new Thickness(4, 0),
             BackgroundColor = Color.FromArgb("#003B1B"),
             TextColor = Colors.White
         };
@@ -112,12 +142,12 @@ public partial class AdminCoordinadoresPage : ContentPage
 
         var resetButton = new Button
         {
-            Text = "Resetear contraseña",
+            Text = "Resetear",
             FontSize = 12,
-            HeightRequest = 34,
-            CornerRadius = 8,
-            Padding = new Thickness(12, 0),
-            BackgroundColor = Color.FromArgb("#E2E7FF"),
+            MinimumHeightRequest = 44,
+            CornerRadius = 14,
+            Padding = new Thickness(4, 0),
+            BackgroundColor = Color.FromArgb("#DAE2FD"),
             TextColor = Color.FromArgb("#131B2E")
         };
         resetButton.Clicked += async (_, __) => await OnResetPasswordAsync(user);
@@ -126,18 +156,28 @@ public partial class AdminCoordinadoresPage : ContentPage
         {
             Text = "Eliminar",
             FontSize = 12,
-            HeightRequest = 34,
-            CornerRadius = 8,
-            Padding = new Thickness(12, 0),
+            MinimumHeightRequest = 44,
+            CornerRadius = 14,
+            Padding = new Thickness(4, 0),
             BackgroundColor = Color.FromArgb("#BA1A1A"),
             TextColor = Colors.White
         };
         deleteButton.Clicked += async (_, __) => await OnDeleteAsync(user);
 
-        var actions = new HorizontalStackLayout { Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
-        actions.Add(editButton);
-        actions.Add(resetButton);
-        actions.Add(deleteButton);
+        var actions = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star)
+            },
+            ColumnSpacing = 6,
+            Margin = new Thickness(0, 10, 0, 0)
+        };
+        actions.Add(editButton, 0, 0);
+        actions.Add(resetButton, 1, 0);
+        actions.Add(deleteButton, 2, 0);
 
         var content = new VerticalStackLayout { Spacing = 0 };
         content.Add(header);
@@ -145,12 +185,12 @@ public partial class AdminCoordinadoresPage : ContentPage
 
         return new Border
         {
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            BackgroundColor = Color.FromArgb("#F2F3FF"),
-            Stroke = Color.FromArgb("#E2E7FF"),
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 16 },
+            BackgroundColor = Color.FromArgb("#FFFFFF"),
+            Stroke = Color.FromArgb("#DAE2FD"),
             StrokeThickness = 1,
-            Padding = new Thickness(14, 10),
-            Margin = new Thickness(0, 4),
+            Padding = new Thickness(14),
+            Margin = new Thickness(0, 2),
             Content = content
         };
     }

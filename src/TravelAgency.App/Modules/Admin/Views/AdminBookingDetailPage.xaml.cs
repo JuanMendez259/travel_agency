@@ -140,8 +140,8 @@ public partial class AdminBookingDetailPage : ContentPage
             PassengersLayout.Children.Add(new Border
             {
                 StrokeThickness = 0,
-                BackgroundColor = Color.FromArgb("#EEEEEE"),
-                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 },
+                BackgroundColor = Color.FromArgb("#F2F3FF"),
+                StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 14 },
                 Content = grid
             });
         }
@@ -235,6 +235,12 @@ public partial class AdminBookingDetailPage : ContentPage
     private async void OnBackClicked(object? sender, EventArgs e)
     {
         await Shell.Current.GoToAsync("..");
+    }
+
+    private async void OnLogoutClicked(object? sender, EventArgs e)
+    {
+        var confirm = await DisplayAlertAsync("Cerrar sesión", "¿Deseas salir de tu cuenta?", "Sí", "No");
+        if (confirm) App.GoToLogin();
     }
 
     private async void OnRegisterPaymentClicked(object? sender, EventArgs e)

@@ -111,9 +111,9 @@ public partial class AdminBookingsPage : ContentPage
 
     private void RenderStatusChips()
     {
-        var defaultColor = Color.FromArgb("#E2E8F0");
-        var defaultText = Color.FromArgb("#1A202C");
-        var selectedColor = Color.FromArgb("#2B6CB0");
+        var defaultColor = Color.FromArgb("#DAE2FD");
+        var defaultText = Color.FromArgb("#131B2E");
+        var selectedColor = Color.FromArgb("#003B1B");
         var selectedText = Colors.White;
 
         void Style(Button? chip, bool selected)

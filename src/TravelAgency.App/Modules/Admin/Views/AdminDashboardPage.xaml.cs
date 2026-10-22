@@ -334,8 +334,8 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         var active = ActiveSwitch.IsToggled;
         ActiveStateLabel.Text = active ? "Activo" : "Pausado";
         ActiveStateLabel.TextColor = active
-            ? (Application.Current?.RequestedTheme == AppTheme.Dark ? Colors.White : Colors.Black)
-            : Color.FromArgb("#C53030");
+            ? Color.FromArgb("#003B1B")
+            : Color.FromArgb("#BA1A1A");
         ActiveHintLabel.Text = active
             ? "Los clientes podrán verlo y reservar."
             : "No aparecerá para nuevas reservas; las existentes se mantienen.";

@@ -141,10 +141,10 @@ public partial class AdminPayoutsPage : ContentPage
 
         var badge = new Border
         {
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 100 },
             StrokeThickness = 0,
             BackgroundColor = statusBg,
-            Padding = new Thickness(8, 2),
+            Padding = new Thickness(8, 3),
             VerticalOptions = LayoutOptions.Start,
             Content = new Label
             {
@@ -167,9 +167,9 @@ public partial class AdminPayoutsPage : ContentPage
             {
                 Text = "Marcar como pagado",
                 FontSize = 12,
-                HeightRequest = 34,
-                CornerRadius = 8,
-                Padding = new Thickness(12, 0),
+                MinimumHeightRequest = 44,
+                CornerRadius = 14,
+                Padding = new Thickness(4, 0),
                 BackgroundColor = Color.FromArgb("#003B1B"),
                 TextColor = Colors.White
             };
@@ -179,28 +179,37 @@ public partial class AdminPayoutsPage : ContentPage
             {
                 Text = "Rechazar",
                 FontSize = 12,
-                HeightRequest = 34,
-                CornerRadius = 8,
-                Padding = new Thickness(12, 0),
+                MinimumHeightRequest = 44,
+                CornerRadius = 14,
+                Padding = new Thickness(4, 0),
                 BackgroundColor = Color.FromArgb("#BA1A1A"),
                 TextColor = Colors.White
             };
             rejectButton.Clicked += async (_, _) => await ResolveAsync(payout, approve: false);
 
-            var actions = new HorizontalStackLayout { Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
-            actions.Add(payButton);
-            actions.Add(rejectButton);
+            var actions = new Grid
+            {
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition(GridLength.Star),
+                    new ColumnDefinition(GridLength.Star)
+                },
+                ColumnSpacing = 8,
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+            actions.Add(payButton, 0, 0);
+            actions.Add(rejectButton, 1, 0);
             content.Add(actions);
         }
 
         return new Border
         {
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
-            BackgroundColor = Color.FromArgb("#F2F3FF"),
-            Stroke = Color.FromArgb("#E2E7FF"),
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 16 },
+            BackgroundColor = Color.FromArgb("#FFFFFF"),
+            Stroke = Color.FromArgb("#DAE2FD"),
             StrokeThickness = 1,
-            Padding = new Thickness(14, 10),
-            Margin = new Thickness(0, 4),
+            Padding = new Thickness(14),
+            Margin = new Thickness(0, 2),
             Content = content
         };
     }

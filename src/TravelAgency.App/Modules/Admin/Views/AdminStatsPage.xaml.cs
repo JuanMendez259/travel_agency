@@ -57,9 +57,9 @@ public partial class AdminStatsPage : ContentPage
 
 public class RevenueChartDrawable : IDrawable
 {
-    private static readonly Color BarColor = Color.FromArgb("#1976D2");
-    private static readonly Color LabelColor = Color.FromArgb("#888888");
-    private static readonly Color AxisColor = Color.FromArgb("#D0D0D0");
+    private static readonly Color BarColor = Color.FromArgb("#003B1B");
+    private static readonly Color LabelColor = Color.FromArgb("#717970");
+    private static readonly Color AxisColor = Color.FromArgb("#C0C9BE");
 
     private readonly List<MonthlyRevenue> _data;
 

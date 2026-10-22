@@ -3,56 +3,101 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminTripMapPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
     xmlns:mapsui="clr-namespace:Mapsui.UI.Maui;assembly=Mapsui.UI.Maui"
-    Title="Mapa e itinerario">
+    Title="Mapa e itinerario"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
+    BackgroundColor="{StaticResource Surface}">
 
-    <ContentPage.ToolbarItems>
-        <ToolbarItem Text="Salir" Clicked="OnLogoutClicked" />
-    </ContentPage.ToolbarItems>
+    <Grid RowDefinitions="Auto,*">
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Operación"
+            PageTitle="Mapa e itinerario"
+            ShowBack="True"
+            ShowLogout="True"
+            LogoutRequested="OnLogoutClicked" />
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="8" RowSpacing="6">
-        <Label x:Name="TripLabel"
-               Grid.Row="0"
-               FontSize="16"
-               FontAttributes="Bold"
-               HorizontalOptions="Center"
-               VerticalOptions="Center" />
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,*,Auto" Padding="20,4,20,20" RowSpacing="8">
 
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
-            <Entry x:Name="PlaceSearch"
-                   Placeholder="Escribe una ciudad o lugar…"
-                   Completed="OnSearchClicked" />
-            <Button Grid.Column="1"
-                    x:Name="SearchButton"
-                    Text="Buscar"
-                    Clicked="OnSearchClicked" />
-        </Grid>
+            <Border Grid.Row="0" Style="{StaticResource AdminCard}" Padding="12,8">
+                <Label x:Name="TripLabel"
+                       FontFamily="OpenSansSemibold"
+                       FontSize="15"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource OnSurface}"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center" />
+            </Border>
 
-        <mapsui:MapControl x:Name="TripMap" Grid.Row="2" />
-
-        <VerticalStackLayout Grid.Row="3" Spacing="6">
-            <Label x:Name="ModeHint"
-                   FontSize="12"
-                   TextColor="{StaticResource OnSurfaceVariant}"
-                   HorizontalOptions="Center"
-                   HorizontalTextAlignment="Center" />
-
-            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
-                <Button Text="Marcar origen"
-                        Clicked="OnOriginModeClicked"
-                        BackgroundColor="#00A85A"
-                        TextColor="White" />
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Border Style="{StaticResource AdminCard}" Padding="12,0">
+                    <Entry x:Name="PlaceSearch"
+                           Placeholder="Escribe una ciudad o lugar…"
+                           Completed="OnSearchClicked"
+                           BackgroundColor="Transparent"
+                           TextColor="{StaticResource OnSurface}"
+                           PlaceholderColor="{StaticResource OnSurfaceVariant}"
+                           HeightRequest="44" />
+                </Border>
                 <Button Grid.Column="1"
-                        Text="Agregar punto"
-                        Clicked="OnPoiModeClicked"
-                        BackgroundColor="#1E88E5"
-                        TextColor="White" />
-                <Button Grid.Column="2"
-                        Text="Marcar destino"
-                        Clicked="OnDestModeClicked"
-                        BackgroundColor="#C62828"
-                        TextColor="White" />
+                        x:Name="SearchButton"
+                        Text="🔍 Buscar"
+                        Clicked="OnSearchClicked"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="{StaticResource OnPrimary}"
+                        FontFamily="OpenSansSemibold"
+                        CornerRadius="16"
+                        MinimumHeightRequest="44" />
             </Grid>
-        </VerticalStackLayout>
+
+            <Border Grid.Row="2"
+                    StrokeShape="RoundRectangle 16"
+                    StrokeThickness="0"
+                    BackgroundColor="{StaticResource SurfaceContainerLow}">
+                <mapsui:MapControl x:Name="TripMap" />
+            </Border>
+
+            <VerticalStackLayout Grid.Row="3" Spacing="8">
+                <Label x:Name="ModeHint"
+                       FontSize="12"
+                       TextColor="{StaticResource OnSurfaceVariant}"
+                       HorizontalOptions="Center"
+                       HorizontalTextAlignment="Center" />
+
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                    <Button                             Text="Marcar origen"
+                            Clicked="OnOriginModeClicked"
+                            BackgroundColor="{StaticResource Primary}"
+                            TextColor="{StaticResource OnPrimary}"
+                            FontSize="11"
+                            Padding="4,0"
+                            FontFamily="OpenSansSemibold"
+                            CornerRadius="14"
+                            MinimumHeightRequest="44" />
+                    <Button Grid.Column="1"
+                            Text="Agregar punto"
+                            Clicked="OnPoiModeClicked"
+                            BackgroundColor="{StaticResource Secondary}"
+                            TextColor="{StaticResource OnPrimary}"
+                            FontSize="11"
+                            Padding="4,0"
+                            FontFamily="OpenSansSemibold"
+                            CornerRadius="14"
+                            MinimumHeightRequest="44" />
+                    <Button Grid.Column="2"
+                            Text="Marcar destino"
+                            Clicked="OnDestModeClicked"
+                            BackgroundColor="{StaticResource Error}"
+                            TextColor="{StaticResource OnError}"
+                            FontSize="11"
+                            Padding="4,0"
+                            FontFamily="OpenSansSemibold"
+                            CornerRadius="14"
+                            MinimumHeightRequest="44" />
+                </Grid>
+            </VerticalStackLayout>
+        </Grid>
     </Grid>
 </ContentPage>

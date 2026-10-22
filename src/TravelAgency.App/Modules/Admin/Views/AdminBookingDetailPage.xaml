@@ -3,59 +3,174 @@
     x:Class="TravelAgency.App.Modules.Admin.Views.AdminBookingDetailPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
     xmlns:models="clr-namespace:TravelAgency.Shared.Models;assembly=TravelAgency.Shared"
-    Title="Detalle de Reserva">
+    Title="Detalle de Reserva"
+    Shell.NavBarIsVisible="False"
+    SafeAreaEdges="Container"
+    BackgroundColor="{StaticResource Surface}">
 
-    <ScrollView>
-        <VerticalStackLayout Padding="20" Spacing="10">
+    <Grid RowDefinitions="Auto,*">
+        <adminControls:AdminPageHeader
+            Grid.Row="0"
+            Eyebrow="Reservas"
+            PageTitle="Detalle de reserva"
+            ShowBack="True"
+            ShowLogout="True"
+            BackRequested="OnBackClicked"
+            LogoutRequested="OnLogoutClicked" />
 
-            <Label x:Name="TripLabel" FontSize="20" FontAttributes="Bold" />
-            <Label x:Name="ClientLabel" FontSize="15" TextColor="{StaticResource OnSurfaceVariant}" />
-            <Label x:Name="InfoLabel" FontSize="14" />
-            <Label x:Name="StatusLabel" FontSize="15" FontAttributes="Bold" />
-            <Label x:Name="BalanceLabel" FontSize="15" FontAttributes="Bold" TextColor="#1976D2" />
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20,4,20,32" Spacing="16">
 
-            <Border x:Name="SpecialNeedsSection" IsVisible="False" StrokeShape="RoundRectangle 10"
-                    StrokeThickness="0" BackgroundColor="#FFF3CD" Padding="12" Margin="0,4">
-                <VerticalStackLayout Spacing="2">
-                    <Label Text="🧩 Necesidades especiales" FontSize="14" FontAttributes="Bold" TextColor="#7A5C00" />
-                    <Label x:Name="SpecialNeedsLabel" FontSize="14" TextColor="#7A5C00" />
-                </VerticalStackLayout>
-            </Border>
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Label x:Name="TripLabel"
+                                   FontFamily="OpenSansSemibold"
+                                   FontSize="20"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource OnSurface}"
+                                   LineBreakMode="TailTruncation" />
+                            <Border Grid.Column="1"
+                                    Padding="10,4"
+                                    StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 100"
+                                    BackgroundColor="{StaticResource SurfaceContainerHigh}"
+                                    VerticalOptions="Start">
+                                <Label x:Name="StatusLabel"
+                                       FontFamily="OpenSansSemibold"
+                                       FontSize="11"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Primary}" />
+                            </Border>
+                        </Grid>
 
-            <Button x:Name="PaymentButton" Text="Registrar pago" Clicked="OnRegisterPaymentClicked" />
-            <Button x:Name="CancelButton" Text="Cancelar reserva" Clicked="OnCancelClicked" BackgroundColor="#B00020" />
+                        <Label x:Name="ClientLabel"
+                               FontSize="14"
+                               TextColor="{StaticResource OnSurfaceVariant}" />
+                        <Label x:Name="InfoLabel"
+                               FontSize="13"
+                               TextColor="{StaticResource OnSurfaceVariant}" />
 
-            <Button Text="Historial de cambios" Clicked="OnAuditClicked" Margin="0,5,0,0" />
+                        <BoxView HeightRequest="1" Color="{StaticResource SurfaceContainerHigh}" />
 
-            <Button Text="Volver a reservas" Clicked="OnBackClicked" Margin="0,5,0,0" />
+                        <Label x:Name="BalanceLabel"
+                               FontFamily="OpenSansSemibold"
+                               FontSize="14"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Primary}" />
+                    </VerticalStackLayout>
+                </Border>
 
-            <Label x:Name="ItemsHeader" Text="Detalle por opciones" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" IsVisible="False" />
-            <VerticalStackLayout x:Name="ItemsLayout" Spacing="4" />
+                <Border x:Name="SpecialNeedsSection"
+                        IsVisible="False"
+                        StrokeShape="RoundRectangle 16"
+                        StrokeThickness="0"
+                        BackgroundColor="{StaticResource WarningContainer}"
+                        Padding="14">
+                    <VerticalStackLayout Spacing="4">
+                        <Label Text="🧩 Necesidades especiales"
+                               FontFamily="OpenSansSemibold"
+                               FontSize="14"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource OnWarningContainer}" />
+                        <Label x:Name="SpecialNeedsLabel"
+                               FontSize="13"
+                               TextColor="{StaticResource OnWarningContainer}" />
+                    </VerticalStackLayout>
+                </Border>
 
-            <Label x:Name="PassengersHeader" Text="Acompanantes" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" IsVisible="False" />
-            <VerticalStackLayout x:Name="PassengersLayout" Spacing="4" />
-            <Label Text="Pagos registrados" FontSize="18" FontAttributes="Bold" Margin="0,15,0,0" />
-            <CollectionView x:Name="PaymentsList" SelectionMode="None" Footer=" ">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:Payment">
-                        <Border Margin="0,4" StrokeThickness="0" BackgroundColor="{AppThemeBinding Light=#EEEEEE, Dark=#2C2C2C}">
-                            <VerticalStackLayout Padding="12" Spacing="2">
-                                <HorizontalStackLayout Spacing="4">
-                                    <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}" TextColor="{StaticResource OnSurfaceVariant}" />
-                                    <Label Text="·" TextColor="{StaticResource OnSurfaceVariant}" />
-                                    <Label Text="{Binding Method}" TextColor="{StaticResource OnSurfaceVariant}" />
-                                </HorizontalStackLayout>
-                                <HorizontalStackLayout Spacing="4">
-                                    <Label Text="{Binding Amount, StringFormat='{0:C}'}" FontAttributes="Bold" />
-                                    <Label Text="·" />
-                                    <Label Text="{Binding Status}" />
-                                </HorizontalStackLayout>
-                            </VerticalStackLayout>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-        </VerticalStackLayout>
-    </ScrollView>
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Text="Acciones" Style="{StaticResource AdminCardTitle}" />
+
+                        <Button x:Name="PaymentButton"
+                                Text="💳 Registrar pago"
+                                Clicked="OnRegisterPaymentClicked"
+                                BackgroundColor="{StaticResource Primary}"
+                                TextColor="{StaticResource OnPrimary}"
+                                FontFamily="OpenSansSemibold"
+                                CornerRadius="16"
+                                MinimumHeightRequest="44" />
+
+                        <Button x:Name="CancelButton"
+                                Text="Cancelar reserva"
+                                Clicked="OnCancelClicked"
+                                BackgroundColor="Transparent"
+                                BorderColor="{StaticResource Error}"
+                                BorderWidth="1"
+                                TextColor="{StaticResource Error}"
+                                FontFamily="OpenSansSemibold"
+                                CornerRadius="16"
+                                MinimumHeightRequest="44" />
+
+                        <Button Text="🕘 Historial de cambios"
+                                Clicked="OnAuditClicked"
+                                Style="{StaticResource AdminTonalButton}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label x:Name="ItemsHeader"
+                               Text="Detalle por opciones"
+                               Style="{StaticResource AdminCardTitle}"
+                               IsVisible="False" />
+                        <VerticalStackLayout x:Name="ItemsLayout" Spacing="6" />
+
+                        <BoxView HeightRequest="1" Color="{StaticResource SurfaceContainerHigh}" />
+
+                        <Label x:Name="PassengersHeader"
+                               Text="Acompañantes"
+                               Style="{StaticResource AdminCardTitle}"
+                               IsVisible="False" />
+                        <VerticalStackLayout x:Name="PassengersLayout" Spacing="8" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <Border Style="{StaticResource AdminCard}">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Text="Pagos registrados" Style="{StaticResource AdminCardTitle}" />
+                        <CollectionView x:Name="PaymentsList" SelectionMode="None" Footer=" ">
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="models:Payment">
+                                    <Border Margin="0,4"
+                                            Padding="12"
+                                            StrokeThickness="1"
+                                            Stroke="{StaticResource SurfaceContainerHigh}"
+                                            StrokeShape="RoundRectangle 14"
+                                            BackgroundColor="{StaticResource SurfaceContainerLow}">
+                                        <VerticalStackLayout Spacing="4">
+                                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                                <Label Text="{Binding Method}"
+                                                       FontSize="13"
+                                                       FontAttributes="Bold"
+                                                       TextColor="{StaticResource OnSurface}" />
+                                                <Label Grid.Column="1"
+                                                       Text="{Binding Amount, StringFormat='{0:C}'}"
+                                                       FontFamily="OpenSansSemibold"
+                                                       FontSize="13"
+                                                       TextColor="{StaticResource Primary}" />
+                                            </Grid>
+                                            <HorizontalStackLayout Spacing="4">
+                                                <Label Text="{Binding PaymentDate, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
+                                                       FontSize="12"
+                                                       TextColor="{StaticResource OnSurfaceVariant}" />
+                                                <Label Text="·" FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                                                <Label Text="{Binding Status}"
+                                                       FontSize="12"
+                                                       TextColor="{StaticResource OnSurfaceVariant}" />
+                                            </HorizontalStackLayout>
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
 </ContentPage>
