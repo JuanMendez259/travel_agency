@@ -24,7 +24,8 @@
                 <Border.Shadow>
                     <Shadow Brush="#0F172A" Opacity="0.08" Radius="14" Offset="0,3" />
                 </Border.Shadow>
-                <controls:NetworkImage x:Name="TripImage" HeightRequest="200" Aspect="AspectFill"
+                <controls:TripImageCarousel x:Name="TripImagesCarousel" HeightRequest="200"
+                       ImageTapped="OnTripImageTapped"
                        SemanticProperties.Description="Foto del viaje" />
             </Border>
 

@@ -2,8 +2,10 @@ using Microsoft.Maui.Controls;
 using Microsoft.Maui.ApplicationModel;
 using Mapsui;
 using Mapsui.Layers;
+using TravelAgency.App.Controls;
 using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
+using TravelAgency.App.ViewModels;
 using TravelAgency.Shared.Models;
 
 namespace TravelAgency.App.Modules.Client.Views;
@@ -261,11 +263,44 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         await RenderRatingUiAsync(booking, trip);
 
-        if (!string.IsNullOrEmpty(trip?.ImageUrl))
-            TripImage.Source = _api.GetTripImage(trip.ImageUrl, ApiService.LargeImageWidth);
+        if (trip is null)
+            TripImagesCarousel.ItemsSource = new[]
+            {
+                new TripImageItem(null, ApiService.PlaceholderSource(), isCover: true)
+            };
+        else
+            TripImagesCarousel.ItemsSource = BuildTripImageItems(trip);
 
         if (trip?.Id is int transportTripId && transportTripId > 0)
             await RenderTransportSectionAsync(transportTripId);
+    }
+
+    private List<TripImageItem> BuildTripImageItems(Trip trip)
+    {
+        var urls = TripImageRules.BuildGalleryUrls(trip);
+        if (urls.Count == 0)
+            return new List<TripImageItem> { new(null, ApiService.PlaceholderSource(), isCover: true) };
+
+        var coverUrl = trip.Images?.FirstOrDefault(i => i.IsCover)?.Url ?? trip.ImageUrl;
+        var items = new List<TripImageItem>(urls.Count);
+        for (var index = 0; index < urls.Count; index++)
+        {
+            var url = urls[index];
+            var isCover = !string.IsNullOrWhiteSpace(coverUrl) &&
+                          string.Equals(url, coverUrl, StringComparison.Ordinal);
+            items.Add(new TripImageItem(url, _api.GetTripImage(url, ApiService.LargeImageWidth), isCover));
+        }
+
+        return items;
+    }
+
+    private async void OnTripImageTapped(object? sender, TripImageTappedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(e.Url)) return;
+
+        var title = string.IsNullOrWhiteSpace(Title) ? "Viaje" : Title;
+        await Shell.Current.GoToAsync(
+            $"imageviewer?url={Uri.EscapeDataString(e.Url)}&title={Uri.EscapeDataString(title)}");
     }
 
     // Muestra la unidad asignada al viaje (foto + placas) o el aviso de que

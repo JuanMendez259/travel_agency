@@ -1,8 +1,10 @@
 using System.Globalization;
 using Microsoft.Maui.ApplicationModel.DataTransfer;
 using Microsoft.Maui.Storage;
+using TravelAgency.App.Controls;
 using TravelAgency.App.Converters;
 using TravelAgency.App.Services;
+using TravelAgency.App.ViewModels;
 using TravelAgency.Shared.Models;
 
 namespace TravelAgency.App.Modules.Client.Views;
@@ -122,8 +124,34 @@ public partial class ClientTripDetailPage : ContentPage
         UpdateBookingSummary();
         RenderOptionsIfAny();
 
-        if (!string.IsNullOrEmpty(_trip.ImageUrl))
-            TripImage.Source = _api.GetTripImage(_trip.ImageUrl, ApiService.LargeImageWidth);
+        TripImagesCarousel.ItemsSource = BuildTripImageItems(_trip);
+    }
+
+    private List<TripImageItem> BuildTripImageItems(Trip trip)
+    {
+        var urls = TripImageRules.BuildGalleryUrls(trip);
+        if (urls.Count == 0)
+            return new List<TripImageItem> { new(null, ApiService.PlaceholderSource(), isCover: true) };
+
+        var coverUrl = trip.Images?.FirstOrDefault(i => i.IsCover)?.Url ?? trip.ImageUrl;
+        var items = new List<TripImageItem>(urls.Count);
+        for (var index = 0; index < urls.Count; index++)
+        {
+            var url = urls[index];
+            var isCover = !string.IsNullOrWhiteSpace(coverUrl) &&
+                          string.Equals(url, coverUrl, StringComparison.Ordinal);
+            items.Add(new TripImageItem(url, _api.GetTripImage(url, ApiService.LargeImageWidth), isCover));
+        }
+
+        return items;
+    }
+
+    private async void OnTripImageTapped(object? sender, TripImageTappedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(e.Url)) return;
+
+        await Shell.Current.GoToAsync(
+            $"imageviewer?url={Uri.EscapeDataString(e.Url)}&title={Uri.EscapeDataString(_trip?.Title ?? "Viaje")}");
     }
 
     private static string FormatTripDateTime(DateTime value)
