@@ -3,6 +3,7 @@ using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
+using TravelAgency.Shared.Models;
 
 namespace TravelAgency.Api.Services;
 
@@ -17,7 +18,7 @@ namespace TravelAgency.Api.Services;
 /// </summary>
 public static class TripImageProcessor
 {
-    public const long MaxInputBytes = 20L * 1024 * 1024;
+    public const long MaxInputBytes = TripImageFileRules.MaxInputBytes;
     public const int MaxDimension = 1920;
     public const long TargetMaxBytes = 5L * 1024 * 1024;
 

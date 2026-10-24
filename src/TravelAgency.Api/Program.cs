@@ -403,6 +403,7 @@ app.MapGet("/api/trips/{id}", async (int id, AppDbContext db) =>
     await db.Trips
         .Include(t => t.PointsOfInterest)
         .Include(t => t.Options)
+        .Include(t => t.Images)
         .FirstOrDefaultAsync(t => t.Id == id) is Trip trip ? Results.Ok(trip) : Results.NotFound());
 
 app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
@@ -598,6 +599,123 @@ app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbCo
     {
         if (ownStream && uploadStream is not null) await uploadStream.DisposeAsync();
     }
+}).RequireAuthorization("AdminOnly");
+
+app.MapPost("/api/trips/{id}/images", async (int id, HttpRequest request, AppDbContext db, ImageStorageService storage) =>
+{
+    var trip = await db.Trips
+        .Include(t => t.Images)
+        .FirstOrDefaultAsync(t => t.Id == id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var files = request.Form.Files;
+    if (files.Count == 0 || files.Any(f => f.Length == 0))
+        return Results.BadRequest("No se recibió ninguna imagen.");
+
+    if (!TripImageRules.HasCapacity(trip.Images.Count, files.Count))
+        return Results.BadRequest($"No puedes agregar más de {TripImageRules.MaxPerTrip} imágenes por viaje.");
+
+    var uploadedUrls = new List<string>();
+    var created = new List<TripImage>();
+
+    foreach (var file in files)
+    {
+        if (!TripImageFileRules.IsAllowed(file.FileName, file.Length))
+        {
+            var extension = Path.GetExtension(file.FileName);
+            var message = !TripImageFileRules.AllowedExtensions.Contains(extension)
+                ? "Formato no permitido. Usa JPG, PNG o WebP."
+                : $"La imagen no puede superar los {TripImageFileRules.MaxInputBytes / (1024 * 1024)} MB.";
+            await DeleteUploadedTripImagesAsync(storage, uploadedUrls);
+            return Results.BadRequest(message);
+        }
+
+        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        await using var input = new MemoryStream();
+        await file.CopyToAsync(input);
+
+        Stream uploadStream;
+        var ownStream = false;
+        string contentType;
+        try
+        {
+            var prepared = TripImageProcessor.Prepare(input, fileExtension);
+            uploadStream = prepared.Stream;
+            ownStream = prepared.Owned;
+            contentType = prepared.ContentType;
+        }
+        catch (InvalidOperationException ex)
+        {
+            await DeleteUploadedTripImagesAsync(storage, uploadedUrls);
+            return Results.BadRequest(ex.Message);
+        }
+
+        string imageUrl;
+        try
+        {
+            imageUrl = await storage.UploadAsync(uploadStream, fileExtension, contentType);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(
+                $"[ImageStorage] No se pudo subir una imagen del viaje {id}: {ex.Message}");
+            await DeleteUploadedTripImagesAsync(storage, uploadedUrls);
+            return Results.BadRequest("No se pudo subir la imagen. Intenta de nuevo.");
+        }
+        finally
+        {
+            if (ownStream) await uploadStream.DisposeAsync();
+        }
+
+        uploadedUrls.Add(imageUrl);
+
+        var image = new TripImage
+        {
+            TripId = trip.Id,
+            Url = imageUrl,
+            Order = TripImageRules.NextOrder(trip.Images),
+            IsCover = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        created.Add(image);
+        trip.Images.Add(image);
+    }
+
+    try
+    {
+        NormalizeTripImages(trip);
+        await db.SaveChangesAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine(
+            $"[TripImages] No se pudo guardar la galería del viaje {id}: {ex.Message}");
+        await DeleteUploadedTripImagesAsync(storage, uploadedUrls);
+        return Results.Problem("No se pudo guardar la galería. Intenta de nuevo.", statusCode: 500);
+    }
+
+    return Results.Ok(new TripImagesUploadResult { Trip = trip, Uploaded = created });
+}).RequireAuthorization("AdminOnly");
+
+app.MapDelete("/api/trips/{id}/images/{imageId}", async (int id, int imageId, AppDbContext db, ImageStorageService storage) =>
+{
+    var trip = await db.Trips
+        .Include(t => t.Images)
+        .FirstOrDefaultAsync(t => t.Id == id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var image = trip.Images.FirstOrDefault(i => i.Id == imageId);
+    if (image is null) return Results.NotFound("Imagen no encontrada.");
+
+    trip.Images.Remove(image);
+    db.TripImages.Remove(image);
+    NormalizeTripImages(trip);
+
+    await db.SaveChangesAsync();
+    await storage.DeleteAsync(image.Url);
+
+    return Results.Ok(trip);
 }).RequireAuthorization("AdminOnly");
 
 app.MapGet("/api/trips/{id}/transport", async (int id, AppDbContext db) =>
@@ -4346,6 +4464,37 @@ static async Task TryExecAsync(AppDbContext db, string sql)
     catch (Exception ex)
     {
         Console.WriteLine($"Bootstrap: {ex.Message}");
+    }
+}
+
+static void NormalizeTripImages(Trip trip)
+{
+    var ordered = trip.Images.OrderBy(i => i.Order).ThenBy(i => i.Id).ToList();
+    for (var i = 0; i < ordered.Count; i++) ordered[i].Order = i + 1;
+
+    if (ordered.Count == 0)
+    {
+        trip.ImageUrl = null;
+        return;
+    }
+
+    var cover = ordered.FirstOrDefault(i => i.IsCover) ?? ordered[0];
+    foreach (var image in ordered) image.IsCover = ReferenceEquals(image, cover);
+    trip.ImageUrl = cover.Url;
+}
+
+static async Task DeleteUploadedTripImagesAsync(ImageStorageService storage, IEnumerable<string> urls)
+{
+    foreach (var url in urls)
+    {
+        try
+        {
+            await storage.DeleteAsync(url);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[ImageStorage] No se pudo borrar la imagen {url}: {ex.Message}");
+        }
     }
 }
 
