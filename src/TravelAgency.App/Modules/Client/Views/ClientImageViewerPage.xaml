@@ -8,61 +8,63 @@
     Shell.NavBarIsVisible="False"
     Shell.TabBarIsVisible="False">
 
-    <Grid IsClippedToBounds="True" RowDefinitions="Auto,*">
+    <Grid IsClippedToBounds="True">
 
-        <!-- La foto ocupa toda la pantalla detras de los controles -->
-        <controls:NetworkImage
-            x:Name="ZoomImage"
-            Grid.RowSpan="2"
-            Aspect="AspectFit"
-            BackgroundColor="Black"
-            HorizontalOptions="Fill"
-            VerticalOptions="Fill">
-            <controls:NetworkImage.GestureRecognizers>
+        <!-- Superficie de gestos: recibe pinch, pan y doble toque -->
+        <Grid x:Name="GestureSurface" BackgroundColor="Black">
+            <Grid.GestureRecognizers>
                 <PinchGestureRecognizer PinchUpdated="OnPinchUpdated" />
                 <PanGestureRecognizer PanUpdated="OnPanUpdated" />
                 <TapGestureRecognizer NumberOfTapsRequired="2" Tapped="OnDoubleTapped" />
-            </controls:NetworkImage.GestureRecognizers>
-        </controls:NetworkImage>
+            </Grid.GestureRecognizers>
 
-        <!-- Barra superior: cerrar a la izquierda, titulo al centro -->
-        <Grid
-            Grid.Row="0"
-            Padding="12,10,12,0"
-            ColumnDefinitions="44,*,44"
-            ColumnSpacing="8">
-            <Button
-                Text="✕"
-                WidthRequest="44"
-                HeightRequest="44"
-                MinimumWidthRequest="44"
-                MinimumHeightRequest="44"
-                Padding="0"
-                BackgroundColor="#66000000"
-                BorderWidth="0"
-                CornerRadius="22"
-                FontSize="18"
-                TextColor="#FFFFFF"
-                Clicked="OnCloseClicked"
-                SemanticProperties.Description="Cerrar visor de foto" />
-            <Label
-                x:Name="TitleLabel"
-                Grid.Column="1"
-                FontAttributes="Bold"
-                FontSize="15"
-                HorizontalTextAlignment="Center"
-                LineBreakMode="TailTruncation"
-                TextColor="#FFFFFF"
-                VerticalOptions="Center" />
+            <controls:NetworkImage
+                x:Name="ZoomImage"
+                Aspect="AspectFit"
+                BackgroundColor="Black"
+                HorizontalOptions="Fill"
+                InputTransparent="True"
+                VerticalOptions="Fill" />
         </Grid>
 
-        <!-- Ayuda de gestos -->
+        <!-- Cerrar: único control interactivo sobre la foto -->
+        <Button
+            Text="✕"
+            WidthRequest="44"
+            HeightRequest="44"
+            MinimumWidthRequest="44"
+            MinimumHeightRequest="44"
+            Margin="12,10,0,0"
+            Padding="0"
+            BackgroundColor="#66000000"
+            BorderWidth="0"
+            CornerRadius="22"
+            FontSize="18"
+            HorizontalOptions="Start"
+            TextColor="#FFFFFF"
+            VerticalOptions="Start"
+            Clicked="OnCloseClicked"
+            SemanticProperties.Description="Cerrar visor de foto" />
+
+        <!-- Título y ayuda no deben bloquear los gestos -->
+        <Label
+            x:Name="TitleLabel"
+            Margin="64,24,64,0"
+            FontAttributes="Bold"
+            FontSize="15"
+            HorizontalOptions="Center"
+            HorizontalTextAlignment="Center"
+            InputTransparent="True"
+            LineBreakMode="TailTruncation"
+            TextColor="#FFFFFF"
+            VerticalOptions="Start" />
+
         <Border
-            Grid.Row="1"
             Margin="20,0,20,28"
             Padding="14,8"
             BackgroundColor="#99000000"
             HorizontalOptions="Center"
+            InputTransparent="True"
             StrokeShape="RoundRectangle 100"
             StrokeThickness="0"
             VerticalOptions="End">
