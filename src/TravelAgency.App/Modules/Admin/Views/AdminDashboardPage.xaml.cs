@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using TravelAgency.App.Converters;
+using TravelAgency.App.Modules.Admin.ViewModels;
 using TravelAgency.App.Services;
 using TravelAgency.Shared.Models;
 
@@ -7,13 +9,16 @@ namespace TravelAgency.App.Modules.Admin.Views;
 public partial class AdminDashboardPage : ContentPage, IQueryAttributable
 {
     private readonly ApiService _api;
-    private FileResult? _selectedImage;
+    private readonly ObservableCollection<AdminTripImageItem> _tripImages = new();
+    private readonly List<int> _deletedImageIds = new();
     private Trip? _editingTrip;
 
     public AdminDashboardPage(ApiService api)
     {
         InitializeComponent();
         _api = api;
+        TripImagesList.ItemsSource = _tripImages;
+        UpdateImageCounter();
         TransportTypePicker.ItemsSource = TransportTypeConverter.Options.ToList();
         TransportTypePicker.SelectedIndex = 0;
         CategoryPicker.ItemsSource = TripCategoryOptions.PickerOptions
@@ -46,7 +51,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             if (trip is null) return;
 
             StartEdit(trip);
-            LoadPreview(trip.ImageUrl);
+            LoadTripImages(trip);
             await PageScroll.ScrollToAsync(0, 0, true);
         }
         catch (Exception ex)
@@ -174,28 +179,44 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             }
 
 
+            var wasEditing = _editingTrip is not null;
+            Trip? savedTrip;
+
             if (_editingTrip is not null)
             {
-                var updated = await _api.UpdateTripAsync(_editingTrip.Id, trip);
-                if (_selectedImage is not null && updated is not null)
+                savedTrip = await _api.UpdateTripAsync(_editingTrip.Id, trip);
+                if (savedTrip is null)
                 {
-                    updated = await _api.UploadTripImageAsync(updated.Id, _selectedImage);
+                    await DisplayAlertAsync("Error", "No se pudo guardar el viaje. Intenta de nuevo.", "OK");
+                    return;
                 }
+
+                _editingTrip = savedTrip;
             }
             else
             {
-                var created = await _api.CreateTripAsync(trip);
-                if (_selectedImage is not null && created is not null)
+                savedTrip = await _api.CreateTripAsync(trip);
+                if (savedTrip is null)
                 {
-                    var updated = await _api.UploadTripImageAsync(created.Id, _selectedImage);
-                    if (updated?.ImageUrl is not null)
-                    {
-                        created.ImageUrl = updated.ImageUrl;
-                    }
+                    await DisplayAlertAsync("Error", "No se pudo publicar el viaje. Intenta de nuevo.", "OK");
+                    return;
                 }
+
+                // El viaje ya existe. Cambiar a modo edicion antes de tocar las
+                // imagenes evita duplicarlo si la sincronizacion falla.
+                _editingTrip = savedTrip;
+                ApplyEditModeLabels();
             }
 
-            var wasEditing = _editingTrip is not null;
+            var synced = await SyncTripImagesAsync(savedTrip.Id, savedTrip);
+            if (synced is null)
+            {
+                await DisplayAlertAsync("Imágenes sin guardar",
+                    "El viaje quedó guardado, pero no se pudieron sincronizar las imágenes. Revisa tu conexión e intenta guardar de nuevo.",
+                    "OK");
+                return;
+            }
+
             await DisplayAlertAsync("Listo", wasEditing ? "Cambios guardados." : "Viaje publicado.", "OK");
             ResetFormToCreateMode();
             await ClearFormAsync();
@@ -209,18 +230,6 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         {
             SaveButton.IsEnabled = true;
         }
-    }
-
-    private void LoadPreview(string? imageUrl)
-    {
-        var hasImage = !string.IsNullOrEmpty(imageUrl);
-
-        ImagePreview.Source = _api.GetTripImage(imageUrl, ApiService.LargeImageWidth);
-        ImagePreview.IsVisible = true;
-        ImageNameLabel.Text = hasImage
-            ? (_selectedImage is null ? "Imagen actual" : _selectedImage.FileName)
-            : "Sin imagen: se usará el placeholder";
-        ImageNameLabel.IsVisible = true;
     }
 
     private async void OnCancelEditClicked(object? sender, EventArgs e)
@@ -239,7 +248,6 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
     private void StartEdit(Trip trip)
     {
         _editingTrip = trip;
-        _selectedImage = null;
         TitleEntry.Text = trip.Title;
         DestinationEntry.Text = trip.Destination;
         DescriptionEditor.Text = trip.Description;
@@ -271,10 +279,11 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         HotelCapacityEntry.Text = trip.HotelCapacity?.ToString() ?? string.Empty;
         ApplyHotelState();
 
-        ImagePreview.Source = null;
-        ImagePreview.IsVisible = false;
-        ImageNameLabel.IsVisible = false;
+        ApplyEditModeLabels();
+    }
 
+    private void ApplyEditModeLabels()
+    {
         FormTitleLabel.Text = "Editar viaje";
         SaveButton.Text = "Guardar cambios";
         CancelEditButton.IsVisible = true;
@@ -283,7 +292,6 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
     private void ResetFormToCreateMode()
     {
         _editingTrip = null;
-        _selectedImage = null;
         FormTitleLabel.Text = "Nuevo viaje";
         SaveButton.Text = "Guardar viaje";
         CancelEditButton.IsVisible = false;
@@ -317,11 +325,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         HotelCapacityEntry.Text = string.Empty;
         ApplyHotelState();
 
-        _selectedImage = null;
-        ImageNameLabel.Text = string.Empty;
-        ImageNameLabel.IsVisible = false;
-
-        LoadPreview(null);
+        ClearTripImages();
     }
 
     private void OnActiveToggled(object? sender, ToggledEventArgs e)
@@ -417,36 +421,262 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         }
     }
 
-    private async void OnPickImageClicked(object? sender, EventArgs e)
+    private void LoadTripImages(Trip trip)
+    {
+        _tripImages.Clear();
+        _deletedImageIds.Clear();
+
+        var ordered = (trip.Images ?? new List<TripImage>())
+            .OrderBy(i => i.Order)
+            .ThenBy(i => i.Id)
+            .ToList();
+
+        foreach (var image in ordered)
+        {
+            _tripImages.Add(new AdminTripImageItem
+            {
+                Id = image.Id,
+                Url = image.Url,
+                Source = _api.GetTripImage(image.Url, ApiService.LargeImageWidth),
+                IsCover = image.IsCover,
+                Order = _tripImages.Count + 1
+            });
+        }
+
+        // Viajes anteriores a la galeria: la portada vive solo en Trip.ImageUrl.
+        // Se muestra como referencia y no se puede editar desde aqui.
+        if (_tripImages.Count == 0 &&
+            !string.IsNullOrWhiteSpace(trip.ImageUrl) &&
+            !trip.ImageUrl.Contains("placeholder", StringComparison.OrdinalIgnoreCase))
+        {
+            _tripImages.Add(new AdminTripImageItem
+            {
+                Url = trip.ImageUrl,
+                Source = _api.GetTripImage(trip.ImageUrl, ApiService.LargeImageWidth),
+                Order = 1
+            });
+        }
+
+        EnsureCover();
+        UpdateImageCounter();
+    }
+
+    private void ClearTripImages()
+    {
+        _tripImages.Clear();
+        _deletedImageIds.Clear();
+        UpdateImageCounter();
+    }
+
+    private async void OnPickImagesClicked(object? sender, EventArgs e)
     {
         try
         {
+            var remaining = TripImageRules.MaxPerTrip - _tripImages.Count;
+            if (remaining <= 0)
+            {
+                await DisplayAlertAsync("Límite alcanzado",
+                    $"Un viaje puede tener hasta {TripImageRules.MaxPerTrip} imágenes. Elimina alguna para agregar otra.",
+                    "OK");
+                return;
+            }
+
             var results = await MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
             {
-                Title = "Selecciona una imagen del viaje"
+                Title = "Selecciona imágenes del viaje",
+                SelectionLimit = remaining,
+                MaximumWidth = 1920,
+                MaximumHeight = 1920,
+                CompressionQuality = 80,
+                RotateImage = true
             });
 
-            var result = results?.FirstOrDefault();
-            if (result is null) return;
+            if (results is null || results.Count == 0) return;
 
-            using var stream = await result.OpenReadAsync();
-            using var memory = new MemoryStream();
-            await stream.CopyToAsync(memory);
+            var invalid = new List<string>();
+            foreach (var result in results)
+            {
+                if (_tripImages.Count >= TripImageRules.MaxPerTrip)
+                    break;
 
-            ImagePreview.Source = ImageSource.FromStream(() => new MemoryStream(memory.ToArray()));
-            ImagePreview.IsVisible = true;
+                using var stream = await result.OpenReadAsync();
+                using var memory = new MemoryStream();
+                await stream.CopyToAsync(memory);
+                var bytes = memory.ToArray();
 
-            var sizeLabel = $"{result.FileName} · {FormatFileSize(memory.Length)}";
-            if (memory.Length > 5L * 1024 * 1024)
-                sizeLabel += " (se comprimirá al subir)";
-            ImageNameLabel.Text = sizeLabel;
-            ImageNameLabel.IsVisible = true;
+                if (!TripImageFileRules.IsAllowed(result.FileName, bytes.Length))
+                {
+                    var extension = Path.GetExtension(result.FileName);
+                    var reason = !TripImageFileRules.AllowedExtensions.Contains(extension)
+                        ? "formato no permitido"
+                        : $"supera {TripImageFileRules.MaxInputBytes / (1024 * 1024)} MB";
+                    invalid.Add($"{result.FileName} ({reason}, {FormatFileSize(bytes.Length)})");
+                    continue;
+                }
 
-            _selectedImage = result;
+                _tripImages.Add(new AdminTripImageItem
+                {
+                    File = result,
+                    PreviewBytes = bytes,
+                    Source = ImageSource.FromStream(() => new MemoryStream(bytes)),
+                    Order = _tripImages.Count + 1
+                });
+            }
+
+            EnsureCover();
+            ReassignOrder();
+            UpdateImageCounter();
+
+            if (invalid.Count > 0)
+            {
+                await DisplayAlertAsync("Imágenes omitidas",
+                    "No se agregaron:\n" + string.Join("\n", invalid) +
+                    $"\n\nUsa JPG, PNG o WebP de hasta {TripImageFileRules.MaxInputBytes / (1024 * 1024)} MB.",
+                    "OK");
+            }
         }
         catch (Exception ex)
         {
             await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
+
+    private void OnRemoveImageClicked(object? sender, EventArgs e)
+    {
+        if ((sender as Button)?.CommandParameter is not AdminTripImageItem item) return;
+        if (!item.IsEditable) return;
+
+        if (item.Id is int id && !_deletedImageIds.Contains(id))
+            _deletedImageIds.Add(id);
+
+        item.IsDeleted = true;
+        _tripImages.Remove(item);
+        EnsureCover();
+        ReassignOrder();
+        UpdateImageCounter();
+    }
+
+    private void OnMoveImageLeftClicked(object? sender, EventArgs e)
+    {
+        if ((sender as Button)?.CommandParameter is not AdminTripImageItem item) return;
+        if (!item.IsEditable) return;
+
+        var index = _tripImages.IndexOf(item);
+        if (index <= 0) return;
+        if (!_tripImages[index - 1].IsEditable) return;
+
+        _tripImages.Move(index, index - 1);
+        ReassignOrder();
+    }
+
+    private void OnMoveImageRightClicked(object? sender, EventArgs e)
+    {
+        if ((sender as Button)?.CommandParameter is not AdminTripImageItem item) return;
+        if (!item.IsEditable) return;
+
+        var index = _tripImages.IndexOf(item);
+        if (index < 0 || index >= _tripImages.Count - 1) return;
+        if (!_tripImages[index + 1].IsEditable) return;
+
+        _tripImages.Move(index, index + 1);
+        ReassignOrder();
+    }
+
+    private void OnSetCoverClicked(object? sender, EventArgs e)
+    {
+        if ((sender as Button)?.CommandParameter is not AdminTripImageItem item) return;
+        if (!item.IsEditable) return;
+
+        foreach (var image in _tripImages)
+            image.IsCover = ReferenceEquals(image, item);
+    }
+
+    private void EnsureCover()
+    {
+        var editable = _tripImages.Where(i => i.IsEditable).ToList();
+        if (editable.Count == 0)
+        {
+            foreach (var image in _tripImages) image.IsCover = false;
+            return;
+        }
+
+        var cover = editable.FirstOrDefault(i => i.IsCover) ?? editable[0];
+        foreach (var image in _tripImages)
+            image.IsCover = ReferenceEquals(image, cover);
+    }
+
+    private void ReassignOrder()
+    {
+        for (var index = 0; index < _tripImages.Count; index++)
+            _tripImages[index].Order = index + 1;
+    }
+
+    private void UpdateImageCounter()
+    {
+        ImageCounterLabel.Text = $"{_tripImages.Count} / {TripImageRules.MaxPerTrip}";
+    }
+
+    private async Task<Trip?> SyncTripImagesAsync(int tripId, Trip savedTrip)
+    {
+        try
+        {
+            ReassignOrder();
+
+            var newItems = _tripImages.Where(i => i.IsNew && !i.IsDeleted).ToList();
+            if (newItems.Count > 0)
+            {
+                var upload = await _api.UploadTripImagesAsync(tripId, newItems.Select(i => i.File!).ToList());
+                if (upload is null)
+                    return null;
+
+                // Marca las que el servidor ya creo antes de decidir si hubo un
+                // fallo: asi un reintento no las vuelve a subir.
+                var uploadedCount = Math.Min(upload.Uploaded.Count, newItems.Count);
+                for (var index = 0; index < uploadedCount; index++)
+                {
+                    var uploaded = upload.Uploaded[index];
+                    newItems[index].MarkUploaded(uploaded.Id, uploaded.Url);
+                }
+
+                if (upload.Uploaded.Count != newItems.Count)
+                    return null;
+            }
+
+            var orderedIds = _tripImages
+                .Where(i => !i.IsDeleted && i.Id.HasValue)
+                .OrderBy(i => i.Order)
+                .Select(i => i.Id!.Value)
+                .ToList();
+
+            var current = savedTrip;
+            if (orderedIds.Count > 1)
+            {
+                current = await _api.ReorderTripImagesAsync(tripId, orderedIds) ?? current;
+            }
+
+            var coverId = _tripImages
+                .Where(i => i.IsCover && !i.IsDeleted && i.Id.HasValue)
+                .OrderBy(i => i.Order)
+                .Select(i => i.Id)
+                .FirstOrDefault();
+
+            var serverCoverId = current?.Images?.FirstOrDefault(i => i.IsCover)?.Id;
+            if (coverId is int cover && cover != serverCoverId)
+            {
+                current = await _api.SetTripImageCoverAsync(tripId, cover) ?? current;
+            }
+
+            foreach (var imageId in _deletedImageIds.Distinct())
+            {
+                await _api.DeleteTripImageAsync(tripId, imageId);
+            }
+
+            return await _api.GetTripAsync(tripId);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[SyncTripImagesAsync] {ex}");
+            return null;
         }
     }
 

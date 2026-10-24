@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:adminControls="clr-namespace:TravelAgency.App.Controls.Admin"
     xmlns:controls="clr-namespace:TravelAgency.App.Controls"
+    xmlns:viewmodels="clr-namespace:TravelAgency.App.Modules.Admin.ViewModels"
     Title="Publicar Viaje"
     Shell.NavBarIsVisible="False"
     SafeAreaEdges="Container"
@@ -213,20 +214,111 @@
 
                 <Border Style="{StaticResource AdminCard}">
                     <VerticalStackLayout Spacing="10">
-                        <Label Text="Imagen del viaje" Style="{StaticResource AdminCardTitle}" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="1" VerticalOptions="Center">
+                                <Label Text="Imágenes del viaje" Style="{StaticResource AdminCardTitle}" />
+                                <Label Text="La portada se muestra en las tarjetas. Usa las flechas para ordenar."
+                                       FontSize="12"
+                                       TextColor="{StaticResource OnSurfaceVariant}" />
+                            </VerticalStackLayout>
+                            <Label x:Name="ImageCounterLabel"
+                                   Grid.Column="1"
+                                   Text="0 / 10"
+                                   FontFamily="OpenSansSemibold"
+                                   FontSize="13"
+                                   TextColor="{StaticResource Primary}"
+                                   VerticalOptions="Center" />
+                        </Grid>
 
-                        <Button Text="📷 Seleccionar imagen"
+                        <Button Text="📷 Agregar imágenes"
                                 Style="{StaticResource AdminOutlineButton}"
                                 CornerRadius="14"
-                                Clicked="OnPickImageClicked" />
-                        <controls:NetworkImage x:Name="ImagePreview"
-                                               HeightRequest="140"
-                                               Aspect="AspectFill"
-                                               IsVisible="False" />
-                        <Label x:Name="ImageNameLabel"
+                                Clicked="OnPickImagesClicked" />
+
+                        <CollectionView x:Name="TripImagesList"
+                                        HeightRequest="200"
+                                        SelectionMode="None"
+                                        HorizontalScrollBarVisibility="Never"
+                                        VerticalScrollBarVisibility="Never">
+                            <CollectionView.ItemsLayout>
+                                <LinearItemsLayout Orientation="Horizontal" ItemSpacing="8" />
+                            </CollectionView.ItemsLayout>
+                            <CollectionView.EmptyView>
+                                <Label Text="Sin imágenes. Se usará el placeholder."
+                                       FontSize="13"
+                                       TextColor="{StaticResource OnSurfaceVariant}"
+                                       HorizontalTextAlignment="Center"
+                                       VerticalTextAlignment="Center"
+                                       Margin="12" />
+                            </CollectionView.EmptyView>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate x:DataType="viewmodels:AdminTripImageItem">
+                                    <Border WidthRequest="150"
+                                            Padding="8"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 12"
+                                            BackgroundColor="{StaticResource SurfaceContainerLow}">
+                                        <VerticalStackLayout Spacing="6">
+                                            <Grid HeightRequest="90"
+                                                  WidthRequest="120"
+                                                  HorizontalOptions="Center">
+                                                <controls:NetworkImage Source="{Binding Source}"
+                                                                       Aspect="AspectFill" />
+                                                <Border Padding="6,2"
+                                                        HorizontalOptions="Start"
+                                                        VerticalOptions="Start"
+                                                        StrokeThickness="0"
+                                                        StrokeShape="RoundRectangle 100"
+                                                        BackgroundColor="{StaticResource SurfaceContainerLowest}"
+                                                        IsVisible="{Binding IsCover}">
+                                                    <Label Text="Portada"
+                                                           FontFamily="OpenSansSemibold"
+                                                           FontSize="10"
+                                                           FontAttributes="Bold"
+                                                           TextColor="{StaticResource Primary}" />
+                                                </Border>
+                                            </Grid>
+
+                                            <Grid ColumnDefinitions="*,*"
+                                                  RowDefinitions="Auto,Auto"
+                                                  ColumnSpacing="4"
+                                                  RowSpacing="4">
+                                                <Button Text="←"
+                                                        Style="{StaticResource AdminImageActionButton}"
+                                                        Clicked="OnMoveImageLeftClicked"
+                                                        CommandParameter="{Binding .}"
+                                                        IsVisible="{Binding IsEditable}" />
+                                                <Button Grid.Column="1"
+                                                        Text="→"
+                                                        Style="{StaticResource AdminImageActionButton}"
+                                                        Clicked="OnMoveImageRightClicked"
+                                                        CommandParameter="{Binding .}"
+                                                        IsVisible="{Binding IsEditable}" />
+                                                <Button Grid.Row="1"
+                                                        Text="Portada"
+                                                        Style="{StaticResource AdminImageActionButton}"
+                                                        Clicked="OnSetCoverClicked"
+                                                        CommandParameter="{Binding .}"
+                                                        IsVisible="{Binding IsEditable}" />
+                                                <Button Grid.Row="1"
+                                                        Grid.Column="1"
+                                                        Text="Eliminar"
+                                                        Style="{StaticResource AdminImageActionButton}"
+                                                        BackgroundColor="{StaticResource ErrorContainer}"
+                                                        TextColor="{StaticResource OnErrorContainer}"
+                                                        Clicked="OnRemoveImageClicked"
+                                                        CommandParameter="{Binding .}"
+                                                        IsVisible="{Binding IsEditable}" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+
+                        <Label Text="Máximo 10 imágenes. Formatos permitidos: JPG, PNG y WebP (hasta 20 MB)."
                                FontSize="12"
-                               TextColor="{StaticResource OnSurfaceVariant}"
-                               IsVisible="False" />
+                               TextColor="{StaticResource OnSurfaceVariant}" />
                     </VerticalStackLayout>
                 </Border>
 
