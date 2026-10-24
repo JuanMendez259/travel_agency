@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
@@ -20,7 +21,19 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 // nivel base de datos o concurrencia optimista.
 var walletLocks = new System.Collections.Concurrent.ConcurrentDictionary<int, SemaphoreSlim>();
 
+const long GalleryUploadLimitBytes = 220L * 1024 * 1024;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = GalleryUploadLimitBytes;
+});
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = GalleryUploadLimitBytes;
+});
 
 builder.Services.AddOpenApi();
 
