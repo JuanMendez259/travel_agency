@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -28,6 +29,7 @@ public class ApiService
     // Anchos que se piden a la transformacion de Supabase Storage.
     public const int CardImageWidth = 400;
     public const int LargeImageWidth = 800;
+    public const int FullImageWidth = 1600;
     private const int ImageQuality = 80;
 
     // La transformacion depende del add-on de imagenes de Supabase; con esto
@@ -350,6 +352,46 @@ public class ApiService
 
         var response = await _http.PostAsync($"/api/trips/{tripId}/image", content);
         response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
+    public async Task<TripImagesUploadResult?> UploadTripImagesAsync(int tripId, IReadOnlyList<FileResult> files)
+    {
+        using var content = new MultipartFormDataContent();
+        foreach (var file in files)
+        {
+            var stream = await file.OpenReadAsync();
+            var part = new StreamContent(stream);
+            part.Headers.ContentType = new MediaTypeHeaderValue(
+                file.FileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" :
+                file.FileName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) ? "image/webp" :
+                "image/jpeg");
+            content.Add(part, "files", file.FileName);
+        }
+
+        var response = await _http.PostAsync($"/api/trips/{tripId}/images", content);
+        if (!response.IsSuccessStatusCode) throw new HttpRequestException(await response.Content.ReadAsStringAsync());
+        return await response.Content.ReadFromJsonAsync<TripImagesUploadResult>(JsonOptions);
+    }
+
+    public async Task<Trip?> DeleteTripImageAsync(int tripId, int imageId)
+    {
+        var response = await _http.DeleteAsync($"/api/trips/{tripId}/images/{imageId}");
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
+    public async Task<Trip?> ReorderTripImagesAsync(int tripId, IReadOnlyList<int> imageIds)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/trips/{tripId}/images/order", new { imageIds }, JsonOptions);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
+    }
+
+    public async Task<Trip?> SetTripImageCoverAsync(int tripId, int imageId)
+    {
+        var response = await _http.PutAsync($"/api/trips/{tripId}/images/{imageId}/cover", null);
+        await EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
 
