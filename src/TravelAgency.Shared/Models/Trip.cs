@@ -37,6 +37,7 @@ public class Trip
     public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     public ICollection<CapacityRequest> CapacityRequests { get; set; } = new List<CapacityRequest>();
     public ICollection<TripPointOfInterest> PointsOfInterest { get; set; } = new List<TripPointOfInterest>();
+    public ICollection<TripImage> Images { get; set; } = new List<TripImage>();
 
     public bool HasOptions { get; set; }
 
