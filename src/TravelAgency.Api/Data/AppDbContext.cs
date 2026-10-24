@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<PayoutRequest> PayoutRequests => Set<PayoutRequest>();
     public DbSet<TripTransport> TripTransports => Set<TripTransport>();
     public DbSet<TripExpense> TripExpenses => Set<TripExpense>();
+    public DbSet<TripImage> TripImages => Set<TripImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -187,6 +188,20 @@ public class AppDbContext : DbContext
             e.Property(x => x.CreatedAt).IsRequired();
             e.HasIndex(x => x.TripId).HasDatabaseName("IX_TripExpenses_TripId");
             e.HasOne<Trip>().WithMany().HasForeignKey(x => x.TripId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TripImage>(e =>
+        {
+            e.ToTable("TripImages");
+            e.Property(x => x.Url).IsRequired().HasMaxLength(500);
+            e.Property(x => x.Order).IsRequired();
+            e.Property(x => x.IsCover).IsRequired();
+            e.Property(x => x.CreatedAt).IsRequired();
+            e.HasIndex(x => x.TripId);
+            e.HasOne(x => x.Trip)
+             .WithMany(t => t.Images)
+             .HasForeignKey(x => x.TripId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TripPassenger>(entity =>
