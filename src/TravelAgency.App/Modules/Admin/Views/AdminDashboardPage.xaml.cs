@@ -212,7 +212,7 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             if (synced is null)
             {
                 await DisplayAlertAsync("Imágenes sin guardar",
-                    "El viaje quedó guardado, pero no se pudieron sincronizar las imágenes. Revisa tu conexión e intenta guardar de nuevo.",
+                    "El viaje quedó guardado, pero no se pudieron sincronizar las imágenes. Cierra y vuelve a abrir el formulario de edición para verificar qué imágenes quedaron guardadas antes de reintentar.",
                     "OK");
                 return;
             }
@@ -541,10 +541,17 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         }
     }
 
-    private void OnRemoveImageClicked(object? sender, EventArgs e)
+    private async void OnRemoveImageClicked(object? sender, EventArgs e)
     {
         if ((sender as Button)?.CommandParameter is not AdminTripImageItem item) return;
         if (!item.IsEditable) return;
+
+        var confirm = await DisplayAlertAsync(
+            "Eliminar imagen",
+            "¿Deseas eliminar esta imagen? Esta acción no se puede deshacer.",
+            "Eliminar",
+            "Cancelar");
+        if (!confirm) return;
 
         if (item.Id is int id && !_deletedImageIds.Contains(id))
             _deletedImageIds.Add(id);
@@ -623,6 +630,16 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             ReassignOrder();
 
             var newItems = _tripImages.Where(i => i.IsNew && !i.IsDeleted).ToList();
+            var existingServerCount = _tripImages.Count(i => i.Id.HasValue) + _deletedImageIds.Count;
+            var deleteBeforeUpload = newItems.Count > 0 &&
+                existingServerCount + newItems.Count > TripImageRules.MaxPerTrip;
+
+            // Si la galeria ya esta llena en el servidor, primero hay que liberar
+            // los espacios de las imagenes pendientes de borrar; de lo contrario
+            // el API rechaza la subida por limite antes de que podamos borrarlas.
+            if (deleteBeforeUpload)
+                await DeletePendingTripImagesAsync(tripId);
+
             if (newItems.Count > 0)
             {
                 var upload = await _api.UploadTripImagesAsync(tripId, newItems.Select(i => i.File!).ToList());
@@ -645,19 +662,8 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             // Eliminar antes de reordenar: el endpoint de orden exige exactamente
             // los IDs que el servidor tiene ahora, y un ID borrado en cola lo
             // haria fallar y bloquearia el propio borrado.
-            foreach (var imageId in _deletedImageIds.ToList())
-            {
-                try
-                {
-                    await _api.DeleteTripImageAsync(tripId, imageId);
-                }
-                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-                {
-                    // Ya no existe: se considera eliminada.
-                }
-
-                _deletedImageIds.Remove(imageId);
-            }
+            if (!deleteBeforeUpload)
+                await DeletePendingTripImagesAsync(tripId);
 
             var orderedIds = _tripImages
                 .Where(i => !i.IsDeleted && i.Id.HasValue)
@@ -695,6 +701,23 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
         {
             System.Diagnostics.Debug.WriteLine($"[SyncTripImagesAsync] {ex}");
             return null;
+        }
+    }
+
+    private async Task DeletePendingTripImagesAsync(int tripId)
+    {
+        foreach (var imageId in _deletedImageIds.ToList())
+        {
+            try
+            {
+                await _api.DeleteTripImageAsync(tripId, imageId);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Ya no existe: se considera eliminada.
+            }
+
+            _deletedImageIds.Remove(imageId);
         }
     }
 

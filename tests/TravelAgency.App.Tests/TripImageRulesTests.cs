@@ -79,6 +79,20 @@ public class TripImageRulesTests
         Assert.Empty(TripImageRules.BuildGalleryUrls(trip));
     }
 
+    [Fact]
+    public void BuildGalleryUrls_IgnoresPlaceholderUrl()
+    {
+        var trip = new Trip
+        {
+            ImageUrl = "https://example.com/storage/v1/object/public/trips/placeholder.jpg"
+        };
+
+        Assert.Empty(TripImageRules.BuildGalleryUrls(trip));
+
+        trip.Images.Add(new TripImage { Url = trip.ImageUrl, Order = 1 });
+        Assert.Empty(TripImageRules.BuildGalleryUrls(trip));
+    }
+
     [Theory]
     [InlineData("foto.jpg", 100, true)]
     [InlineData("foto.JPEG", 100, true)]

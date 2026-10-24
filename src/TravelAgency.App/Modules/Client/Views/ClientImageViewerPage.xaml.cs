@@ -61,6 +61,16 @@ public partial class ClientImageViewerPage : ContentPage, IQueryAttributable
         base.OnDisappearing();
     }
 
+    protected override void OnSizeAllocated(double width, double height)
+    {
+        base.OnSizeAllocated(width, height);
+
+        // Al rotar cambian las dimensiones disponibles; el zoom y el
+        // desplazamiento anteriores dejarian de tener sentido.
+        if (width > 0 && height > 0)
+            ResetTransform();
+    }
+
     private void OnPinchUpdated(object? sender, PinchGestureUpdatedEventArgs e)
     {
         switch (e.Status)

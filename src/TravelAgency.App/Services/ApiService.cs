@@ -9,6 +9,7 @@ namespace TravelAgency.App.Services;
 public class ApiService
 {
     private readonly HttpClient _http;
+    private readonly HttpClient _uploadHttp;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -18,6 +19,15 @@ public class ApiService
     public ApiService()
     {
         _http = new HttpClient { BaseAddress = new Uri(BaseUrl) };
+        // HttpClient.Timeout no se puede ampliar por peticion. La subida de
+        // galerias usa su propio cliente sin limite global y un timeout de 5
+        // minutos por llamada para no duplicar imagenes si el servidor alcanza
+        // a guardarlas cuando el cliente corta la conexion.
+        _uploadHttp = new HttpClient
+        {
+            BaseAddress = new Uri(BaseUrl),
+            Timeout = Timeout.InfiniteTimeSpan
+        };
     }
 
     public static string BaseUrl { get; set; } = "https://travelagency-production-f6cf.up.railway.app";
@@ -91,8 +101,11 @@ public class ApiService
 
     public void SetAuthToken(string? token)
     {
-        _http.DefaultRequestHeaders.Authorization =
-            string.IsNullOrEmpty(token) ? null : new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        var authorization = string.IsNullOrEmpty(token)
+            ? null
+            : new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        _http.DefaultRequestHeaders.Authorization = authorization;
+        _uploadHttp.DefaultRequestHeaders.Authorization = authorization;
     }
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
@@ -366,10 +379,11 @@ public class ApiService
                 file.FileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" :
                 file.FileName.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) ? "image/webp" :
                 "image/jpeg");
-            content.Add(part, "files", file.FileName);
+            content.Add(part, "files", Path.GetFileName(file.FileName));
         }
 
-        var response = await _http.PostAsync($"/api/trips/{tripId}/images", content);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        var response = await _uploadHttp.PostAsync($"/api/trips/{tripId}/images", content, timeout.Token);
         if (!response.IsSuccessStatusCode) throw new HttpRequestException(await response.Content.ReadAsStringAsync());
         return await response.Content.ReadFromJsonAsync<TripImagesUploadResult>(JsonOptions);
     }

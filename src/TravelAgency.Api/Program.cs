@@ -745,6 +745,7 @@ app.MapPost("/api/trips/{id}/images", async (int id, HttpRequest request, AppDbC
         return Results.Problem("No se pudo guardar la galería. Intenta de nuevo.", statusCode: 500);
     }
 
+    SortTripImages(trip);
     return Results.Ok(new TripImagesUploadResult { Trip = trip, Uploaded = created });
 }).RequireAuthorization("AdminOnly");
 
@@ -765,6 +766,7 @@ app.MapDelete("/api/trips/{id}/images/{imageId}", async (int id, int imageId, Ap
     await db.SaveChangesAsync();
     await storage.DeleteAsync(image.Url);
 
+    SortTripImages(trip);
     return Results.Ok(trip);
 }).RequireAuthorization("AdminOnly");
 
@@ -774,6 +776,8 @@ app.MapPut("/api/trips/{id}/images/order", async (int id, TripImageOrderRequest 
         .Include(t => t.Images)
         .FirstOrDefaultAsync(t => t.Id == id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.Images.Count == 0)
+        return Results.BadRequest("El viaje no tiene imágenes para reordenar.");
 
     var requested = request.ImageIds ?? new List<int>();
     if (!TripImageRules.IsValidOrder(requested, trip.Images.Select(i => i.Id)))

@@ -236,7 +236,7 @@
                                 Clicked="OnPickImagesClicked" />
 
                         <CollectionView x:Name="TripImagesList"
-                                        HeightRequest="200"
+                                        HeightRequest="220"
                                         SelectionMode="None"
                                         HorizontalScrollBarVisibility="Never"
                                         VerticalScrollBarVisibility="Never">

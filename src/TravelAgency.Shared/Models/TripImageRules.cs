@@ -73,14 +73,17 @@ public static class TripImageRules
             .OrderBy(i => i.Order)
             .ThenBy(i => i.Id)
             .Select(i => i.Url)
-            .Where(url => !string.IsNullOrWhiteSpace(url))
+            .Where(url => !string.IsNullOrWhiteSpace(url) && !IsPlaceholderUrl(url))
             .ToList();
 
         if (urls.Count > 0)
             return urls;
 
-        return string.IsNullOrWhiteSpace(trip.ImageUrl)
+        return string.IsNullOrWhiteSpace(trip.ImageUrl) || IsPlaceholderUrl(trip.ImageUrl)
             ? Array.Empty<string>()
             : new[] { trip.ImageUrl! };
     }
+
+    private static bool IsPlaceholderUrl(string? url)
+        => url?.EndsWith("/placeholder.jpg", StringComparison.OrdinalIgnoreCase) == true;
 }
