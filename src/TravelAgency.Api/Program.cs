@@ -401,7 +401,8 @@ app.MapGet("/api/trips", async (AppDbContext db) =>
     await db.Trips.Where(t => t.IsActive).OrderByDescending(t => t.StartDate).ToListAsync());
 
 app.MapGet("/api/trips/manage", async (AppDbContext db) =>
-    await db.Trips
+{
+    var trips = await db.Trips
         .Include(t => t.Bookings)
             .ThenInclude(b => b.User)
         .Include(t => t.Bookings)
@@ -409,15 +410,28 @@ app.MapGet("/api/trips/manage", async (AppDbContext db) =>
         .Include(t => t.CapacityRequests)
         .Include(t => t.PointsOfInterest)
         .Include(t => t.Options)
+        .Include(t => t.Images)
         .OrderByDescending(t => t.StartDate)
-        .ToListAsync()).RequireAuthorization("StaffOnly");
+        .ToListAsync();
+
+    foreach (var trip in trips) SortTripImages(trip);
+
+    return Results.Ok(trips);
+}).RequireAuthorization("StaffOnly");
 
 app.MapGet("/api/trips/{id}", async (int id, AppDbContext db) =>
-    await db.Trips
+{
+    var trip = await db.Trips
         .Include(t => t.PointsOfInterest)
         .Include(t => t.Options)
         .Include(t => t.Images)
-        .FirstOrDefaultAsync(t => t.Id == id) is Trip trip ? Results.Ok(trip) : Results.NotFound());
+        .FirstOrDefaultAsync(t => t.Id == id);
+
+    if (trip is null) return Results.NotFound();
+
+    SortTripImages(trip);
+    return Results.Ok(trip);
+});
 
 app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
 {
@@ -552,7 +566,9 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db, ImageStorageService
 
 app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbContext db, ImageStorageService storage) =>
 {
-    var trip = await db.Trips.FindAsync(id);
+    var trip = await db.Trips
+        .Include(t => t.Images)
+        .FirstOrDefaultAsync(t => t.Id == id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
     var file = request.Form.Files.FirstOrDefault();
@@ -587,8 +603,29 @@ app.MapPost("/api/trips/{id}/image", async (int id, HttpRequest request, AppDbCo
     {
         var imageUrl = await storage.UploadAsync(uploadStream, extension, contentType);
 
-        var previousImageUrl = trip.ImageUrl;
-        trip.ImageUrl = imageUrl;
+        var cover = trip.Images.FirstOrDefault(i => i.IsCover);
+        var target = cover ?? trip.Images.OrderBy(i => i.Order).ThenBy(i => i.Id).FirstOrDefault();
+        var previousImageUrl = target?.Url ?? trip.ImageUrl;
+
+        if (target is not null)
+        {
+            target.Url = imageUrl;
+            target.IsCover = true;
+        }
+        else
+        {
+            trip.Images.Add(new TripImage
+            {
+                TripId = trip.Id,
+                Url = imageUrl,
+                Order = 1,
+                IsCover = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        NormalizeTripImages(trip);
+        SortTripImages(trip);
         await db.SaveChangesAsync();
 
         // La BD ya apunta a la nueva imagen, asi que ahora es seguro borrar la anterior.
@@ -727,6 +764,53 @@ app.MapDelete("/api/trips/{id}/images/{imageId}", async (int id, int imageId, Ap
 
     await db.SaveChangesAsync();
     await storage.DeleteAsync(image.Url);
+
+    return Results.Ok(trip);
+}).RequireAuthorization("AdminOnly");
+
+app.MapPut("/api/trips/{id}/images/order", async (int id, TripImageOrderRequest request, AppDbContext db) =>
+{
+    var trip = await db.Trips
+        .Include(t => t.Images)
+        .FirstOrDefaultAsync(t => t.Id == id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var requested = request.ImageIds ?? new List<int>();
+    if (!TripImageRules.IsValidOrder(requested, trip.Images.Select(i => i.Id)))
+        return Results.BadRequest("El orden debe incluir exactamente las imágenes del viaje.");
+
+    var orderById = requested
+        .Select((imageId, index) => new { imageId, order = index + 1 })
+        .ToDictionary(x => x.imageId, x => x.order);
+
+    foreach (var image in trip.Images)
+        image.Order = orderById[image.Id];
+
+    NormalizeTripImages(trip);
+    SortTripImages(trip);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(trip);
+}).RequireAuthorization("AdminOnly");
+
+app.MapPut("/api/trips/{id}/images/{imageId}/cover", async (int id, int imageId, AppDbContext db) =>
+{
+    var trip = await db.Trips
+        .Include(t => t.Images)
+        .FirstOrDefaultAsync(t => t.Id == id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+
+    var image = trip.Images.FirstOrDefault(i => i.Id == imageId);
+    if (image is null) return Results.NotFound("Imagen no encontrada.");
+
+    foreach (var item in trip.Images)
+        item.IsCover = false;
+
+    image.IsCover = true;
+
+    NormalizeTripImages(trip);
+    SortTripImages(trip);
+    await db.SaveChangesAsync();
 
     return Results.Ok(trip);
 }).RequireAuthorization("AdminOnly");
@@ -1709,6 +1793,7 @@ app.MapGet("/api/bookings/{id}", async (int id, AppDbContext db, ClaimsPrincipal
 {
     var booking = await db.Bookings
         .Include(b => b.Trip)
+            .ThenInclude(t => t!.Images)
         .Include(b => b.User)
         .Include(b => b.Payments)
         .Include(b => b.Passengers)
@@ -1720,6 +1805,8 @@ app.MapGet("/api/bookings/{id}", async (int id, AppDbContext db, ClaimsPrincipal
 
     if (GetUserId(principal) != booking.UserId && !principal.IsInRole("Admin"))
         return Results.Forbid();
+
+    if (booking.Trip is not null) SortTripImages(booking.Trip);
 
     // Historico de reembolsos: permite mostrar el monto en cancelaciones antiguas
     // (pagadas como Refunded, sin credito en wallet) y en las nuevas.
@@ -4480,6 +4567,11 @@ static async Task TryExecAsync(AppDbContext db, string sql)
     }
 }
 
+static void SortTripImages(Trip trip)
+{
+    trip.Images = trip.Images.OrderBy(i => i.Order).ThenBy(i => i.Id).ToList();
+}
+
 static void NormalizeTripImages(Trip trip)
 {
     var ordered = trip.Images.OrderBy(i => i.Order).ThenBy(i => i.Id).ToList();
@@ -4572,5 +4664,6 @@ record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
 record DiscountValidationResult(bool Valid, string Message, decimal DiscountAmount, decimal FinalAmount, string? Code, DiscountType? Type = null, decimal? Value = null);
 record UpsertPoiRequest(string? Name, string? Description, double Latitude, double Longitude);
 record CreatePayoutRequest(decimal Amount, string? Note);
+record TripImageOrderRequest(List<int>? ImageIds);
 record ResolvePayoutRequest(bool Approve);
 record TripExpenseDto(string Concept, decimal Amount);
