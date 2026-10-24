@@ -642,6 +642,23 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
                     return null;
             }
 
+            // Eliminar antes de reordenar: el endpoint de orden exige exactamente
+            // los IDs que el servidor tiene ahora, y un ID borrado en cola lo
+            // haria fallar y bloquearia el propio borrado.
+            foreach (var imageId in _deletedImageIds.ToList())
+            {
+                try
+                {
+                    await _api.DeleteTripImageAsync(tripId, imageId);
+                }
+                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+                {
+                    // Ya no existe: se considera eliminada.
+                }
+
+                _deletedImageIds.Remove(imageId);
+            }
+
             var orderedIds = _tripImages
                 .Where(i => !i.IsDeleted && i.Id.HasValue)
                 .OrderBy(i => i.Order)
@@ -652,6 +669,12 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             if (orderedIds.Count > 1)
             {
                 current = await _api.ReorderTripImagesAsync(tripId, orderedIds) ?? current;
+            }
+            else
+            {
+                // La respuesta de PUT no incluye Images; con una sola imagen no
+                // hay reorder que devuelva la portada real del servidor.
+                current = await _api.GetTripAsync(tripId) ?? current;
             }
 
             var coverId = _tripImages
@@ -664,11 +687,6 @@ public partial class AdminDashboardPage : ContentPage, IQueryAttributable
             if (coverId is int cover && cover != serverCoverId)
             {
                 current = await _api.SetTripImageCoverAsync(tripId, cover) ?? current;
-            }
-
-            foreach (var imageId in _deletedImageIds.Distinct())
-            {
-                await _api.DeleteTripImageAsync(tripId, imageId);
             }
 
             return await _api.GetTripAsync(tripId);

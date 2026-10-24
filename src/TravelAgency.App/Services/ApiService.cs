@@ -377,6 +377,15 @@ public class ApiService
     public async Task<Trip?> DeleteTripImageAsync(int tripId, int imageId)
     {
         var response = await _http.DeleteAsync($"/api/trips/{tripId}/images/{imageId}");
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                string.IsNullOrWhiteSpace(body) ? "La imagen ya no existe." : body.Trim(),
+                null,
+                response.StatusCode);
+        }
+
         await EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<Trip>(JsonOptions);
     }
