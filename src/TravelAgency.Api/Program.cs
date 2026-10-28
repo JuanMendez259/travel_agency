@@ -20,6 +20,7 @@ AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 // sola instancia de la API; un despliegue multi-instancia requeriria bloqueo a
 // nivel base de datos o concurrencia optimista.
 var walletLocks = new System.Collections.Concurrent.ConcurrentDictionary<int, SemaphoreSlim>();
+var tripLocks = new System.Collections.Concurrent.ConcurrentDictionary<int, SemaphoreSlim>();
 
 const long GalleryUploadLimitBytes = 220L * 1024 * 1024;
 
@@ -46,15 +47,16 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 var provider = builder.Configuration["Database:Provider"] ?? "sqlite";
 var sqlServerConnection = builder.Configuration.GetConnectionString("SqlServer");
 var supabaseConnection = builder.Configuration.GetConnectionString("Supabase");
+var sqliteConnection = builder.Configuration.GetConnectionString("Sqlite");
 
-static DbContextOptionsBuilder ConfigureDb(DbContextOptionsBuilder options, string? provider, string? sqlServer, string? supabase)
+static DbContextOptionsBuilder ConfigureDb(DbContextOptionsBuilder options, string? provider, string? sqlServer, string? supabase, string? sqlite)
 {
     if (provider == "sqlserver" && !string.IsNullOrEmpty(sqlServer))
         options.UseSqlServer(sqlServer);
     else if (provider == "supabase" && !string.IsNullOrEmpty(supabase))
         options.UseNpgsql(supabase);
     else
-        options.UseSqlite("Data Source=travelagency.db");
+        options.UseSqlite(string.IsNullOrWhiteSpace(sqlite) ? "Data Source=travelagency.db" : sqlite);
 
     return options;
 }
@@ -62,7 +64,7 @@ static DbContextOptionsBuilder ConfigureDb(DbContextOptionsBuilder options, stri
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<AuditLogInterceptor>();
 builder.Services.AddDbContext<AppDbContext>((sp, options) =>
-    ConfigureDb(options, provider, sqlServerConnection, supabaseConnection)
+    ConfigureDb(options, provider, sqlServerConnection, supabaseConnection, sqliteConnection)
         .AddInterceptors(sp.GetRequiredService<AuditLogInterceptor>()));
 
 builder.Services.AddSingleton<ImageStorageService>();
@@ -177,7 +179,8 @@ using (var scope = app.Services.CreateScope())
     await EnsureSeedUsersAsync(db);
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsEnvironment("Testing"))
+    app.UseHttpsRedirection();
 
 Console.WriteLine($"[ImageStorage] Modo de almacenamiento: {(storage.IsSupabase ? "Supabase" : "local")} " +
     $"| placeholder: {storage.PlaceholderUrl ?? "(sin Supabase:Url)"}");
@@ -1040,120 +1043,145 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
 
 app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContext db, ImageStorageService storage) =>
 {
-    var trip = await db.Trips
-        .Include(t => t.Bookings)
-            .ThenInclude(b => b.Payments)
-        .FirstOrDefaultAsync(t => t.Id == id);
-    if (trip is null) return Results.NotFound("Viaje no encontrado.");
-
-    string? message = null;
+    // El mismo lock que usa la cancelación evita que un borrado y una
+    // cancelación concurrentes se pisen a mitad de la operación.
+    var tripGate = tripLocks.GetOrAdd(id, _ => new SemaphoreSlim(1, 1));
+    await tripGate.WaitAsync();
     try
     {
-        using var reader = new StreamReader(request.Body);
-        var body = await reader.ReadToEndAsync();
-        if (!string.IsNullOrWhiteSpace(body))
-        {
-            var dto = JsonSerializer.Deserialize<DeleteTripRequest>(body,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            message = dto?.Message;
-        }
-    }
-    catch
-    {
-        // Sin cuerpo JSON: se usa el mensaje por defecto.
-    }
+        var trip = await db.Trips
+            .Include(t => t.Bookings)
+                .ThenInclude(b => b.Payments)
+            .FirstOrDefaultAsync(t => t.Id == id);
+        if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
-    if (string.IsNullOrWhiteSpace(message))
-        message = $"Tu reserva para \"{trip.Title}\" fue cancelada porque el viaje fue eliminado.";
-
-    var bookingIds = trip.Bookings.Select(b => b.Id).ToList();
-    var refunds = bookingIds.Count == 0
-        ? new List<BookingRefund>()
-        : await db.BookingRefunds.Where(r => bookingIds.Contains(r.BookingId)).ToListAsync();
-    var refundIds = refunds.Select(r => r.Id).ToList();
-    var walletTransactions = await db.WalletTransactions
-        .Where(t => (t.BookingId.HasValue && bookingIds.Contains(t.BookingId.Value))
-            || (t.RefundId.HasValue && refundIds.Contains(t.RefundId.Value)))
-        .ToListAsync();
-
-    var hasRealMoney = trip.Bookings.SelectMany(b => b.Payments).Any(p => p.Amount > 0m)
-        || refunds.Any(r => r.Amount > 0m || r.PenaltyAmount > 0m)
-        || walletTransactions.Any(t => t.Amount != 0m);
-
-    if (hasRealMoney)
-        return Results.Text(
-            "No se puede eliminar: el viaje tiene pagos o reembolsos registrados. Usa Cancelar viaje para devolver el 100% a la wallet.",
-            statusCode: StatusCodes.Status409Conflict);
-
-    var notified = 0;
-    foreach (var booking in trip.Bookings)
-    {
-        if (booking.Status is BookingStatus.Pending or BookingStatus.Confirmed)
-        {
-            db.Notifications.Add(new UserNotification
-            {
-                UserId = booking.UserId,
-                Message = message,
-                CreatedAt = DateTime.UtcNow
-            });
-            notified++;
-        }
-    }
-
-    var pois = await db.TripPointsOfInterest.Where(p => p.TripId == id).ToListAsync();
-    db.TripPointsOfInterest.RemoveRange(pois);
-
-    var images = await db.TripImages.Where(i => i.TripId == id).ToListAsync();
-    var imageUrls = images.Select(i => i.Url).Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
-    db.TripImages.RemoveRange(images);
-
-    db.WalletTransactions.RemoveRange(walletTransactions);
-    db.BookingRefunds.RemoveRange(refunds);
-
-    var bookingItems = await db.BookingItems.Where(i => bookingIds.Contains(i.BookingId)).ToListAsync();
-    db.BookingItems.RemoveRange(bookingItems);
-    var payments = await db.Payments.Where(p => bookingIds.Contains(p.BookingId)).ToListAsync();
-    db.Payments.RemoveRange(payments);
-    db.Bookings.RemoveRange(trip.Bookings);
-
-    var capacityRequests = await db.CapacityRequests.Where(c => c.TripId == id).ToListAsync();
-    db.CapacityRequests.RemoveRange(capacityRequests);
-
-    // Las opciones del viaje deben borrarse antes que el viaje (FK Restrict).
-    var tripOptions = await db.TripOptions.Where(o => o.TripId == id).ToListAsync();
-    db.TripOptions.RemoveRange(tripOptions);
-
-    // Los descuentos ligados al viaje se eliminan con el (las reservas guardan snapshot).
-    var tripDiscounts = await db.Discounts.Where(d => d.TripId == id).ToListAsync();
-    db.Discounts.RemoveRange(tripDiscounts);
-
-    // La fila de transporte cae por cascade al borrar el viaje, pero su imagen
-    // en el storage hay que borrarla de forma explicita.
-    var tripTransport = await db.TripTransports.FirstOrDefaultAsync(t => t.TripId == id);
-
-    db.Trips.Remove(trip);
-    await db.SaveChangesAsync();
-
-    var urlsToDelete = imageUrls
-        .Append(trip.ImageUrl)
-        .Append(tripTransport?.ImageUrl)
-        .Where(u => !string.IsNullOrWhiteSpace(u))
-        .Select(u => u!)
-        .Distinct(StringComparer.OrdinalIgnoreCase);
-
-    foreach (var url in urlsToDelete)
-    {
+        string? message = null;
         try
         {
-            await storage.DeleteAsync(url);
+            using var reader = new StreamReader(request.Body);
+            var body = await reader.ReadToEndAsync();
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                var dto = JsonSerializer.Deserialize<DeleteTripRequest>(body,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                message = dto?.Message;
+            }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.Error.WriteLine($"[ImageStorage] No se pudo borrar '{url}' del viaje {id}: {ex.Message}");
+            // Sin cuerpo JSON válido: se usa el mensaje por defecto.
         }
-    }
 
-    return Results.Ok(new { Notified = notified });
+        if (string.IsNullOrWhiteSpace(message))
+            message = $"Tu reserva para \"{trip.Title}\" fue cancelada porque el viaje fue eliminado.";
+
+        var bookingIds = trip.Bookings.Select(b => b.Id).ToList();
+        var refunds = bookingIds.Count == 0
+            ? new List<BookingRefund>()
+            : await db.BookingRefunds.Where(r => bookingIds.Contains(r.BookingId)).ToListAsync();
+        var refundIds = refunds.Select(r => r.Id).ToList();
+        var walletTransactions = await db.WalletTransactions
+            .Where(t => (t.BookingId.HasValue && bookingIds.Contains(t.BookingId.Value))
+                || (t.RefundId.HasValue && refundIds.Contains(t.RefundId.Value)))
+            .ToListAsync();
+
+        // Nunca se borra dinero real: si existió cualquier pago, reembolso o
+        // movimiento de wallet distinto de cero, el viaje debe conservarse.
+        var hasRealMoney = trip.Bookings.SelectMany(b => b.Payments).Any(p => p.Amount > 0m)
+            || refunds.Any(r => r.Amount > 0m || r.PenaltyAmount > 0m)
+            || walletTransactions.Any(t => t.Amount != 0m);
+
+        if (hasRealMoney)
+            return Results.Text(
+                "No se puede eliminar: el viaje tiene pagos o reembolsos con dinero real. Usa Cancelar viaje para devolver el 100% a la wallet del cliente; el historial financiero no se elimina.",
+                statusCode: StatusCodes.Status409Conflict);
+
+        var notified = 0;
+        foreach (var booking in trip.Bookings)
+        {
+            if (booking.Status is BookingStatus.Pending or BookingStatus.Confirmed)
+            {
+                db.Notifications.Add(new UserNotification
+                {
+                    UserId = booking.UserId,
+                    Message = message,
+                    CreatedAt = DateTime.UtcNow
+                });
+                notified++;
+            }
+        }
+
+        // Se cargan y eliminan explícitamente todas las dependencias para no
+        // depender de cascadas antiguas o de FKs Restrict de Postgres.
+        var pois = await db.TripPointsOfInterest.Where(p => p.TripId == id).ToListAsync();
+        var images = await db.TripImages.Where(i => i.TripId == id).ToListAsync();
+        var imageUrls = images.Select(i => i.Url).Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
+        var ratings = await db.TripRatings.Where(r => r.TripId == id).ToListAsync();
+        var favorites = await db.FavoriteTrips.Where(f => f.TripId == id).ToListAsync();
+        var expenses = await db.TripExpenses.Where(e => e.TripId == id).ToListAsync();
+        var passengers = await db.TripPassengers.Where(p => bookingIds.Contains(p.BookingId)).ToListAsync();
+        var transport = await db.TripTransports.FirstOrDefaultAsync(t => t.TripId == id);
+        var transportImageUrl = transport?.ImageUrl;
+
+        db.WalletTransactions.RemoveRange(walletTransactions);
+        db.BookingRefunds.RemoveRange(refunds);
+        db.BookingItems.RemoveRange(await db.BookingItems.Where(i => bookingIds.Contains(i.BookingId)).ToListAsync());
+        db.TripPassengers.RemoveRange(passengers);
+        db.Payments.RemoveRange(await db.Payments.Where(p => bookingIds.Contains(p.BookingId)).ToListAsync());
+        db.Bookings.RemoveRange(trip.Bookings);
+
+        db.CapacityRequests.RemoveRange(await db.CapacityRequests.Where(c => c.TripId == id).ToListAsync());
+        db.TripOptions.RemoveRange(await db.TripOptions.Where(o => o.TripId == id).ToListAsync());
+        db.Discounts.RemoveRange(await db.Discounts.Where(d => d.TripId == id).ToListAsync());
+        db.TripRatings.RemoveRange(ratings);
+        db.FavoriteTrips.RemoveRange(favorites);
+        db.TripExpenses.RemoveRange(expenses);
+        db.TripPointsOfInterest.RemoveRange(pois);
+        db.TripImages.RemoveRange(images);
+        if (transport is not null) db.TripTransports.Remove(transport);
+
+        db.Trips.Remove(trip);
+
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            Console.Error.WriteLine($"[DeleteTrip] No se pudo eliminar el viaje {id}: {ex.Message}");
+            return Results.Text(
+                "No se pudo eliminar el viaje porque todavía tiene registros dependientes. Contacta a soporte técnico.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        var urlsToDelete = imageUrls
+            .Append(trip.ImageUrl)
+            .Append(transportImageUrl)
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(u => u!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var imagesDeleted = 0;
+        foreach (var url in urlsToDelete)
+        {
+            try
+            {
+                await storage.DeleteAsync(url);
+                imagesDeleted++;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[ImageStorage] No se pudo borrar '{url}' del viaje {id}: {ex.Message}");
+            }
+        }
+
+        return Results.Ok(new { Notified = notified, ImagesDeleted = imagesDeleted });
+    }
+    finally
+    {
+        tripGate.Release();
+    }
 }).RequireAuthorization("AdminOnly");
 
 app.MapGet("/api/users", async (AppDbContext db) =>
@@ -2373,7 +2401,7 @@ app.MapGet("/api/favorites", async (AppDbContext db, ClaimsPrincipal principal) 
     if (userId == 0) return Results.Forbid();
 
     var trips = await db.FavoriteTrips
-        .Where(f => f.UserId == userId)
+        .Where(f => f.UserId == userId && f.Trip != null && f.Trip.CancelledAt == null)
         .OrderByDescending(f => f.CreatedAt)
         .Select(f => f.Trip!)
         .ToListAsync();
@@ -2385,8 +2413,10 @@ app.MapPost("/api/favorites/{tripId}", async (int tripId, AppDbContext db, Claim
     var userId = GetUserId(principal);
     if (userId == 0) return Results.Forbid();
 
-    if (!await db.Trips.AnyAsync(t => t.Id == tripId))
-        return Results.NotFound("Viaje no encontrado.");
+    var trip = await db.Trips.FindAsync(tripId);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.CancelledAt is not null)
+        return Results.BadRequest("El viaje está cancelado.");
 
     var exists = await db.FavoriteTrips.AnyAsync(f => f.UserId == userId && f.TripId == tripId);
     if (!exists)
@@ -2795,82 +2825,121 @@ app.MapPut("/api/trips/{id}/active", async (int id, UpdateTripActiveRequest requ
 
 app.MapPost("/api/trips/{id}/cancel", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
 {
-    var trip = await db.Trips
-        .Include(t => t.Bookings)
-            .ThenInclude(b => b.Payments)
-        .FirstOrDefaultAsync(t => t.Id == id);
-    if (trip is null) return Results.NotFound("Viaje no encontrado.");
-    if (trip.CancelledAt is not null)
-        return Results.BadRequest("El viaje ya está cancelado.");
-    if (trip.Finalized)
-        return Results.BadRequest("El viaje ya finalizó; no es posible cancelarlo.");
-    if (trip.DepartureCompleted)
-        return Results.BadRequest("La salida ya se realizó; no es posible cancelar el viaje.");
-
-    var adminId = GetUserId(principal);
-    var now = DateTime.UtcNow;
-    var activeBookings = trip.Bookings
-        .Where(b => b.Status is BookingStatus.Pending or BookingStatus.Confirmed)
-        .ToList();
-    var totalRefunded = 0m;
-
-    foreach (var booking in activeBookings)
+    // Serializa cancelaciones del mismo viaje: la segunda solicitud espera y
+    // vuelve a leer el estado, por lo que no duplica reembolsos.
+    var tripGate = tripLocks.GetOrAdd(id, _ => new SemaphoreSlim(1, 1));
+    await tripGate.WaitAsync();
+    try
     {
-        var paid = booking.PaidTotal();
-        if (paid > 0)
+        var trip = await db.Trips
+            .Include(t => t.Bookings)
+                .ThenInclude(b => b.Payments)
+            .FirstOrDefaultAsync(t => t.Id == id);
+        if (trip is null) return Results.NotFound("Viaje no encontrado.");
+        if (trip.CancelledAt is not null)
+            return Results.BadRequest("El viaje ya está cancelado.");
+        if (trip.Finalized)
+            return Results.BadRequest("El viaje ya finalizó; no es posible cancelarlo.");
+        if (trip.DepartureCompleted)
+            return Results.BadRequest("La salida ya se realizó; no es posible cancelar el viaje.");
+
+        var adminId = GetUserId(principal);
+        var now = DateTime.UtcNow;
+        var activeBookings = trip.Bookings
+            .Where(b => b.Status is BookingStatus.Pending or BookingStatus.Confirmed)
+            .ToList();
+        var bookingsCancelled = 0;
+        var totalRefunded = 0m;
+
+        foreach (var booking in activeBookings)
         {
-            var refund = new BookingRefund
+            // Mismo lock que usa la cancelación del cliente: evita que ambas
+            // operaciones acrediten la misma reserva si llegan a la vez.
+            var walletGate = walletLocks.GetOrAdd(booking.UserId, _ => new SemaphoreSlim(1, 1));
+            await walletGate.WaitAsync();
+            try
             {
-                BookingId = booking.Id,
-                UserId = booking.UserId,
-                Amount = paid,
-                PenaltyAmount = 0,
-                Reason = "Viaje cancelado por la agencia",
-                CreatedAt = now
-            };
-            db.BookingRefunds.Add(refund);
-            db.WalletTransactions.Add(new WalletTransaction
+                await db.Entry(booking).ReloadAsync();
+                if (booking.Status is not (BookingStatus.Pending or BookingStatus.Confirmed))
+                    continue;
+
+                // Se consulta dentro del lock y solo Completed, igual que la
+                // política de cancelación normal del cliente.
+                var paid = await db.Payments
+                    .Where(p => p.BookingId == booking.Id && p.Status == PaymentStatus.Completed)
+                    .Select(p => (decimal?)p.Amount)
+                    .SumAsync() ?? 0m;
+                paid = Math.Round(paid, 2);
+
+                // Se conserva un registro de la cancelación aunque no haya dinero
+                // abonado; los importes en cero no bloquean el borrado posterior.
+                var refund = new BookingRefund
+                {
+                    BookingId = booking.Id,
+                    UserId = booking.UserId,
+                    Amount = paid,
+                    PenaltyAmount = 0m,
+                    Reason = "Viaje cancelado por la agencia",
+                    CreatedAt = now
+                };
+                db.BookingRefunds.Add(refund);
+
+                if (paid > 0m)
+                {
+                    db.WalletTransactions.Add(new WalletTransaction
+                    {
+                        UserId = booking.UserId,
+                        Amount = paid,
+                        Type = WalletType.CancellationCredit,
+                        BookingId = booking.Id,
+                        Refund = refund,
+                        Note = "Cancelación de viaje",
+                        CreatedAt = now
+                    });
+                    totalRefunded += paid;
+                }
+
+                booking.Status = BookingStatus.Cancelled;
+                booking.CancelledAt = now;
+                booking.CancelledByUserId = adminId;
+
+                db.Notifications.Add(new UserNotification
+                {
+                    UserId = booking.UserId,
+                    Message = paid > 0m
+                        ? $"El viaje \"{trip.Title}\" fue cancelado por la agencia. Se acreditaron {paid:C} a tu saldo. Puedes usarlo en otro viaje o solicitar un reembolso."
+                        : $"El viaje \"{trip.Title}\" fue cancelado por la agencia. Tu reserva fue cancelada.",
+                    CreatedAt = now
+                });
+
+                bookingsCancelled++;
+            }
+            finally
             {
-                UserId = booking.UserId,
-                Amount = paid,
-                Type = WalletType.CancellationCredit,
-                BookingId = booking.Id,
-                Refund = refund,
-                Note = "Cancelación de viaje",
-                CreatedAt = now
-            });
-            totalRefunded += paid;
+                walletGate.Release();
+            }
         }
 
-        booking.Status = BookingStatus.Cancelled;
-        booking.CancelledAt = now;
-        booking.CancelledByUserId = adminId;
+        trip.CancelledAt = now;
+        trip.CancelledByUserId = adminId;
+        trip.IsActive = false;
+        trip.CheckInOpen = false;
 
-        db.Notifications.Add(new UserNotification
+        await db.SaveChangesAsync();
+        await RecomputeAvailabilityAsync(db, trip);
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new TripCancellationResult
         {
-            UserId = booking.UserId,
-            Message = paid > 0
-                ? $"El viaje \"{trip.Title}\" fue cancelado por la agencia. Se acreditaron {paid:C} a tu saldo. Puedes usarlo en otro viaje o solicitar un reembolso."
-                : $"El viaje \"{trip.Title}\" fue cancelado por la agencia. Tu reserva fue cancelada.",
-            CreatedAt = now
+            Trip = trip,
+            BookingsCancelled = bookingsCancelled,
+            TotalRefunded = Math.Round(totalRefunded, 2)
         });
     }
-
-    trip.CancelledAt = now;
-    trip.CancelledByUserId = adminId;
-    trip.IsActive = false;
-    trip.CheckInOpen = false;
-
-    await db.SaveChangesAsync();
-    await RecomputeAvailabilityAsync(db, trip);
-    await db.SaveChangesAsync();
-
-    return Results.Ok(new TripCancellationResult
+    finally
     {
-        Trip = trip,
-        BookingsCancelled = activeBookings.Count,
-        TotalRefunded = Math.Round(totalRefunded, 2)
-    });
+        tripGate.Release();
+    }
 }).RequireAuthorization("AdminOnly");
 
 app.MapGet("/api/trips/{id}/ratings", async (int id, AppDbContext db) =>
@@ -3169,8 +3238,10 @@ app.MapGet("/api/trips/{tripId}/expenses", async (int tripId, AppDbContext db) =
 
 app.MapPost("/api/trips/{tripId}/expenses", async (int tripId, TripExpenseDto dto, AppDbContext db) =>
 {
-    if (!await db.Trips.AnyAsync(t => t.Id == tripId))
-        return Results.NotFound("Viaje no encontrado.");
+    var trip = await db.Trips.FindAsync(tripId);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.CancelledAt is not null)
+        return Results.BadRequest("El viaje está cancelado.");
 
     var error = ValidateTripExpenseDto(dto);
     if (error is not null) return Results.BadRequest(error);
@@ -4818,3 +4889,6 @@ record CreatePayoutRequest(decimal Amount, string? Note);
 record TripImageOrderRequest(List<int>? ImageIds);
 record ResolvePayoutRequest(bool Approve);
 record TripExpenseDto(string Concept, decimal Amount);
+
+/// <summary>Expone el entrypoint para las pruebas de integración con WebApplicationFactory.</summary>
+public partial class Program;

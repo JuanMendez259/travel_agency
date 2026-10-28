@@ -18,12 +18,13 @@ public class AuditLogInterceptor : SaveChangesInterceptor
         "Title", "Destination", "Description", "StartDate", "EndDate", "Price", "Capacity",
         "AvailableSeats", "TransportType", "IsActive",
         "OriginLatitude", "OriginLongitude", "DestinationLatitude", "DestinationLongitude",
-        "CheckInOpen", "DepartureCompleted"
+        "CheckInOpen", "DepartureCompleted", "Finalized", "CancelledAt", "CancelledByUserId"
     };
 
     private static readonly HashSet<string> BookingTracked = new()
     {
-        "NumberOfSeats", "Status", "TotalAmount", "CheckedIn", "CheckedInAt"
+        "NumberOfSeats", "Status", "TotalAmount", "CheckedIn", "CheckedInAt",
+        "CancelledAt", "CancelledByUserId"
     };
 
     private static readonly HashSet<string> PaymentTracked = new()
@@ -41,6 +42,7 @@ public class AuditLogInterceptor : SaveChangesInterceptor
         var provider = config["Database:Provider"] ?? "sqlite";
         var sqlServer = config.GetConnectionString("SqlServer");
         var supabase = config.GetConnectionString("Supabase");
+        var sqlite = config.GetConnectionString("Sqlite");
         var options = new DbContextOptionsBuilder<AppDbContext>();
 
         if (provider == "sqlserver" && !string.IsNullOrEmpty(sqlServer))
@@ -48,7 +50,7 @@ public class AuditLogInterceptor : SaveChangesInterceptor
         else if (provider == "supabase" && !string.IsNullOrEmpty(supabase))
             options.UseNpgsql(supabase);
         else
-            options.UseSqlite("Data Source=travelagency.db");
+            options.UseSqlite(string.IsNullOrWhiteSpace(sqlite) ? "Data Source=travelagency.db" : sqlite);
 
         _auditOptions = options.Options;
     }
