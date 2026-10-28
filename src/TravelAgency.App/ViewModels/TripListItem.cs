@@ -49,7 +49,11 @@ public class TripListItem : INotifyPropertyChanged
 
     public bool HasAvailability => AvailableSeats > 0;
 
-    public bool IsPaused => !Trip.IsActive;
+    public bool IsCancelled => Trip.CancelledAt.HasValue;
+
+    public bool IsPaused => !Trip.IsActive && !IsCancelled;
+
+    public bool CanToggleActive => CanManage && !IsCancelled;
 
     public string ActiveButtonText => IsPaused ? "Activar" : "Pausar";
 

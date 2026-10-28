@@ -17,6 +17,11 @@ public class Trip
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    public DateTime? CancelledAt { get; set; }
+    public int? CancelledByUserId { get; set; }
+
+    public bool IsCancelled => CancelledAt.HasValue;
+
     public double? OriginLatitude { get; set; }
     public double? OriginLongitude { get; set; }
     public double? DestinationLatitude { get; set; }

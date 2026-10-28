@@ -57,6 +57,11 @@
                             Style="{StaticResource AdminChip}"
                             Clicked="OnTripsStatusChipClicked"
                             CommandParameter="Paused" />
+                    <Button x:Name="ChipTripsCancelled"
+                            Text="Cancelados"
+                            Style="{StaticResource AdminChip}"
+                            Clicked="OnTripsStatusChipClicked"
+                            CommandParameter="Cancelled" />
                 </HorizontalStackLayout>
             </ScrollView>
 
@@ -120,6 +125,18 @@
                                                            FontAttributes="Bold"
                                                            TextColor="{StaticResource OnErrorContainer}" />
                                                 </Border>
+                                                <Border IsVisible="{Binding IsCancelled}"
+                                                        HorizontalOptions="Start"
+                                                        StrokeThickness="0"
+                                                        StrokeShape="RoundRectangle 100"
+                                                        BackgroundColor="{StaticResource ErrorContainer}"
+                                                        Padding="8,2">
+                                                    <Label Text="CANCELADO"
+                                                           FontFamily="OpenSansSemibold"
+                                                           FontSize="11"
+                                                           FontAttributes="Bold"
+                                                           TextColor="{StaticResource OnErrorContainer}" />
+                                                </Border>
                                                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="4">
                                                     <Label Text="📍" FontSize="13" />
                                                     <Label Grid.Column="1" Text="{Binding Trip.Destination}" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
@@ -174,7 +191,7 @@
                                                 FontSize="14"
                                                 Clicked="OnToggleActiveClicked"
                                                 CommandParameter="{Binding Trip}"
-                                                IsVisible="{Binding CanManage}" />
+                                                IsVisible="{Binding CanToggleActive}" />
                                     </VerticalStackLayout>
                                 </Border>
                             </DataTemplate>

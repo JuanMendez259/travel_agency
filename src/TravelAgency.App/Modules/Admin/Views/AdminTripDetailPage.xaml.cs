@@ -71,13 +71,25 @@ public partial class AdminTripDetailPage : ContentPage
             PriceLabel.Text += $" · Niño: {_trip.ChildPrice.Value:C}";
         TransportLabel.Text = TransportTypeConverter.ToDisplay(_trip.TransportType);
         TransportEmojiLabel.Text = _trip.TransportType == TransportType.Camioneta ? "🚐" : "🚌";
-        StatusLabel.Text = _trip.IsActive ? "Publicado" : "Inactivo";
-        StatusBadge.BackgroundColor = _trip.IsActive ? Resource("SuccessContainer") : Resource("SurfaceContainerHigh");
-        StatusDot.TextColor = _trip.IsActive ? Resource("Secondary") : Resource("Outline");
-        StatusLabel.TextColor = _trip.IsActive ? Resource("Secondary") : Resource("Outline");
+        var isCancelled = _trip.CancelledAt.HasValue;
+        StatusLabel.Text = isCancelled ? "Cancelado" : (_trip.IsActive ? "Publicado" : "Inactivo");
+        StatusBadge.BackgroundColor = isCancelled
+            ? Resource("ErrorContainer")
+            : _trip.IsActive ? Resource("SuccessContainer") : Resource("SurfaceContainerHigh");
+        StatusDot.TextColor = isCancelled
+            ? Resource("Error")
+            : _trip.IsActive ? Resource("Secondary") : Resource("Outline");
+        StatusLabel.TextColor = isCancelled
+            ? Resource("OnErrorContainer")
+            : _trip.IsActive ? Resource("Secondary") : Resource("Outline");
         PauseButton.Text = _trip.IsActive ? "Pausar" : "Reactivar";
         PauseButton.BackgroundColor = _trip.IsActive ? Resource("WarningContainer") : Resource("SuccessContainer");
         PauseButton.TextColor = _trip.IsActive ? Resource("OnWarningContainer") : Resource("Secondary");
+        EditButton.IsVisible = !isCancelled;
+        PauseButton.IsVisible = !isCancelled;
+        CancelTripButton.IsVisible = !isCancelled && !_trip.Finalized && !_trip.DepartureCompleted;
+        FinalizeButton.IsVisible = !isCancelled;
+        CheckinButton.IsVisible = !isCancelled;
         if (_trip.CancellationDaysLimit.HasValue)
         {
             CancellationLabel.Text = $"Cancelación del cliente: hasta {_trip.CancellationDaysLimit.Value} día(s) antes de la salida.";
@@ -651,6 +663,41 @@ public partial class AdminTripDetailPage : ContentPage
         }
     }
 
+    private async void OnCancelTripClicked(object? sender, EventArgs e)
+    {
+        if (_trip is null) return;
+
+        var activeBookings = _trip.Bookings
+            .Where(b => b.Status is BookingStatus.Pending or BookingStatus.Confirmed)
+            .ToList();
+
+        var confirm = await DisplayAlertAsync(
+            "Cancelar viaje",
+            activeBookings.Count > 0
+                ? $"¿Cancelar \"{_trip.Title}\"?\n\nSe cancelarán {activeBookings.Count} reservas y se devolverá el 100% de lo pagado a la wallet de cada cliente. Esta acción no se puede deshacer."
+                : $"¿Cancelar \"{_trip.Title}\"? No hay reservas activas; el viaje quedará marcado como cancelado.",
+            "Sí, cancelar",
+            "No");
+
+        if (!confirm) return;
+
+        try
+        {
+            var result = await _api.CancelTripAsync(_trip.Id);
+            if (result is null) return;
+
+            await DisplayAlertAsync(
+                "Viaje cancelado",
+                $"Reservas canceladas: {result.BookingsCancelled}\nTotal devuelto a wallet: {result.TotalRefunded:C}",
+                "OK");
+            await LoadTripAsync();
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("Error", ex.Message, "OK");
+        }
+    }
+
     private async void OnDeleteClicked(object? sender, EventArgs e)
     {
         if (_trip is null) return;
@@ -662,8 +709,8 @@ public partial class AdminTripDetailPage : ContentPage
         var confirm = await DisplayAlertAsync(
             "Eliminar viaje",
             activeBookings.Count > 0
-                ? $"¿Eliminar \"{_trip.Title}\"? Se cancelarán {activeBookings.Count} reservas pendientes o confirmadas y se notificará a esos usuarios."
-                : $"¿Eliminar \"{_trip.Title}\"? También se eliminarán sus reservas.",
+                ? $"¿Eliminar \"{_trip.Title}\"? Se cancelarán {activeBookings.Count} reservas pendientes o confirmadas y se notificará a esos usuarios. Si hay pagos o reembolsos reales, usa Cancelar viaje."
+                : $"¿Eliminar \"{_trip.Title}\"? También se eliminarán sus reservas. Si hay pagos o reembolsos reales, usa Cancelar viaje.",
             "Sí", "No");
 
         if (!confirm) return;

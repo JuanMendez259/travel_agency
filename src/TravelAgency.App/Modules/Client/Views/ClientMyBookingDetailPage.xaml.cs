@@ -115,7 +115,15 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 BindableLayout.SetItemsSource(ItineraryLayout, pois);
             }
 
-        StatusLabel.Text = $"Estado: {currentBooking.Status}";
+        StatusLabel.Text = currentBooking.Status switch
+        {
+            BookingStatus.Pending => "Estado: Pago pendiente",
+            BookingStatus.Confirmed => "Estado: Confirmado",
+            BookingStatus.Cancelled => currentBooking.WasCancelledByClient()
+                ? "Estado: Cancelado por ti"
+                : "Estado: Cancelado por la agencia",
+            _ => $"Estado: {currentBooking.Status}"
+        };
 
         var paid = currentBooking.PaidTotal();
         var refunded = currentBooking.RefundedTotal();

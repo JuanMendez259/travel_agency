@@ -151,7 +151,7 @@ public partial class ClientProfilePage : ContentPage
             $"{feature} estará disponible pronto. Por ahora esta función aún no está activa.", "OK");
     }
 
-    private async void OnPayoutRequested(object? sender, TappedEventArgs e)
+    private async void OnPayoutRequested(object? sender, EventArgs e)
     {
         if (_available <= 0)
         {
@@ -186,7 +186,7 @@ public partial class ClientProfilePage : ContentPage
 
         try
         {
-            var result = await _api.CreatePayoutRequestAsync(amount, null);
+            var result = await _api.CreatePayoutRequestAsync(amount, "Reembolso a forma de pago original");
             if (result is not null)
                 UpdateWalletDisplay(new WalletSummary(result.Balance, result.Held, result.Available, new()));
             else

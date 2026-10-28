@@ -86,9 +86,11 @@ public partial class AdminTripsPage : ContentPage
         IEnumerable<TripListItem> filtered = _allTrips;
 
         if (_statusFilter == "Active")
-            filtered = filtered.Where(i => !i.IsPaused);
+            filtered = filtered.Where(i => !i.IsPaused && !i.IsCancelled);
         else if (_statusFilter == "Paused")
             filtered = filtered.Where(i => i.IsPaused);
+        else if (_statusFilter == "Cancelled")
+            filtered = filtered.Where(i => i.IsCancelled);
 
         if (!string.IsNullOrWhiteSpace(_searchText))
         {
@@ -117,7 +119,11 @@ public partial class AdminTripsPage : ContentPage
 
     private void StyleChips()
     {
-        var (isAll, isActive, isPaused) = (_statusFilter == "All", _statusFilter == "Active", _statusFilter == "Paused");
+        var (isAll, isActive, isPaused, isCancelled) = (
+            _statusFilter == "All",
+            _statusFilter == "Active",
+            _statusFilter == "Paused",
+            _statusFilter == "Cancelled");
         var selectedBackground = GetColor("Primary");
         var selectedText = GetColor("OnPrimary");
         var unselectedBackground = GetColor("SurfaceContainerHigh");
@@ -131,6 +137,9 @@ public partial class AdminTripsPage : ContentPage
 
         ChipTripsPaused.TextColor = isPaused ? selectedText : unselectedText;
         ChipTripsPaused.BackgroundColor = isPaused ? selectedBackground : unselectedBackground;
+
+        ChipTripsCancelled.TextColor = isCancelled ? selectedText : unselectedText;
+        ChipTripsCancelled.BackgroundColor = isCancelled ? selectedBackground : unselectedBackground;
     }
 
     private static Color GetColor(string key) =>

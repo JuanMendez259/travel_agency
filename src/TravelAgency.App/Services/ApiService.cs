@@ -352,7 +352,14 @@ public class ApiService
         }
 
         var response = await _http.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response);
+    }
+
+    public async Task<TripCancellationResult?> CancelTripAsync(int tripId)
+    {
+        var response = await _http.PostAsync($"/api/trips/{tripId}/cancel", null);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<TripCancellationResult>(JsonOptions);
     }
 
     public async Task<Trip?> UploadTripImageAsync(int tripId, FileResult file)

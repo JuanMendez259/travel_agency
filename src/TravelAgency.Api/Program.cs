@@ -142,6 +142,7 @@ using (var scope = app.Services.CreateScope())
     await EnsurePayoutRequestsTableAsync(db, provider);
     await EnsureBookingSpecialNeedsColumnAsync(db, provider);
     await EnsureBookingCancellationAuditColumnsAsync(db, provider);
+    await EnsureTripCancelledColumnsAsync(db, provider);
     await EnsurePaymentRefundedAmountColumnAsync(db, provider);
     await EnsurePassengerSeatColumnAsync(db, provider);
     await EnsureBookingSeatColumnAsync(db, provider);
@@ -398,7 +399,10 @@ app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext 
 });
 
 app.MapGet("/api/trips", async (AppDbContext db) =>
-    await db.Trips.Where(t => t.IsActive).OrderByDescending(t => t.StartDate).ToListAsync());
+    await db.Trips
+        .Where(t => t.IsActive && t.CancelledAt == null)
+        .OrderByDescending(t => t.StartDate)
+        .ToListAsync());
 
 app.MapGet("/api/trips/manage", async (AppDbContext db) =>
 {
@@ -942,6 +946,8 @@ app.MapPut("/api/trips/{id}", async (int id, Trip input, AppDbContext db) =>
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.CancelledAt is not null)
+        return Results.BadRequest("El viaje está cancelado y no se puede editar.");
 
     if (input.StartDate.Date < DateTime.UtcNow.Date)
         return Results.BadRequest("La fecha de salida no puede estar en el pasado.");
@@ -1036,6 +1042,7 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
 {
     var trip = await db.Trips
         .Include(t => t.Bookings)
+            .ThenInclude(b => b.Payments)
         .FirstOrDefaultAsync(t => t.Id == id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
@@ -1059,6 +1066,25 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
     if (string.IsNullOrWhiteSpace(message))
         message = $"Tu reserva para \"{trip.Title}\" fue cancelada porque el viaje fue eliminado.";
 
+    var bookingIds = trip.Bookings.Select(b => b.Id).ToList();
+    var refunds = bookingIds.Count == 0
+        ? new List<BookingRefund>()
+        : await db.BookingRefunds.Where(r => bookingIds.Contains(r.BookingId)).ToListAsync();
+    var refundIds = refunds.Select(r => r.Id).ToList();
+    var walletTransactions = await db.WalletTransactions
+        .Where(t => (t.BookingId.HasValue && bookingIds.Contains(t.BookingId.Value))
+            || (t.RefundId.HasValue && refundIds.Contains(t.RefundId.Value)))
+        .ToListAsync();
+
+    var hasRealMoney = trip.Bookings.SelectMany(b => b.Payments).Any(p => p.Amount > 0m)
+        || refunds.Any(r => r.Amount > 0m || r.PenaltyAmount > 0m)
+        || walletTransactions.Any(t => t.Amount != 0m);
+
+    if (hasRealMoney)
+        return Results.Text(
+            "No se puede eliminar: el viaje tiene pagos o reembolsos registrados. Usa Cancelar viaje para devolver el 100% a la wallet.",
+            statusCode: StatusCodes.Status409Conflict);
+
     var notified = 0;
     foreach (var booking in trip.Bookings)
     {
@@ -1074,7 +1100,16 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
         }
     }
 
-    var bookingIds = trip.Bookings.Select(b => b.Id).ToList();
+    var pois = await db.TripPointsOfInterest.Where(p => p.TripId == id).ToListAsync();
+    db.TripPointsOfInterest.RemoveRange(pois);
+
+    var images = await db.TripImages.Where(i => i.TripId == id).ToListAsync();
+    var imageUrls = images.Select(i => i.Url).Where(u => !string.IsNullOrWhiteSpace(u)).ToList();
+    db.TripImages.RemoveRange(images);
+
+    db.WalletTransactions.RemoveRange(walletTransactions);
+    db.BookingRefunds.RemoveRange(refunds);
+
     var bookingItems = await db.BookingItems.Where(i => bookingIds.Contains(i.BookingId)).ToListAsync();
     db.BookingItems.RemoveRange(bookingItems);
     var payments = await db.Payments.Where(p => bookingIds.Contains(p.BookingId)).ToListAsync();
@@ -1099,14 +1134,23 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
     db.Trips.Remove(trip);
     await db.SaveChangesAsync();
 
-    if (!string.IsNullOrEmpty(trip.ImageUrl))
-    {
-        await storage.DeleteAsync(trip.ImageUrl);
-    }
+    var urlsToDelete = imageUrls
+        .Append(trip.ImageUrl)
+        .Append(tripTransport?.ImageUrl)
+        .Where(u => !string.IsNullOrWhiteSpace(u))
+        .Select(u => u!)
+        .Distinct(StringComparer.OrdinalIgnoreCase);
 
-    if (!string.IsNullOrEmpty(tripTransport?.ImageUrl))
+    foreach (var url in urlsToDelete)
     {
-        await storage.DeleteAsync(tripTransport.ImageUrl);
+        try
+        {
+            await storage.DeleteAsync(url);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[ImageStorage] No se pudo borrar '{url}' del viaje {id}: {ex.Message}");
+        }
     }
 
     return Results.Ok(new { Notified = notified });
@@ -2626,6 +2670,8 @@ app.MapPut("/api/trips/{id}/departure", async (int id, UpdateDepartureRequest re
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.CancelledAt is not null)
+        return Results.BadRequest("El viaje está cancelado.");
 
     if (request.DepartureCompleted is true)
     {
@@ -2650,6 +2696,8 @@ app.MapPut("/api/trips/{id}/finalize", async (int id, UpdateFinalizeRequest requ
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.CancelledAt is not null)
+        return Results.BadRequest("El viaje está cancelado.");
 
     trip.Finalized = request.Finalized;
     await db.SaveChangesAsync();
@@ -2707,6 +2755,8 @@ app.MapPut("/api/trips/{id}/active", async (int id, UpdateTripActiveRequest requ
 {
     var trip = await db.Trips.FindAsync(id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.CancelledAt is not null)
+        return Results.BadRequest("El viaje está cancelado y no se puede reactivar.");
 
     var wasActive = trip.IsActive;
     trip.IsActive = request.IsActive;
@@ -2741,6 +2791,86 @@ app.MapPut("/api/trips/{id}/active", async (int id, UpdateTripActiveRequest requ
     }
 
     return Results.Ok(trip);
+}).RequireAuthorization("AdminOnly");
+
+app.MapPost("/api/trips/{id}/cancel", async (int id, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var trip = await db.Trips
+        .Include(t => t.Bookings)
+            .ThenInclude(b => b.Payments)
+        .FirstOrDefaultAsync(t => t.Id == id);
+    if (trip is null) return Results.NotFound("Viaje no encontrado.");
+    if (trip.CancelledAt is not null)
+        return Results.BadRequest("El viaje ya está cancelado.");
+    if (trip.Finalized)
+        return Results.BadRequest("El viaje ya finalizó; no es posible cancelarlo.");
+    if (trip.DepartureCompleted)
+        return Results.BadRequest("La salida ya se realizó; no es posible cancelar el viaje.");
+
+    var adminId = GetUserId(principal);
+    var now = DateTime.UtcNow;
+    var activeBookings = trip.Bookings
+        .Where(b => b.Status is BookingStatus.Pending or BookingStatus.Confirmed)
+        .ToList();
+    var totalRefunded = 0m;
+
+    foreach (var booking in activeBookings)
+    {
+        var paid = booking.PaidTotal();
+        if (paid > 0)
+        {
+            var refund = new BookingRefund
+            {
+                BookingId = booking.Id,
+                UserId = booking.UserId,
+                Amount = paid,
+                PenaltyAmount = 0,
+                Reason = "Viaje cancelado por la agencia",
+                CreatedAt = now
+            };
+            db.BookingRefunds.Add(refund);
+            db.WalletTransactions.Add(new WalletTransaction
+            {
+                UserId = booking.UserId,
+                Amount = paid,
+                Type = WalletType.CancellationCredit,
+                BookingId = booking.Id,
+                Refund = refund,
+                Note = "Cancelación de viaje",
+                CreatedAt = now
+            });
+            totalRefunded += paid;
+        }
+
+        booking.Status = BookingStatus.Cancelled;
+        booking.CancelledAt = now;
+        booking.CancelledByUserId = adminId;
+
+        db.Notifications.Add(new UserNotification
+        {
+            UserId = booking.UserId,
+            Message = paid > 0
+                ? $"El viaje \"{trip.Title}\" fue cancelado por la agencia. Se acreditaron {paid:C} a tu saldo. Puedes usarlo en otro viaje o solicitar un reembolso."
+                : $"El viaje \"{trip.Title}\" fue cancelado por la agencia. Tu reserva fue cancelada.",
+            CreatedAt = now
+        });
+    }
+
+    trip.CancelledAt = now;
+    trip.CancelledByUserId = adminId;
+    trip.IsActive = false;
+    trip.CheckInOpen = false;
+
+    await db.SaveChangesAsync();
+    await RecomputeAvailabilityAsync(db, trip);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new TripCancellationResult
+    {
+        Trip = trip,
+        BookingsCancelled = activeBookings.Count,
+        TotalRefunded = Math.Round(totalRefunded, 2)
+    });
 }).RequireAuthorization("AdminOnly");
 
 app.MapGet("/api/trips/{id}/ratings", async (int id, AppDbContext db) =>
@@ -4220,6 +4350,23 @@ static async Task EnsureBookingCancellationAuditColumnsAsync(AppDbContext db, st
         await TryExecAsync(db, provider == "sqlite"
             ? "ALTER TABLE \"Bookings\" ADD COLUMN \"CancelledByUserId\" INTEGER NULL;"
             : "ALTER TABLE \"Bookings\" ADD COLUMN \"CancelledByUserId\" integer NULL;");
+    }
+}
+
+static async Task EnsureTripCancelledColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Trips", "CancelledAt", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"CancelledAt\" TEXT NULL;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"CancelledAt\" timestamptz NULL;");
+    }
+
+    if (!await ColumnExistsAsync(db, "Trips", "CancelledByUserId", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? "ALTER TABLE \"Trips\" ADD COLUMN \"CancelledByUserId\" INTEGER NULL;"
+            : "ALTER TABLE \"Trips\" ADD COLUMN \"CancelledByUserId\" integer NULL;");
     }
 }
 

@@ -126,11 +126,19 @@ public class BookingCancelledConverter : IValueConverter
 /// la visibilidad colgada en su valor por defecto (visible).
 public class BookingCancellationNoticeConverter : IValueConverter
 {
-    public const string Notice =
+    public const string ClientNotice =
         "Cancelado por el usuario. Solicita tu reembolso por el medio que realizaste el pago original.";
 
+    public const string AgencyNotice =
+        "Cancelado por la agencia. El 100% de lo pagado se acreditó a tu monedero. Puedes usarlo en otro viaje o solicitar un reembolso desde Mi Perfil.";
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is Booking { Status: BookingStatus.Cancelled } ? Notice : null;
+    {
+        if (value is not Booking { Status: BookingStatus.Cancelled } booking)
+            return null;
+
+        return booking.WasCancelledByClient() ? ClientNotice : AgencyNotice;
+    }
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();

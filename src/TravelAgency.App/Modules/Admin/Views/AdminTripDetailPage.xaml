@@ -373,8 +373,20 @@
                                    VerticalOptions="Center" />
                         </Grid>
 
+                        <Button x:Name="CancelTripButton"
+                                Text="Cancelar viaje (100% a wallet)"
+                                Clicked="OnCancelTripClicked"
+                                BackgroundColor="{StaticResource ErrorContainer}"
+                                TextColor="{StaticResource OnErrorContainer}"
+                                FontFamily="OpenSansSemibold"
+                                FontSize="13"
+                                CornerRadius="14"
+                                MinimumHeightRequest="44"
+                                IsVisible="False" />
+
                         <Grid x:Name="EditActions" ColumnDefinitions="*,*,*" ColumnSpacing="8">
-                            <Button Text="Editar"
+                            <Button x:Name="EditButton"
+                                    Text="Editar"
                                     FontSize="12"
                                     Clicked="OnEditClicked"
                                     BackgroundColor="{StaticResource Primary}"
