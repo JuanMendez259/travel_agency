@@ -66,6 +66,15 @@
                             </VerticalStackLayout>
                         </Grid>
 
+                        <VerticalStackLayout x:Name="RoomOccupancySection" Spacing="4" IsVisible="False">
+                            <Label Text="Personas por habitación" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
+                            <Entry x:Name="RoomOccupancyEntry" Placeholder="Ej. 1 sencilla, 2 doble, 3 triple" Keyboard="Numeric"
+                                   HeightRequest="48" BackgroundColor="{StaticResource SurfaceContainerLow}"
+                                   TextColor="{StaticResource OnSurface}" PlaceholderColor="{StaticResource Outline}" />
+                            <Label Text="Obligatorio para viajes con hotel. La habitación y sus boletos se cargan según esta ocupación."
+                                   FontSize="11" TextColor="{StaticResource OnSurfaceVariant}" />
+                        </VerticalStackLayout>
+
                         <Label Text="Beneficios" FontSize="13" TextColor="{StaticResource OnSurfaceVariant}" />
                         <Label Text="Escribe uno por línea (ej. Transporte, Desayuno, Guía)."
                                FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />

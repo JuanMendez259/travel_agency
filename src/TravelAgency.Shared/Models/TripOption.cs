@@ -21,6 +21,7 @@ public class TripOption
     public string? Benefits { get; set; }
     public bool IsActive { get; set; }
     public int Order { get; set; }
+    public int? RoomOccupancy { get; set; }
     public TripOptionCapacityMode CapacityMode { get; set; }
     public DateTime CreatedAt { get; set; }
 
@@ -57,6 +58,8 @@ public class BookingItem
     public decimal UnitPriceAdult { get; set; }
     public decimal? UnitPriceChild { get; set; }
     public string? OptionName { get; set; }
+    public int? RoomOccupancy { get; set; }
+    public int? Rooms { get; set; }
 
     [JsonIgnore]
     public Booking? Booking { get; set; }

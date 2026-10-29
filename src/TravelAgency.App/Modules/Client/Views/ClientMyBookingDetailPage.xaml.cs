@@ -169,6 +169,7 @@ public partial class ClientMyBookingDetailPage : ContentPage
 
         RenderCancellationSection(currentBooking, trip, paid);
         RenderPassengersCancelSection(passengers);
+        RenderRoomsCancelSection(currentBooking);
 
         var saldoPendiente = currentBooking.TotalAmount - paid;
         if (PagoSaldoLabel is not null)
@@ -207,6 +208,16 @@ public partial class ClientMyBookingDetailPage : ContentPage
                 sub.Add(header);
 
                 sub.Add(new Label { Text = $"{it.Adults}A / {it.Children}N", FontSize = 12, TextColor = benefitTextColor });
+                if (it.RoomOccupancy is int roomOccupancy)
+                {
+                    sub.Add(new Label
+                    {
+                        Text = $"{it.Rooms ?? 1} habitación(es) · {roomOccupancy} persona(s) por habitación",
+                        FontSize = 12,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = secondaryColor
+                    });
+                }
 
                 var benefits = it.TripOption?.BenefitLines ?? new List<string>();
                 if (benefits.Count > 0)
@@ -394,6 +405,12 @@ public partial class ClientMyBookingDetailPage : ContentPage
         PassengersCancelBlock.IsVisible = visible;
         if (!visible) return;
 
+        var hasItems = _bookingItems.Count > 0;
+        var nonRoomItemIds = _bookingItems
+            .Where(i => i.RoomOccupancy is null)
+            .Select(i => i.Id)
+            .ToHashSet();
+
         var nameColor = Token("OnSurface", "#131B2E");
         var metaColor = Token("OnSurfaceVariant", "#404941");
         var rowBg = Token("SurfaceContainerLow", "#F2F3FF");
@@ -449,23 +466,37 @@ public partial class ClientMyBookingDetailPage : ContentPage
             });
             row.Add(info, 1, 0);
 
-            var cancelButton = new Button
+            if (!hasItems || passenger.BookingItemId is null || nonRoomItemIds.Contains(passenger.BookingItemId.Value))
             {
-                Text = "Cancelar boleto",
-                FontSize = 12,
-                FontAttributes = FontAttributes.Bold,
-                BackgroundColor = Colors.Transparent,
-                TextColor = errorColor,
-                BorderColor = errorColor,
-                BorderWidth = 1,
-                CornerRadius = 10,
-                HeightRequest = 38,
-                Padding = new Thickness(12, 0),
-                CommandParameter = passenger,
-                VerticalOptions = LayoutOptions.Center
-            };
-            cancelButton.Clicked += OnCancelTicketClicked;
-            row.Add(cancelButton, 2, 0);
+                var cancelButton = new Button
+                {
+                    Text = "Cancelar boleto",
+                    FontSize = 12,
+                    FontAttributes = FontAttributes.Bold,
+                    BackgroundColor = Colors.Transparent,
+                    TextColor = errorColor,
+                    BorderColor = errorColor,
+                    BorderWidth = 1,
+                    CornerRadius = 10,
+                    HeightRequest = 38,
+                    Padding = new Thickness(12, 0),
+                    CommandParameter = passenger,
+                    VerticalOptions = LayoutOptions.Center
+                };
+                cancelButton.Clicked += OnCancelTicketClicked;
+                row.Add(cancelButton, 2, 0);
+            }
+            else
+            {
+                row.Add(new Label
+                {
+                    Text = "Habitación",
+                    FontSize = 12,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = metaColor,
+                    VerticalOptions = LayoutOptions.Center
+                }, 2, 0);
+            }
 
             PassengersCancelLayout.Children.Add(new Border
             {
@@ -554,6 +585,79 @@ public partial class ClientMyBookingDetailPage : ContentPage
         }
     }
 
+    private void RenderRoomsCancelSection(Booking booking)
+    {
+        RoomsCancelLayout.Children.Clear();
+        var roomItems = _bookingItems.Where(i => i.RoomOccupancy is > 0).ToList();
+        var visible = booking.Status != BookingStatus.Cancelled && roomItems.Count > 0;
+        RoomsCancelBlock.IsVisible = visible;
+        if (!visible) return;
+
+        var cancellable = roomItems.Where(i => i.Id != booking.HolderBookingItemId).ToList();
+        if (cancellable.Count == 0)
+        {
+            RoomsCancelLayout.Children.Add(new Label
+            {
+                Text = "La habitación incluye al titular. Para cancelarla, usa Cancelar reserva.",
+                FontSize = 12,
+                TextColor = Color.FromArgb("#404941")
+            });
+            return;
+        }
+
+        foreach (var item in cancellable)
+        {
+            var name = item.OptionName ?? item.TripOption?.Name ?? $"Habitación #{item.Id}";
+            var button = new Button
+            {
+                Text = $"Cancelar {name} · {item.Rooms ?? 1} habitación(es)",
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                BackgroundColor = Colors.Transparent,
+                TextColor = Color.FromArgb("#BA1A1A"),
+                BorderColor = Color.FromArgb("#BA1A1A"),
+                BorderWidth = 1,
+                CornerRadius = 10,
+                HeightRequest = 40,
+                CommandParameter = item
+            };
+            button.Clicked += OnCancelRoomClicked;
+            RoomsCancelLayout.Children.Add(button);
+        }
+    }
+
+    private async void OnCancelRoomClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button button || button.CommandParameter is not BookingItem item) return;
+        if (!int.TryParse(BookingId, out var id) || id <= 0) return;
+
+        var reason = await DisplayPromptAsync(
+            "Cancelar habitación",
+            $"Indica el motivo para cancelar {item.OptionName ?? "esta habitación"}:",
+            accept: "Continuar",
+            cancel: "Cancelar",
+            placeholder: "Describe el motivo");
+        if (string.IsNullOrWhiteSpace(reason)) return;
+
+        button.IsEnabled = false;
+        try
+        {
+            var result = await _api.CancelBookingItemAsync(id, item.Id, reason);
+            var refund = result?.RefundAmount ?? 0m;
+            var balance = result?.WalletBalance ?? 0m;
+            await DisplayAlertAsync(
+                "Habitación cancelada",
+                $"Se canceló la línea completa. Reembolso a tu saldo: {refund:C}. Saldo actual: {balance:C}.",
+                "OK");
+            await LoadBookingAsync(id);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlertAsync("No fue posible cancelar", ex.Message, "OK");
+            button.IsEnabled = true;
+        }
+    }
+
     private static string BookingItemChoiceLabel(BookingItem item)
     {
         var name = item.OptionName ?? item.TripOption?.Name ?? $"Opción #{item.TripOptionId}";
@@ -574,19 +678,20 @@ public partial class ClientMyBookingDetailPage : ContentPage
         if (string.IsNullOrWhiteSpace(reason)) return;
 
         // Con varias lineas de opciones hay que elegir la entrada del boleto.
-        int? bookingItemId = null;
-        if (_tripHasOptions && _bookingItems.Count > 1)
+        var selectableItems = _bookingItems.Where(i => i.RoomOccupancy is null).ToList();
+        int? bookingItemId = selectableItems.Count == 1 ? selectableItems[0].Id : null;
+        if (_tripHasOptions && selectableItems.Count > 1)
         {
             // Numerar cada opcion para que la etiqueta sea unica: el ActionSheet solo
             // devuelve el string pulsado, asi que dos entradas con el mismo texto
             // colisionarian y se elegiria el boleto equivocado.
-            var labels = _bookingItems.Select((it, i) => $"{i + 1}) {BookingItemChoiceLabel(it)}").ToArray();
+            var labels = selectableItems.Select((it, i) => $"{i + 1}) {BookingItemChoiceLabel(it)}").ToArray();
             var selected = await DisplayActionSheetAsync("Selecciona la entrada", "Cancelar", null, labels);
             if (string.IsNullOrEmpty(selected) || selected == "Cancelar") return;
 
             var index = Array.IndexOf(labels, selected);
-            if (index < 0 || index >= _bookingItems.Count) return;
-            bookingItemId = _bookingItems[index].Id;
+            if (index < 0 || index >= selectableItems.Count) return;
+            bookingItemId = selectableItems[index].Id;
         }
 
         button.IsEnabled = false;

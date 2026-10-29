@@ -371,6 +371,315 @@ public sealed class BookingOptionsTests : IAsyncLifetime
         Assert.Contains(items, i => i.GetProperty("optionName").GetString() == "VIP");
     }
 
+    [Fact]
+    public async Task CrearOpcion_GuardaOcupacionDeHabitacion()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+
+        var room = await CreateRoomOptionAsync(tripId, "Habitación doble", occupancy: 2);
+        Assert.Equal(2, room.GetProperty("roomOccupancy").GetInt32());
+    }
+
+    [Fact]
+    public async Task CrearOpcion_RechazaOcupacionFueraDeRango()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+
+        var response = await _admin.PostAsJsonAsync($"/api/trips/{tripId}/options", new
+        {
+            name = "Habitación inválida",
+            description = (string?)null,
+            priceAdult = 500m,
+            priceChild = (decimal?)null,
+            benefits = (string?)null,
+            isActive = true,
+            order = 2,
+            roomOccupancy = 9,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CrearOpcion_RechazaHabitacionEnViajeSinHotel()
+    {
+        var tripId = await CreateTripAsync(includesHotel: false);
+
+        var response = await _admin.PostAsJsonAsync($"/api/trips/{tripId}/options", new
+        {
+            name = "Habitación inválida",
+            description = (string?)null,
+            priceAdult = 500m,
+            priceChild = (decimal?)null,
+            benefits = (string?)null,
+            isActive = true,
+            order = 2,
+            roomOccupancy = 2,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReservarHabitacionDoble_GuardaHabitacionesYSnapshot()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        var room = await CreateRoomOptionAsync(tripId, "Habitación doble", occupancy: 2);
+
+        var response = await _client.PostAsJsonAsync("/api/bookings", new
+        {
+            tripId,
+            numberOfSeats = 2,
+            seatNumber = 1,
+            passengers = new[] { new { name = "Acompañante", age = 30, seatNumber = 2 } },
+            options = new[] { new { tripOptionId = room.GetProperty("id").GetInt32(), adults = 2, children = 0 } },
+            useOptions = true,
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var booking = await ReadJsonAsync(response);
+        var bookingId = booking.GetProperty("id").GetInt32();
+        var detail = await ReadJsonAsync(await _client.GetAsync($"/api/bookings/{bookingId}"));
+        var item = detail.GetProperty("items").EnumerateArray().Single();
+
+        Assert.Equal(2, item.GetProperty("roomOccupancy").GetInt32());
+        Assert.Equal(1, item.GetProperty("rooms").GetInt32());
+    }
+
+    [Fact]
+    public async Task ReservarHabitacionDoble_RechazaUnaPersona()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        var room = await CreateRoomOptionAsync(tripId, "Habitación doble", occupancy: 2);
+
+        var response = await _client.PostAsJsonAsync("/api/bookings", new
+        {
+            tripId,
+            numberOfSeats = 1,
+            seatNumber = 1,
+            passengers = Array.Empty<object>(),
+            options = new[] { new { tripOptionId = room.GetProperty("id").GetInt32(), adults = 1, children = 0 } },
+            useOptions = true,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReservarHabitacionDoble_RechazaTresPersonas()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        var room = await CreateRoomOptionAsync(tripId, "Habitación doble", occupancy: 2);
+
+        var response = await _client.PostAsJsonAsync("/api/bookings", new
+        {
+            tripId,
+            numberOfSeats = 3,
+            seatNumber = 1,
+            passengers = new[]
+            {
+                new { name = "Acompañante 1", age = 30, seatNumber = 2 },
+                new { name = "Acompañante 2", age = 30, seatNumber = 3 },
+            },
+            options = new[] { new { tripOptionId = room.GetProperty("id").GetInt32(), adults = 3, children = 0 } },
+            useOptions = true,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReservarHabitacionDoble_RechazaSoloNinos()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        var room = await CreateRoomOptionAsync(tripId, "Habitación doble", occupancy: 2);
+
+        var response = await _client.PostAsJsonAsync("/api/bookings", new
+        {
+            tripId,
+            numberOfSeats = 2,
+            seatNumber = 1,
+            passengers = new[] { new { name = "Niño", age = 5, seatNumber = 2 } },
+            options = new[] { new { tripOptionId = room.GetProperty("id").GetInt32(), adults = 0, children = 2 } },
+            useOptions = true,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReservarDosHabitacionesDobles_GuardaDosHabitaciones()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        var room = await CreateRoomOptionAsync(tripId, "Habitación doble", occupancy: 2);
+
+        var response = await _client.PostAsJsonAsync("/api/bookings", new
+        {
+            tripId,
+            numberOfSeats = 4,
+            seatNumber = 1,
+            passengers = new[]
+            {
+                new { name = "Acompañante 1", age = 30, seatNumber = 2 },
+                new { name = "Acompañante 2", age = 30, seatNumber = 3 },
+                new { name = "Acompañante 3", age = 30, seatNumber = 4 },
+            },
+            options = new[] { new { tripOptionId = room.GetProperty("id").GetInt32(), adults = 4, children = 0 } },
+            useOptions = true,
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var booking = await ReadJsonAsync(response);
+        var detail = await ReadJsonAsync(await _client.GetAsync($"/api/bookings/{booking.GetProperty("id").GetInt32()}"));
+        var item = detail.GetProperty("items").EnumerateArray().Single();
+        Assert.Equal(2, item.GetProperty("rooms").GetInt32());
+    }
+
+    [Fact]
+    public async Task EditarOcupacionDeOpcion_NoCambiaSnapshotDeLaReserva()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        var room = await CreateRoomOptionAsync(tripId, "Habitación doble", occupancy: 2);
+        var roomId = room.GetProperty("id").GetInt32();
+
+        var response = await _client.PostAsJsonAsync("/api/bookings", new
+        {
+            tripId,
+            numberOfSeats = 2,
+            seatNumber = 1,
+            passengers = new[] { new { name = "Acompañante", age = 30, seatNumber = 2 } },
+            options = new[] { new { tripOptionId = roomId, adults = 2, children = 0 } },
+            useOptions = true,
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var booking = await ReadJsonAsync(response);
+        var bookingId = booking.GetProperty("id").GetInt32();
+
+        var update = await _admin.PutAsJsonAsync($"/api/trips/{tripId}/options/{roomId}", new
+        {
+            name = "Habitación triple",
+            description = (string?)null,
+            priceAdult = 500m,
+            priceChild = (decimal?)null,
+            benefits = (string?)null,
+            isActive = true,
+            order = 2,
+            roomOccupancy = 3,
+        });
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        var detail = await ReadJsonAsync(await _client.GetAsync($"/api/bookings/{bookingId}"));
+        var item = detail.GetProperty("items").EnumerateArray().Single();
+        Assert.Equal(2, item.GetProperty("roomOccupancy").GetInt32());
+        Assert.Equal(1, item.GetProperty("rooms").GetInt32());
+    }
+
+    [Fact]
+    public async Task CancelarBoletoDeHabitacion_RechazaCancelacionParcial()
+    {
+        var (_, bookingId, firstRoom, _) = await CreateTwoRoomBookingAsync();
+        var booking = await ReadJsonAsync(await _client.GetAsync($"/api/bookings/{bookingId}"));
+        var passenger = booking.GetProperty("passengers").EnumerateArray()
+            .First(p => p.GetProperty("seatNumber").GetInt32() != booking.GetProperty("seatNumber").GetInt32());
+
+        var response = await _client.PostAsJsonAsync($"/api/bookings/{bookingId}/cancel-ticket", new
+        {
+            passengerId = passenger.GetProperty("id").GetInt32(),
+            bookingItemId = firstRoom,
+            reason = "Prueba",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CancelarLineaDeHabitacion_ReembolsaYEliminaItem()
+    {
+        var (_, bookingId, _, secondRoom) = await CreateTwoRoomBookingAsync();
+
+        var response = await _client.PostAsJsonAsync($"/api/bookings/{bookingId}/cancel-item", new
+        {
+            bookingItemId = secondRoom,
+            reason = "Cancelación de una habitación",
+        });
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(response.StatusCode == HttpStatusCode.OK, body);
+        var detail = await ReadJsonAsync(await _client.GetAsync($"/api/bookings/{bookingId}"));
+        Assert.Equal(2, detail.GetProperty("numberOfSeats").GetInt32());
+        Assert.Single(detail.GetProperty("items").EnumerateArray());
+        Assert.NotEqual("Cancelled", detail.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task CancelarLineaDelTitular_Rechaza()
+    {
+        var (_, bookingId, firstRoom, _) = await CreateTwoRoomBookingAsync();
+
+        var response = await _client.PostAsJsonAsync($"/api/bookings/{bookingId}/cancel-item", new
+        {
+            bookingItemId = firstRoom,
+            reason = "Cancelación de la línea del titular",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private async Task<(int TripId, int BookingId, int FirstRoom, int SecondRoom)> CreateTwoRoomBookingAsync()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        var first = await CreateRoomOptionAsync(tripId, "Habitación doble A", occupancy: 2);
+        var second = await CreateRoomOptionAsync(tripId, "Habitación doble B", occupancy: 2);
+        var firstId = first.GetProperty("id").GetInt32();
+        var secondId = second.GetProperty("id").GetInt32();
+
+        var response = await _client.PostAsJsonAsync("/api/bookings", new
+        {
+            tripId,
+            numberOfSeats = 4,
+            seatNumber = 1,
+            passengers = new[]
+            {
+                new { name = "Acompañante 1", age = 30, seatNumber = 2 },
+                new { name = "Acompañante 2", age = 30, seatNumber = 3 },
+                new { name = "Acompañante 3", age = 30, seatNumber = 4 },
+            },
+            options = new[]
+            {
+                new { tripOptionId = firstId, adults = 2, children = 0 },
+                new { tripOptionId = secondId, adults = 2, children = 0 },
+            },
+            useOptions = true,
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var booking = await ReadJsonAsync(response);
+        var bookingId = booking.GetProperty("id").GetInt32();
+        var detail = await ReadJsonAsync(await _client.GetAsync($"/api/bookings/{bookingId}"));
+        var itemIds = detail.GetProperty("items").EnumerateArray()
+            .Select(i => i.GetProperty("id").GetInt32())
+            .OrderBy(id => id)
+            .ToList();
+        Assert.Equal(2, itemIds.Count);
+        return (tripId, bookingId, itemIds[0], itemIds[1]);
+    }
+
+    private async Task<JsonElement> CreateRoomOptionAsync(int tripId, string name, int occupancy)
+    {
+        var response = await _admin.PostAsJsonAsync($"/api/trips/{tripId}/options", new
+        {
+            name,
+            description = (string?)null,
+            priceAdult = 500m,
+            priceChild = (decimal?)null,
+            benefits = (string?)null,
+            isActive = true,
+            order = 2,
+            roomOccupancy = occupancy,
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return await ReadJsonAsync(response);
+    }
+
     private async Task<HttpResponseMessage> CreateOptionBookingAsync(int tripId, int optionId, int seatNumber)
     {
         return await _client.PostAsJsonAsync("/api/bookings", new

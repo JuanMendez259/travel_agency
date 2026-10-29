@@ -13,7 +13,11 @@ public class TripPassenger
     public bool CheckedIn { get; set; }
     public DateTime? CheckedInAt { get; set; }
     public int? SeatNumber { get; set; }
+    public int? BookingItemId { get; set; }
 
     [JsonIgnore]
     public Booking? Booking { get; set; }
+
+    [JsonIgnore]
+    public BookingItem? BookingItem { get; set; }
 }

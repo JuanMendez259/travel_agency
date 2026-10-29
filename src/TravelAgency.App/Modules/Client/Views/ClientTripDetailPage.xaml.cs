@@ -18,7 +18,7 @@ public partial class ClientTripDetailPage : ContentPage
     private bool _isFavorite;
     private int _adults = 1;
     private int _children;
-    private readonly List<(TripOption Option, int Adults, int Children)> _optionSelections = new();
+    private readonly List<(TripOption Option, int Rooms, int Adults, int Children)> _optionSelections = new();
     private int _availableSeats;
     private bool _bookingClosed;
 
@@ -416,9 +416,31 @@ public partial class ClientTripDetailPage : ContentPage
         OptionsPanel.Children.Clear();
         _optionSelections.Clear();
 
+        var firstActive = true;
         foreach (var opt in _trip.Options.Where(o => o.IsActive).OrderBy(o => o.Order))
         {
-            _optionSelections.Add((opt, 0, 0));
+            var isRoom = opt.RoomOccupancy is > 0;
+            var rooms = 0;
+            var adults = 0;
+            var children = 0;
+            if (firstActive)
+            {
+                if (isRoom)
+                {
+                    if (opt.RoomOccupancy!.Value <= Math.Max(0, _availableSeats))
+                    {
+                        rooms = 1;
+                        adults = opt.RoomOccupancy.Value;
+                    }
+                }
+                else
+                {
+                    adults = 1;
+                }
+                firstActive = false;
+            }
+
+            _optionSelections.Add((opt, rooms, adults, children));
 
             var frame = new Border
             {
@@ -436,6 +458,16 @@ public partial class ClientTripDetailPage : ContentPage
 
             stack.Add(title);
             stack.Add(price);
+            if (isRoom)
+            {
+                stack.Add(new Label
+                {
+                    Text = $"Habitación para {opt.RoomOccupancy} persona(s)",
+                    FontSize = 12,
+                    FontAttributes = FontAttributes.Bold,
+                    TextColor = Color.FromArgb("#006C49")
+                });
+            }
 
             if (opt.BenefitLines.Count > 0)
             {
@@ -447,55 +479,114 @@ public partial class ClientTripDetailPage : ContentPage
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitionCollection { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Auto) }, Margin = new Thickness(0,6,0,0) };
 
-            var adultsLbl = new Label { Text = "Adultos", VerticalOptions = LayoutOptions.Center };
-            var adultsMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
-            var adultsCount = new Label { Text = "0", WidthRequest = 26, HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center };
-            var adultsPlus = new Button { Text = "+", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Color.FromArgb("#006C49"), TextColor = Colors.White };
-
-            var childLbl = new Label { Text = "Niños", VerticalOptions = LayoutOptions.Center };
-            var childMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
-            var childCount = new Label { Text = "0", WidthRequest = 26, HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center };
-            var childPlus = new Button { Text = "+", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Color.FromArgb("#006C49"), TextColor = Colors.White };
-
-            var row = 0;
-            grid.Add(adultsLbl, 0, row);
-            grid.Add(adultsMinus, 1, row);
-            grid.Add(adultsCount, 2, row);
-            grid.Add(adultsPlus, 3, row);
-            row++;
-            grid.Add(childLbl, 0, row);
-            grid.Add(childMinus, 1, row);
-            grid.Add(childCount, 2, row);
-            grid.Add(childPlus, 3, row);
-
-            stack.Add(grid);
-
+            var adultsCount = new Label { Text = adults.ToString(), WidthRequest = 26, HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center };
+            var childCount = new Label { Text = children.ToString(), WidthRequest = 26, HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center };
             var selIndex = _optionSelections.Count - 1;
 
-            void ApplyDelta(int adultsDelta, int childrenDelta)
+            int TotalSeats() => _optionSelections.Sum(x => x.Adults + x.Children);
+
+            if (isRoom)
             {
-                var sel = _optionSelections[selIndex];
-                var newAdults = sel.Adults + adultsDelta;
-                var newChildren = sel.Children + childrenDelta;
-                if (newAdults < 0 || newChildren < 0) return;
+                var occupancy = opt.RoomOccupancy!.Value;
+                var roomsCount = new Label { Text = rooms.ToString(), WidthRequest = 26, HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center };
+                var roomsLbl = new Label { Text = "Habitaciones", VerticalOptions = LayoutOptions.Center };
+                var roomsMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
+                var roomsPlus = new Button { Text = "+", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Color.FromArgb("#006C49"), TextColor = Colors.White };
 
-                var totalSeatsSel = 0;
-                foreach (var x in _optionSelections)
-                    totalSeatsSel += x.Adults + x.Children;
-                var delta = (newAdults + newChildren) - (sel.Adults + sel.Children);
-                if (totalSeatsSel + delta > Math.Max(0, _availableSeats)) return;
+                var adultsLbl = new Label { Text = $"Adultos: {adults}", VerticalOptions = LayoutOptions.Center };
+                var childLbl = new Label { Text = "Niños", VerticalOptions = LayoutOptions.Center };
+                var childMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
+                var childPlus = new Button { Text = "+", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Color.FromArgb("#006C49"), TextColor = Colors.White };
 
-                _optionSelections[selIndex] = (sel.Option, newAdults, newChildren);
-                adultsCount.Text = newAdults.ToString();
-                childCount.Text = newChildren.ToString();
-                UpdateBookingSummary();
+                grid.Add(roomsLbl, 0, 0);
+                grid.Add(roomsMinus, 1, 0);
+                grid.Add(roomsCount, 2, 0);
+                grid.Add(roomsPlus, 3, 0);
+                grid.Add(adultsLbl, 0, 1);
+                Grid.SetColumnSpan(adultsLbl, 4);
+                grid.Add(childLbl, 0, 2);
+                grid.Add(childMinus, 1, 2);
+                grid.Add(childCount, 2, 2);
+                grid.Add(childPlus, 3, 2);
+
+                void ApplyRoomDelta(int delta)
+                {
+                    var sel = _optionSelections[selIndex];
+                    var newRooms = Math.Max(0, sel.Rooms + delta);
+                    var seats = newRooms * occupancy;
+                    var maxChildren = Math.Max(0, seats - newRooms);
+                    var newChildren = Math.Min(sel.Children, maxChildren);
+                    var newAdults = seats - newChildren;
+                    var seatDelta = newAdults + newChildren - (sel.Adults + sel.Children);
+                    if (seatDelta > 0 && TotalSeats() + seatDelta > Math.Max(0, _availableSeats)) return;
+
+                    _optionSelections[selIndex] = (sel.Option, newRooms, newAdults, newChildren);
+                    roomsCount.Text = newRooms.ToString();
+                    adultsLbl.Text = $"Adultos: {newAdults}";
+                    childCount.Text = newChildren.ToString();
+                    UpdateBookingSummary();
+                }
+
+                void ApplyChildDelta(int delta)
+                {
+                    var sel = _optionSelections[selIndex];
+                    var seats = sel.Rooms * occupancy;
+                    var maxChildren = Math.Max(0, seats - sel.Rooms);
+                    var newChildren = Math.Clamp(sel.Children + delta, 0, maxChildren);
+                    var newAdults = seats - newChildren;
+                    _optionSelections[selIndex] = (sel.Option, sel.Rooms, newAdults, newChildren);
+                    adultsLbl.Text = $"Adultos: {newAdults}";
+                    childCount.Text = newChildren.ToString();
+                    UpdateBookingSummary();
+                }
+
+                roomsMinus.Clicked += (_, __) => ApplyRoomDelta(-1);
+                roomsPlus.Clicked += (_, __) => ApplyRoomDelta(1);
+                childMinus.Clicked += (_, __) => ApplyChildDelta(-1);
+                childPlus.Clicked += (_, __) => ApplyChildDelta(1);
+            }
+            else
+            {
+                var adultsLbl = new Label { Text = "Adultos", VerticalOptions = LayoutOptions.Center };
+                var adultsMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
+                var adultsPlus = new Button { Text = "+", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Color.FromArgb("#006C49"), TextColor = Colors.White };
+
+                var childLbl = new Label { Text = "Niños", VerticalOptions = LayoutOptions.Center };
+                var childMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
+                var childPlus = new Button { Text = "+", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Color.FromArgb("#006C49"), TextColor = Colors.White };
+
+                grid.Add(adultsLbl, 0, 0);
+                grid.Add(adultsMinus, 1, 0);
+                grid.Add(adultsCount, 2, 0);
+                grid.Add(adultsPlus, 3, 0);
+                grid.Add(childLbl, 0, 1);
+                grid.Add(childMinus, 1, 1);
+                grid.Add(childCount, 2, 1);
+                grid.Add(childPlus, 3, 1);
+
+                void ApplyDelta(int adultsDelta, int childrenDelta)
+                {
+                    var sel = _optionSelections[selIndex];
+                    var newAdults = sel.Adults + adultsDelta;
+                    var newChildren = sel.Children + childrenDelta;
+                    if (newAdults < 0 || newChildren < 0) return;
+
+                    var delta = (newAdults + newChildren) - (sel.Adults + sel.Children);
+                    if (TotalSeats() + delta > Math.Max(0, _availableSeats)) return;
+
+                    _optionSelections[selIndex] = (sel.Option, 0, newAdults, newChildren);
+                    adultsCount.Text = newAdults.ToString();
+                    childCount.Text = newChildren.ToString();
+                    UpdateBookingSummary();
+                }
+
+                adultsMinus.Clicked += (_, __) => ApplyDelta(-1, 0);
+                adultsPlus.Clicked += (_, __) => ApplyDelta(1, 0);
+                childMinus.Clicked += (_, __) => ApplyDelta(0, -1);
+                childPlus.Clicked += (_, __) => ApplyDelta(0, 1);
             }
 
-            adultsMinus.Clicked += (_, __) => ApplyDelta(-1, 0);
-            adultsPlus.Clicked += (_, __) => ApplyDelta(1, 0);
-            childMinus.Clicked += (_, __) => ApplyDelta(0, -1);
-            childPlus.Clicked += (_, __) => ApplyDelta(0, 1);
-
+            stack.Add(grid);
             frame.Content = stack;
             OptionsPanel.Children.Add(frame);
         }

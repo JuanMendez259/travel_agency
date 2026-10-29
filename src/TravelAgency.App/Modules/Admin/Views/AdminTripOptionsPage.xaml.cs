@@ -56,6 +56,7 @@ public partial class AdminTripOptionsPage : ContentPage
                 ? $"Hotel: {(string.IsNullOrWhiteSpace(_trip.HotelName) ? "(sin nombre)" : _trip.HotelName)}"
                 : "Este viaje no incluye hotel; la disponibilidad es la capacidad del transporte.";
             HotelLabel.IsVisible = true;
+            RoomOccupancySection.IsVisible = _trip.IncludesHotel;
 
             RenderOptions();
         }
@@ -153,6 +154,17 @@ public partial class AdminTripOptionsPage : ContentPage
             TextColor = Color.FromArgb("#404941")
         });
 
+        if (opt.RoomOccupancy is int roomOccupancy)
+        {
+            stack.Children.Add(new Label
+            {
+                Text = $"Habitación para {roomOccupancy} persona(s)",
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#006C49")
+            });
+        }
+
         foreach (var line in opt.BenefitLines)
         {
             stack.Children.Add(new Label
@@ -228,6 +240,7 @@ public partial class AdminTripOptionsPage : ContentPage
         OptionNameEntry.Text = opt.Name;
         PriceAdultEntry.Text = opt.PriceAdult.ToString("0.##");
         PriceChildEntry.Text = opt.PriceChild?.ToString("0.##");
+        RoomOccupancyEntry.Text = opt.RoomOccupancy?.ToString();
         BenefitsEditor.Text = opt.Benefits;
         ActiveSwitch.IsToggled = opt.IsActive;
 
@@ -243,6 +256,7 @@ public partial class AdminTripOptionsPage : ContentPage
         OptionNameEntry.Text = string.Empty;
         PriceAdultEntry.Text = string.Empty;
         PriceChildEntry.Text = string.Empty;
+        RoomOccupancyEntry.Text = string.Empty;
         BenefitsEditor.Text = string.Empty;
         ActiveSwitch.IsToggled = true;
         FormTitleLabel.Text = "Nueva opción";
@@ -281,6 +295,17 @@ public partial class AdminTripOptionsPage : ContentPage
             priceChild = child;
         }
 
+        int? roomOccupancy = null;
+        if (_trip.IncludesHotel)
+        {
+            if (!int.TryParse(RoomOccupancyEntry.Text, out var occupancy) || occupancy < 1 || occupancy > 8)
+            {
+                await DisplayAlertAsync("Habitación inválida", "Indica cuántas personas caben por habitación (1 a 8).", "OK");
+                return;
+            }
+            roomOccupancy = occupancy;
+        }
+
         var benefits = string.IsNullOrWhiteSpace(BenefitsEditor.Text) ? null : BenefitsEditor.Text.Trim();
 
         SaveButton.IsEnabled = false;
@@ -294,6 +319,7 @@ public partial class AdminTripOptionsPage : ContentPage
                     Name = name,
                     PriceAdult = priceAdult,
                     PriceChild = priceChild,
+                    RoomOccupancy = roomOccupancy,
                     Benefits = benefits,
                     IsActive = ActiveSwitch.IsToggled,
                     Order = (_trip.Options?.Count ?? 0) + 1
@@ -305,6 +331,7 @@ public partial class AdminTripOptionsPage : ContentPage
                 _editingOption.Name = name;
                 _editingOption.PriceAdult = priceAdult;
                 _editingOption.PriceChild = priceChild;
+                _editingOption.RoomOccupancy = roomOccupancy;
                 _editingOption.Benefits = benefits;
                 _editingOption.IsActive = ActiveSwitch.IsToggled;
                 await _api.UpdateTripOptionAsync(_trip.Id, _editingOption);

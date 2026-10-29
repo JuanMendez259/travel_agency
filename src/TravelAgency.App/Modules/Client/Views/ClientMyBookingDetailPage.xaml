@@ -438,6 +438,13 @@
                             <VerticalStackLayout x:Name="PassengersCancelLayout" Spacing="8" />
                         </VerticalStackLayout>
 
+                        <VerticalStackLayout x:Name="RoomsCancelBlock" IsVisible="False" Spacing="6">
+                            <Label Text="Cancelar una habitación" FontSize="13" FontAttributes="Bold" TextColor="{StaticResource OnSurface}" />
+                            <Label Text="Las habitaciones se cancelan completas. El reembolso se abona a tu saldo a favor."
+                                   FontSize="12" TextColor="{StaticResource OnSurfaceVariant}" />
+                            <VerticalStackLayout x:Name="RoomsCancelLayout" Spacing="8" />
+                        </VerticalStackLayout>
+
                     </VerticalStackLayout>
                 </toolkit:Expander>
             </Border>

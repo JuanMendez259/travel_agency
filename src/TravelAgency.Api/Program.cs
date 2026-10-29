@@ -137,6 +137,7 @@ using (var scope = app.Services.CreateScope())
     // Antes que cualquier otra migracion: las funciones siguientes materializan
     // Bookings y Payments con LINQ, y EF proyecta todas las columnas mapeadas.
     // Si estas columnas faltan todavia, el SELECT revienta con 42703.
+    await EnsureBookingHolderItemColumnAsync(db, provider);
     await EnsureBookingDiscountColumnsAsync(db, provider);
     await EnsureBookingRefundsTableAsync(db, provider);
     await EnsureWalletTransactionsTableAsync(db, provider);
@@ -156,6 +157,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureUserEmergencyContactColumnAsync(db, provider);
     await EnsureUserSupabaseColumnsAsync(db, provider);
     await EnsurePassengersTableAsync(db, provider);
+    await EnsurePassengerBookingItemColumnAsync(db, provider);
     await EnsureTripFinalizedColumnAsync(db, provider);
     await EnsureRatingsTableAsync(db, provider);
     await EnsureChildPriceColumnAsync(db, provider);
@@ -166,7 +168,9 @@ using (var scope = app.Services.CreateScope())
     await EnsureTripFloorsColumnsAsync(db, provider);
     await EnsureTripOptionsTableAsync(db, provider);
     await EnsureTripOptionIsBaseColumnAsync(db, provider);
+    await EnsureTripOptionRoomOccupancyColumnAsync(db, provider);
     await EnsureBookingItemsTableAsync(db, provider);
+    await EnsureBookingItemRoomColumnsAsync(db, provider);
     await EnsureDiscountsTableAsync(db, provider);
     await EnsurePassengerAgeColumnsAsync(db, provider);
     await EnsureCancellationPolicyColumnAsync(db, provider);
@@ -562,6 +566,7 @@ app.MapPost("/api/trips", async (Trip trip, AppDbContext db, ImageStorageService
         AvailableSeats = trip.AvailableSeats,
         IsActive = true,
         Order = 1,
+        RoomOccupancy = trip.IncludesHotel ? 1 : null,
         CapacityMode = TravelAgency.Shared.Models.TripOptionCapacityMode.Shared,
         IsBase = true,
         CreatedAt = DateTime.UtcNow
@@ -1124,6 +1129,11 @@ app.MapDelete("/api/trips/{id}", async (int id, HttpRequest request, AppDbContex
         var transport = await db.TripTransports.FirstOrDefaultAsync(t => t.TripId == id);
         var transportImageUrl = transport?.ImageUrl;
 
+        // Rompe la referencia circular Booking -> BookingItem antes de borrar ambos.
+        foreach (var booking in trip.Bookings)
+            booking.HolderBookingItemId = null;
+        await db.SaveChangesAsync();
+
         db.WalletTransactions.RemoveRange(walletTransactions);
         db.BookingRefunds.RemoveRange(refunds);
         db.BookingItems.RemoveRange(await db.BookingItems.Where(i => bookingIds.Contains(i.BookingId)).ToListAsync());
@@ -1599,9 +1609,13 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
                     return Results.BadRequest($"Opción {oi.TripOptionId} no válida para este viaje.");
                 if (!opt.IsActive)
                     return Results.BadRequest($"La opción \"{opt.Name}\" ya no está disponible.");
+                if (RoomBookingRules.Validate(opt.RoomOccupancy, trip.IncludesHotel, oi.Adults, oi.Children, out _) is { } roomError)
+                    return Results.BadRequest(roomError);
                 totalSeats += oi.Adults + oi.Children;
             }
 
+            if (requestedOptionLines.Sum(o => o.Adults) < 1)
+                return Results.BadRequest("La reserva debe incluir al menos un adulto.");
             if (totalSeats > trip.AvailableSeats)
                 return Results.BadRequest("No hay suficientes lugares disponibles para este viaje.");
         }
@@ -1637,6 +1651,16 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
                     QrToken = GenerateQrToken()
                 });
             }
+        }
+
+        if (optionsMode)
+        {
+            var expectedAdults = requestedOptionLines.Sum(o => o.Adults) - 1;
+            var expectedChildren = requestedOptionLines.Sum(o => o.Children);
+            var companionAdults = passengers.Count(p => !p.IsChild);
+            var companionChildren = passengers.Count(p => p.IsChild);
+            if (companionAdults != expectedAdults || companionChildren != expectedChildren)
+                return Results.BadRequest("Las edades de los pasajeros no coinciden con los boletos de adulto/niño seleccionados.");
         }
 
         var requestedSeats = new List<int>();
@@ -1778,12 +1802,36 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
                     Children = Math.Max(0, oi.Children),
                     UnitPriceAdult = opt.PriceAdult,
                     UnitPriceChild = opt.PriceChild,
-                    OptionName = opt.Name
+                    OptionName = opt.Name,
+                    RoomOccupancy = opt.RoomOccupancy,
+                    Rooms = RoomBookingRules.Rooms(opt.RoomOccupancy, oi.Adults, oi.Children)
                 });
             }
             if (bookingItems.Count > 0)
             {
+                var holderItem = bookingItems.FirstOrDefault(i => i.Adults > 0);
+                if (holderItem is null)
+                    return Results.BadRequest("La reserva debe incluir al menos un adulto.");
+
+                booking.HolderBookingItem = holderItem;
                 booking.NumberOfSeats = bookingItems.Sum(i => i.Adults + i.Children);
+
+                var remainingAdults = bookingItems.ToDictionary(i => i, i => i.Adults);
+                var remainingChildren = bookingItems.ToDictionary(i => i, i => i.Children);
+                remainingAdults[holderItem]--;
+
+                foreach (var passenger in passengers)
+                {
+                    var target = passenger.IsChild
+                        ? bookingItems.FirstOrDefault(i => remainingChildren[i] > 0)
+                        : bookingItems.FirstOrDefault(i => remainingAdults[i] > 0);
+                    if (target is null)
+                        return Results.BadRequest("No se pudo asignar el pasajero a una línea de opción.");
+                    passenger.BookingItem = target;
+                    if (passenger.IsChild) remainingChildren[target]--;
+                    else remainingAdults[target]--;
+                }
+
                 db.Bookings.Update(booking);
                 db.BookingItems.AddRange(bookingItems);
                 await db.SaveChangesAsync();
@@ -2301,6 +2349,8 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
 
         if (item is not null)
         {
+            if (item.RoomOccupancy is > 0)
+                return Results.BadRequest("Las habitaciones se cancelan completas desde la línea de la reserva.");
             if (passenger.IsChild && item.Children <= 0)
                 return Results.BadRequest("La entrada seleccionada no tiene boletos de nino.");
             if (!passenger.IsChild && item.Adults <= 0)
@@ -2406,6 +2456,159 @@ app.MapPost("/api/bookings/{id}/cancel-ticket", async (int id, CancelTicketReque
                 $"El cliente {booking.User.Name} cancelo el {seatLabel} de su reserva para \"{trip.Title}\". Reembolso {refund:C}.");
 
         return Results.Ok(new CancelTicketResult(booking, refund, penalty, withinPolicy, walletBalance));
+    }
+    finally
+    {
+        gate.Release();
+    }
+}).RequireAuthorization();
+
+// Cancelacion de una linea completa de habitacion. Reembolsa los boletos de la
+// linea de forma prorrateada y libera todos sus asientos.
+app.MapPost("/api/bookings/{id}/cancel-item", async (int id, CancelBookingItemRequest request, AppDbContext db, ClaimsPrincipal principal) =>
+{
+    var ownerId = await db.Bookings
+        .Where(b => b.Id == id)
+        .Select(b => (int?)b.UserId)
+        .FirstOrDefaultAsync();
+    if (ownerId is null) return Results.NotFound("Reserva no encontrada.");
+
+    var userId = GetUserId(principal);
+    if (userId == 0) return Results.Forbid();
+    if (ownerId.Value != userId && !principal.IsInRole("Admin")) return Results.Forbid();
+
+    var gate = WalletLockFor(ownerId.Value);
+    await gate.WaitAsync();
+    try
+    {
+        var booking = await db.Bookings
+            .Include(b => b.Trip)
+            .Include(b => b.User)
+            .Include(b => b.Payments)
+            .Include(b => b.Passengers)
+            .Include(b => b.Items)
+            .FirstOrDefaultAsync(b => b.Id == id);
+        if (booking is null) return Results.NotFound("Reserva no encontrada.");
+        if (booking.Status == BookingStatus.Cancelled)
+            return Results.BadRequest("La reserva ya esta cancelada.");
+
+        var trip = booking.Trip;
+        if (trip is null) return Results.NotFound("El viaje de esta reserva ya no existe.");
+        if (trip.DepartureCompleted)
+            return Results.BadRequest("La salida ya se realizo, no es posible cancelar.");
+        if (trip.Finalized)
+            return Results.BadRequest("El viaje ya finalizo, no es posible cancelar.");
+        if (trip.StartDate.Date <= DateTime.UtcNow.Date)
+            return Results.BadRequest("El viaje ya comenzo, no es posible cancelar.");
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            return Results.BadRequest("Indica el motivo de la cancelacion.");
+
+        var item = booking.Items.FirstOrDefault(i => i.Id == request.BookingItemId);
+        if (item is null)
+            return Results.BadRequest("La entrada no pertenece a la reserva.");
+        if (item.RoomOccupancy is not > 0)
+            return Results.BadRequest("Esta entrada no es una habitacion; cancela boletos individuales.");
+        if (booking.HolderBookingItemId == item.Id)
+            return Results.BadRequest("La linea incluye al titular; cancela la reserva completa.");
+
+        var itemPassengers = booking.Passengers.Where(p => p.BookingItemId == item.Id).ToList();
+        if (itemPassengers.Count != item.Seats)
+            return Results.BadRequest("La linea no tiene todos sus pasajeros asignados.");
+
+        var paid = booking.PaidTotal();
+        var grossBefore = booking.TotalAmount + booking.DiscountAmount;
+        var withinPolicy = BookingRefundPolicy.IsWithinPolicy(
+            trip.StartDate,
+            DateTime.UtcNow.Date,
+            trip.CancellationDaysLimit);
+
+        var refundSum = 0m;
+        var penaltySum = 0m;
+        var netSum = 0m;
+        var discountShareSum = 0m;
+
+        foreach (var passenger in itemPassengers)
+        {
+            var grossUnitPrice = passenger.IsChild
+                ? (item.UnitPriceChild ?? item.UnitPriceAdult)
+                : item.UnitPriceAdult;
+            var netUnit = BookingRefundPolicy.NetUnitPrice(booking, grossUnitPrice);
+            var paidShare = BookingRefundPolicy.PaidShare(booking, paid, netUnit);
+
+            refundSum += BookingRefundPolicy.RefundFrom(paidShare, withinPolicy);
+            penaltySum += BookingRefundPolicy.PenaltyFrom(paidShare, withinPolicy);
+            netSum += netUnit;
+            if (grossBefore > 0)
+                discountShareSum += Math.Round(booking.DiscountAmount * grossUnitPrice / grossBefore, 2);
+        }
+
+        refundSum = Math.Round(refundSum, 2);
+        penaltySum = Math.Round(penaltySum, 2);
+        netSum = Math.Round(netSum, 2);
+        discountShareSum = Math.Round(discountShareSum, 2);
+
+        db.TripPassengers.RemoveRange(itemPassengers);
+        foreach (var passenger in itemPassengers) booking.Passengers.Remove(passenger);
+        db.BookingItems.Remove(item);
+        booking.Items.Remove(item);
+
+        booking.NumberOfSeats = Math.Max(0, booking.NumberOfSeats - item.Seats);
+        booking.TotalAmount = Math.Max(0m, Math.Round(booking.TotalAmount - netSum, 2));
+        booking.DiscountAmount = Math.Max(0m, Math.Round(booking.DiscountAmount - discountShareSum, 2));
+        if (booking.NumberOfSeats == 0)
+        {
+            booking.Status = BookingStatus.Cancelled;
+            booking.CancelledAt = DateTime.UtcNow;
+            booking.CancelledByUserId = userId;
+        }
+
+        var refundEntity = new BookingRefund
+        {
+            BookingId = booking.Id,
+            UserId = booking.UserId,
+            Amount = refundSum,
+            PenaltyAmount = penaltySum,
+            Reason = request.Reason.Trim(),
+            BookingItemId = item.Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.BookingRefunds.Add(refundEntity);
+
+        if (refundSum > 0)
+        {
+            db.WalletTransactions.Add(new WalletTransaction
+            {
+                UserId = booking.UserId,
+                Amount = refundSum,
+                Type = WalletType.CancellationCredit,
+                BookingId = booking.Id,
+                Refund = refundEntity,
+                Note = "Cancelacion de habitacion",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
+        await db.SaveChangesAsync();
+        await RecomputeAvailabilityAsync(db, trip);
+        await db.SaveChangesAsync();
+
+        var walletBalance = await db.WalletTransactions
+            .Where(t => t.UserId == booking.UserId)
+            .SumAsync(t => (decimal?)t.Amount) ?? 0m;
+
+        db.Notifications.Add(new UserNotification
+        {
+            UserId = booking.UserId,
+            Message = $"Se cancelo una linea de habitacion de tu reserva y se acreditaron {refundSum:C} a tu saldo.",
+            CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        if (booking.User is not null)
+            await SendToStaffAsync(db,
+                $"El cliente {booking.User.Name} cancelo una linea de habitacion de su reserva para \"{trip.Title}\". Reembolso {refundSum:C}.");
+
+        return Results.Ok(new CancelTicketResult(booking, refundSum, penaltySum, withinPolicy, walletBalance));
     }
     finally
     {
@@ -3116,6 +3319,8 @@ app.MapPost("/api/trips/{tripId}/options", async (int tripId, TripOptionDto dto,
         return Results.BadRequest("El precio no puede ser negativo.");
     if (dto.PriceChild < 0)
         return Results.BadRequest("El precio de niño no puede ser negativo.");
+    if (ValidateRoomOccupancy(dto.RoomOccupancy, trip.IncludesHotel) is { } roomError)
+        return Results.BadRequest(roomError);
 
     var maxOrder = await db.TripOptions
         .Where(o => o.TripId == tripId)
@@ -3133,6 +3338,7 @@ app.MapPost("/api/trips/{tripId}/options", async (int tripId, TripOptionDto dto,
         Benefits = dto.Benefits,
         IsActive = dto.IsActive,
         Order = maxOrder + 1,
+        RoomOccupancy = dto.RoomOccupancy,
         CapacityMode = TravelAgency.Shared.Models.TripOptionCapacityMode.Shared,
         CreatedAt = DateTime.UtcNow
     };
@@ -3148,6 +3354,8 @@ app.MapPut("/api/trips/{tripId}/options/{optionId}", async (int tripId, int opti
 {
     var opt = await db.TripOptions.FirstOrDefaultAsync(o => o.Id == optionId && o.TripId == tripId);
     if (opt is null) return Results.NotFound();
+    var trip = await db.Trips.FindAsync(tripId);
+    if (trip is null) return Results.NotFound();
 
     if (string.IsNullOrWhiteSpace(dto.Name))
         return Results.BadRequest("El nombre de la opción es obligatorio.");
@@ -3159,6 +3367,8 @@ app.MapPut("/api/trips/{tripId}/options/{optionId}", async (int tripId, int opti
         return Results.BadRequest("El precio no puede ser negativo.");
     if (dto.PriceChild < 0)
         return Results.BadRequest("El precio de niño no puede ser negativo.");
+    if (ValidateRoomOccupancy(dto.RoomOccupancy, trip.IncludesHotel) is { } roomError)
+        return Results.BadRequest(roomError);
 
     opt.Name = dto.Name.Trim();
     opt.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();
@@ -3167,9 +3377,9 @@ app.MapPut("/api/trips/{tripId}/options/{optionId}", async (int tripId, int opti
     opt.Benefits = dto.Benefits;
     opt.IsActive = dto.IsActive;
     opt.Order = dto.Order;
+    opt.RoomOccupancy = dto.RoomOccupancy;
 
-    var trip = await db.Trips.FindAsync(tripId);
-    if (trip is not null) await RecomputeAvailabilityAsync(db, trip);
+    await RecomputeAvailabilityAsync(db, trip);
 
     await db.SaveChangesAsync();
     return Results.Ok(opt);
@@ -3648,6 +3858,16 @@ static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList
     }
 }
 
+static string? ValidateRoomOccupancy(int? roomOccupancy, bool tripIncludesHotel)
+{
+    if (roomOccupancy is null) return null;
+    if (!tripIncludesHotel)
+        return "La opción tiene habitación pero el viaje no incluye hotel.";
+    if (roomOccupancy is < RoomBookingRules.MinOccupancy or > RoomBookingRules.MaxOccupancy)
+        return $"La ocupación de la habitación debe estar entre {RoomBookingRules.MinOccupancy} y {RoomBookingRules.MaxOccupancy} personas.";
+    return null;
+}
+
 static decimal ComputeBookingTotal(Trip trip, IEnumerable<TripPassenger> passengers, IEnumerable<BookingItem>? items = null)
 {
     if (items != null && items.Any())
@@ -3870,6 +4090,54 @@ static async Task EnsureBookingItemsTableAsync(AppDbContext db, string provider)
 }
 
 
+static async Task EnsureTripOptionRoomOccupancyColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "TripOptions", "RoomOccupancy", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""TripOptions"" ADD COLUMN ""RoomOccupancy"" INTEGER NULL;"
+            : @"ALTER TABLE ""TripOptions"" ADD COLUMN ""RoomOccupancy"" integer NULL;");
+    }
+}
+
+static async Task EnsureBookingItemRoomColumnsAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "BookingItems", "RoomOccupancy", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""BookingItems"" ADD COLUMN ""RoomOccupancy"" INTEGER NULL;"
+            : @"ALTER TABLE ""BookingItems"" ADD COLUMN ""RoomOccupancy"" integer NULL;");
+    }
+    if (!await ColumnExistsAsync(db, "BookingItems", "Rooms", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""BookingItems"" ADD COLUMN ""Rooms"" INTEGER NULL;"
+            : @"ALTER TABLE ""BookingItems"" ADD COLUMN ""Rooms"" integer NULL;");
+    }
+}
+
+static async Task EnsureBookingHolderItemColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "Bookings", "HolderBookingItemId", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""Bookings"" ADD COLUMN ""HolderBookingItemId"" INTEGER NULL;"
+            : @"ALTER TABLE ""Bookings"" ADD COLUMN ""HolderBookingItemId"" integer NULL;");
+    }
+    await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_Bookings_HolderBookingItemId"" ON ""Bookings"" (""HolderBookingItemId"");");
+}
+
+static async Task EnsurePassengerBookingItemColumnAsync(AppDbContext db, string provider)
+{
+    if (!await ColumnExistsAsync(db, "TripPassengers", "BookingItemId", provider))
+    {
+        await TryExecAsync(db, provider == "sqlite"
+            ? @"ALTER TABLE ""TripPassengers"" ADD COLUMN ""BookingItemId"" INTEGER NULL;"
+            : @"ALTER TABLE ""TripPassengers"" ADD COLUMN ""BookingItemId"" integer NULL;");
+    }
+    await TryExecAsync(db, @"CREATE INDEX IF NOT EXISTS ""IX_TripPassengers_BookingItemId"" ON ""TripPassengers"" (""BookingItemId"");");
+}
+
 static async Task EnsureDiscountsTableAsync(AppDbContext db, string provider)
 {
     if (provider == "sqlite")
@@ -3993,6 +4261,7 @@ static async Task EnsureDefaultTripOptionsBackfillAsync(AppDbContext db, string 
                 Benefits = null,
                 IsActive = true,
                 Order = opts.Count == 0 ? 1 : Math.Max(0, opts.Min(o => o.Order) - 1),
+                RoomOccupancy = t.IncludesHotel ? 1 : null,
                 CapacityMode = TravelAgency.Shared.Models.TripOptionCapacityMode.Shared,
                 IsBase = true,
                 CreatedAt = now
@@ -4899,6 +5168,7 @@ record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>?
 record CreatePassengersRequest(List<PassengerInput>? Passengers);
 record CancelBookingRequest(string? Reason);
 record CancelTicketRequest(int PassengerId, int? BookingItemId, string? Reason);
+record CancelBookingItemRequest(int BookingItemId, string? Reason);
 record PayWithWalletRequest(decimal Amount);
 record UpdateDepartureRequest(bool? CheckInOpen, bool? DepartureCompleted);
 record UpdateFinalizeRequest(bool Finalized);
@@ -4906,7 +5176,7 @@ record UpdateTripActiveRequest(bool IsActive);
 record UpdateTripRatingRequest(int Rating, string? Comment);
 record DeleteTripRequest(string? Message);
 record UpdateTripRouteRequest(double? OriginLatitude, double? OriginLongitude, double? DestinationLatitude, double? DestinationLongitude);
-record TripOptionDto(string Name, string? Description, decimal PriceAdult, decimal? PriceChild, string? Benefits, bool IsActive, int Order);
+record TripOptionDto(string Name, string? Description, decimal PriceAdult, decimal? PriceChild, string? Benefits, bool IsActive, int Order, int? RoomOccupancy = null);
 record DiscountDto(string Code, DiscountType Type, decimal Value, DateTime? StartDate, DateTime? EndDate, int? UsageLimit, bool IsActive, int? TripId);
 record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
 record DiscountValidationResult(bool Valid, string Message, decimal DiscountAmount, decimal FinalAmount, string? Code, DiscountType? Type = null, decimal? Value = null);

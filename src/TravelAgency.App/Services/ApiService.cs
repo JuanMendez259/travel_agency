@@ -517,6 +517,14 @@ public class ApiService
         return await response.Content.ReadFromJsonAsync<CancelTicketResult>(JsonOptions);
     }
 
+    public async Task<CancelTicketResult?> CancelBookingItemAsync(int bookingId, int bookingItemId, string reason)
+    {
+        var response = await _http.PostAsJsonAsync($"/api/bookings/{bookingId}/cancel-item",
+            new CancelBookingItemRequest(bookingItemId, reason), JsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CancelTicketResult>(JsonOptions);
+    }
+
     public Task<WalletSummary?> GetWalletAsync() =>
         _http.GetFromJsonAsync<WalletSummary>("/api/users/me/wallet", JsonOptions);
 
@@ -650,6 +658,7 @@ public class ApiService
     private record CreateBookingRequest(int TripId, int NumberOfSeats, List<PassengerInput>? Passengers, int? SeatNumber = null, List<BookingOptionInputDto>? Options = null, bool? UseOptions = null, string? DiscountCode = null, string? SpecialNeedsNote = null, decimal? WalletAmount = null);
     private record ValidateDiscountRequest(string? Code, int TripId, decimal BaseAmount);
     private record CancelTicketRequest(int PassengerId, int? BookingItemId, string? Reason);
+    private record CancelBookingItemRequest(int BookingItemId, string? Reason);
     private record CancelBookingRequest(string? Reason);
     private record CreatePayoutRequest(decimal Amount, string? Note);
     private record ResolvePayoutRequest(bool Approve);

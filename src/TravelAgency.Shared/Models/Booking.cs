@@ -37,6 +37,7 @@ public class Booking
     /// hecha desde la app de una hecha por la agencia.
     public DateTime? CancelledAt { get; set; }
     public int? CancelledByUserId { get; set; }
+    public int? HolderBookingItemId { get; set; }
 
     public User? User { get; set; }
     public Trip? Trip { get; set; }
@@ -44,6 +45,9 @@ public class Booking
     public ICollection<TripPassenger> Passengers { get; set; } = new List<TripPassenger>();
 
     public ICollection<BookingItem> Items { get; set; } = new List<BookingItem>();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public BookingItem? HolderBookingItem { get; set; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool HasOptionItems => Items.Count > 0;

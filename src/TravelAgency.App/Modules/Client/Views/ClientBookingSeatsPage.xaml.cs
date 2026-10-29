@@ -884,14 +884,11 @@ public partial class ClientBookingSeatsPage : ContentPage
                 return;
             }
 
-            var age = 11;
-            if (slot.AgeEntry?.Text is { Length: > 0 } ageText)
+            if (slot.AgeEntry?.Text is not { Length: > 0 } ageText ||
+                !int.TryParse(ageText, out var age) || age is < 0 or > 110)
             {
-                if (!int.TryParse(ageText, out age) || age is < 0 or > 110)
-                {
-                    await DisplayAlertAsync("Datos incompletos", $"Indica una edad válida para {name}.", "OK");
-                    return;
-                }
+                await DisplayAlertAsync("Datos incompletos", $"Indica una edad válida para {name}.", "OK");
+                return;
             }
 
             passengers.Add((name, age, slot.Seat!.Value));

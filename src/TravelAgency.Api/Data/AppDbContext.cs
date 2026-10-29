@@ -67,6 +67,10 @@ public class AppDbContext : DbContext
                   .WithMany(t => t.Bookings)
                   .HasForeignKey(b => b.TripId)
                   .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(b => b.HolderBookingItem)
+                  .WithMany()
+                  .HasForeignKey(b => b.HolderBookingItemId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Payment>(entity =>
@@ -86,6 +90,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.Description).HasMaxLength(400);
             e.Property(x => x.PriceAdult).HasPrecision(18, 2);
             e.Property(x => x.PriceChild).HasPrecision(18, 2);
+            e.Property(x => x.RoomOccupancy);
             e.Property(x => x.IsActive).IsRequired();
             e.Property(x => x.Order).IsRequired();
             e.Property(x => x.CapacityMode).IsRequired();
@@ -104,6 +109,8 @@ public class AppDbContext : DbContext
             e.Property(x => x.UnitPriceAdult).HasPrecision(18, 2);
             e.Property(x => x.UnitPriceChild).HasPrecision(18, 2);
             e.Property(x => x.OptionName).HasMaxLength(80);
+            e.Property(x => x.RoomOccupancy);
+            e.Property(x => x.Rooms);
             e.HasOne(x => x.Booking).WithMany(b => b.Items).HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.TripOption).WithMany(o => o.BookingItems).HasForeignKey(x => x.TripOptionId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -208,10 +215,15 @@ public class AppDbContext : DbContext
         {
             entity.Property(p => p.Name).HasMaxLength(120);
             entity.HasIndex(p => p.BookingId);
+            entity.HasIndex(p => p.BookingItemId);
             entity.HasOne(p => p.Booking)
                   .WithMany(b => b.Passengers)
                   .HasForeignKey(p => p.BookingId)
                   .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(p => p.BookingItem)
+                  .WithMany()
+                  .HasForeignKey(p => p.BookingItemId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<TripRating>(entity =>
