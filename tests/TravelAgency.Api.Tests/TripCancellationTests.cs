@@ -258,18 +258,31 @@ public sealed class TripCancellationTests : IAsyncLifetime
 
     private async Task<int> CreateBookingAsync(int tripId, int seatNumber = 1)
     {
+        var optionId = await GetBaseOptionIdAsync(tripId);
         var response = await _client.PostAsJsonAsync("/api/bookings", new
         {
             tripId,
             numberOfSeats = 1,
             seatNumber,
             passengers = Array.Empty<object>(),
-            useOptions = false,
+            options = new[] { new { tripOptionId = optionId, adults = 1, children = 0 } },
+            useOptions = true,
             walletAmount = (decimal?)null
         });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var booking = await ReadJsonAsync(response);
         return booking.GetProperty("id").GetInt32();
+    }
+
+    private async Task<int> GetBaseOptionIdAsync(int tripId)
+    {
+        var response = await _admin.GetAsync($"/api/trips/{tripId}/options");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var options = await ReadJsonAsync(response);
+        return options.EnumerateArray()
+            .Single(o => o.GetProperty("isBase").GetBoolean())
+            .GetProperty("id")
+            .GetInt32();
     }
 
     private async Task RegisterPaymentAsync(int bookingId, decimal amount)

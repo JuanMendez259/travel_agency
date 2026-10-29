@@ -403,6 +403,7 @@ app.MapPost("/api/auth/social", async (SocialLoginRequest request, AppDbContext 
 
 app.MapGet("/api/trips", async (AppDbContext db) =>
     await db.Trips
+        .Include(t => t.Options)
         .Where(t => t.IsActive && t.CancelledAt == null)
         .OrderByDescending(t => t.StartDate)
         .ToListAsync());
@@ -445,10 +446,10 @@ app.MapGet("/api/trips/{id:int}/seatmap", async (int id, AppDbContext db) =>
     var trip = await db.Trips.FirstOrDefaultAsync(t => t.Id == id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
-    var capacity = Math.Max(0, trip.Capacity);
+    var capacity = Math.Max(0, trip.BookableCapacity);
     var assigned = await GetOccupiedSeatsAsync(db, id, capacity);
-    var floor1 = trip.HasTwoFloors ? Math.Max(0, trip.Floor1Capacity ?? 0) : capacity;
-    var floor2 = trip.HasTwoFloors ? Math.Max(0, trip.Floor2Capacity ?? 0) : 0;
+    var floor1 = trip.HasTwoFloors ? Math.Min(capacity, Math.Max(0, trip.Floor1Capacity ?? 0)) : capacity;
+    var floor2 = trip.HasTwoFloors ? Math.Max(0, Math.Min(trip.Floor2Capacity ?? 0, capacity - floor1)) : 0;
 
     var map = new TripSeatMap
     {
@@ -485,11 +486,11 @@ app.MapGet("/api/trips/{id:int}/seats", async (int id, AppDbContext db) =>
     var trip = await db.Trips.FirstOrDefaultAsync(t => t.Id == id);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
-    var capacity = Math.Max(0, trip.Capacity);
+    var capacity = Math.Max(0, trip.BookableCapacity);
     var occupiedSeats = await GetOccupiedSeatsAsync(db, id, capacity);
     var occupied = occupiedSeats.Keys.OrderBy(n => n).ToList();
-    var floor1 = trip.HasTwoFloors ? Math.Max(0, trip.Floor1Capacity ?? 0) : capacity;
-    var floor2 = trip.HasTwoFloors ? Math.Max(0, trip.Floor2Capacity ?? 0) : 0;
+    var floor1 = trip.HasTwoFloors ? Math.Min(capacity, Math.Max(0, trip.Floor1Capacity ?? 0)) : capacity;
+    var floor2 = trip.HasTwoFloors ? Math.Max(0, Math.Min(trip.Floor2Capacity ?? 0, capacity - floor1)) : 0;
 
     var map = new TripSeatAvailability
     {
@@ -1552,117 +1553,127 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     var trip = await db.Trips.FindAsync(request.TripId);
     if (trip is null) return Results.NotFound("Viaje no encontrado.");
 
-    if (!trip.IsActive)
-        return Results.BadRequest("El viaje está pausado y no acepta nuevas reservas.");
-
-    var bookingDeadline = trip.BookingDeadline ?? trip.StartDate;
-    if (DateTime.Today > bookingDeadline.Date)
-        return Results.BadRequest($"Este viaje cerró reservas el {bookingDeadline:dd/MM/yyyy}.");
-
-    var optionsMode = request.UseOptions == true || (request.Options != null && request.Options.Count > 0);
-    Dictionary<int, TravelAgency.Shared.Models.TripOption>? optionsLookup = null;
-    if (!optionsMode)
+    // Serializa la creación de reservas del mismo viaje para que la validación
+    // de cupo y asientos no compita con otra solicitud concurrente.
+    var tripGate = tripLocks.GetOrAdd(request.TripId, _ => new SemaphoreSlim(1, 1));
+    await tripGate.WaitAsync();
+    try
     {
-        if (request.NumberOfSeats < 1)
-            return Results.BadRequest("Indica al menos un asiento.");
+        await db.Entry(trip).ReloadAsync();
 
-        if (request.NumberOfSeats > trip.AvailableSeats)
-            return Results.BadRequest("No hay suficientes asientos disponibles.");
+        if (!trip.IsActive)
+            return Results.BadRequest("El viaje está pausado y no acepta nuevas reservas.");
+
+        var bookingDeadline = trip.BookingDeadline ?? trip.StartDate;
+        if (DateTime.Today > bookingDeadline.Date)
+            return Results.BadRequest($"Este viaje cerró reservas el {bookingDeadline:dd/MM/yyyy}.");
+
+        var tripOptions = await db.TripOptions
+            .Where(o => o.TripId == trip.Id)
+            .ToListAsync();
+        var optionsLookup = tripOptions.ToDictionary(o => o.Id);
+        var activeOptionsCount = tripOptions.Count(o => o.IsActive);
+        var requestedOptionLines = (request.Options ?? new List<BookingOptionInput>())
+            .Where(o => o.Adults != 0 || o.Children != 0)
+            .ToList();
+        var optionsMode = request.UseOptions == true || requestedOptionLines.Count > 0;
+
+        if (activeOptionsCount > 0 && !optionsMode)
+            return Results.BadRequest("Este viaje requiere seleccionar al menos una opción.");
+        if (optionsMode && activeOptionsCount == 0)
+            return Results.BadRequest("Este viaje no tiene opciones activas.");
+
+        var totalSeats = 0;
+        if (optionsMode)
+        {
+            if (requestedOptionLines.Count == 0)
+                return Results.BadRequest("Debes indicar las opciones a reservar.");
+
+            foreach (var oi in requestedOptionLines)
+            {
+                if (oi.Adults < 0 || oi.Children < 0)
+                    return Results.BadRequest("Las cantidades de adultos y niños no pueden ser negativas.");
+                if (oi.Adults + oi.Children < 1)
+                    return Results.BadRequest("Cada línea de opción debe tener al menos 1 asiento.");
+                if (!optionsLookup.TryGetValue(oi.TripOptionId, out var opt))
+                    return Results.BadRequest($"Opción {oi.TripOptionId} no válida para este viaje.");
+                if (!opt.IsActive)
+                    return Results.BadRequest($"La opción \"{opt.Name}\" ya no está disponible.");
+                totalSeats += oi.Adults + oi.Children;
+            }
+
+            if (totalSeats > trip.AvailableSeats)
+                return Results.BadRequest("No hay suficientes lugares disponibles para este viaje.");
+        }
+        else
+        {
+            totalSeats = request.NumberOfSeats;
+            if (totalSeats < 1)
+                return Results.BadRequest("Indica al menos un asiento.");
+            if (totalSeats > trip.AvailableSeats)
+                return Results.BadRequest("No hay suficientes asientos disponibles.");
+        }
+
+        var passengers = new List<TripPassenger>();
+        if (request.Passengers is { Count: > 0 })
+        {
+            if (request.Passengers.Count > totalSeats - 1)
+                return Results.BadRequest($"Esta reserva admite máximo {totalSeats - 1} pasajero(s) adicional(es).");
+
+            foreach (var input in request.Passengers)
+            {
+                var name = input.Name?.Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    return Results.BadRequest("Todos los pasajeros deben tener nombre.");
+                if (input.Age is not (>= 0 and <= 110))
+                    return Results.BadRequest("Indica una edad válida (0 a 110) para cada pasajero.");
+
+                passengers.Add(new TripPassenger
+                {
+                    Name = name.Length <= 120 ? name : name[..120],
+                    Age = input.Age,
+                    IsChild = IsChildAge(input.Age),
+                    SeatNumber = input.SeatNumber,
+                    QrToken = GenerateQrToken()
+                });
+            }
+        }
 
         var requestedSeats = new List<int>();
         if (request.SeatNumber.HasValue) requestedSeats.Add(request.SeatNumber.Value);
-        if (request.Passengers is { Count: > 0 })
-            requestedSeats.AddRange(request.Passengers.Where(p => p.SeatNumber.HasValue).Select(p => p.SeatNumber!.Value));
+        requestedSeats.AddRange(passengers.Where(p => p.SeatNumber.HasValue).Select(p => p.SeatNumber!.Value));
 
         if (requestedSeats.Count == 0)
             return Results.BadRequest("Debes seleccionar los asientos antes de confirmar la reserva.");
-
-        if (request.NumberOfSeats > 0 && requestedSeats.Count != request.NumberOfSeats)
-            return Results.BadRequest($"Debes elegir exactamente {request.NumberOfSeats} asiento(s).");
-
+        if (requestedSeats.Count != totalSeats)
+            return Results.BadRequest($"Debes elegir exactamente {totalSeats} asiento(s).");
         if (requestedSeats.Distinct().Count() != requestedSeats.Count)
             return Results.BadRequest("No puedes elegir el mismo asiento dos veces.");
-
-        if (requestedSeats.Any(s => s < 1 || s > trip.Capacity))
+        if (requestedSeats.Any(s => s < 1 || s > trip.BookableCapacity))
             return Results.BadRequest("Uno de los asientos seleccionados no existe en este viaje.");
 
         var alreadyTaken = await GetTakenSeatNumbersAsync(db, trip);
         if (requestedSeats.Any(alreadyTaken.Contains))
             return Results.BadRequest("Alguno de los asientos seleccionados ya fue ocupado. Elige otros en el mapa.");
-    }
-    else
-    {
-        if (request.Options == null || request.Options.Count == 0)
-            return Results.BadRequest("Debes indicar las opciones a reservar.");
 
-        var optionIds = request.Options.Select(o => o.TripOptionId).Distinct().ToList();
-        optionsLookup = await db.TripOptions
-            .Where(o => o.TripId == trip.Id && optionIds.Contains(o.Id))
-            .ToDictionaryAsync(o => o.Id);
-
-        var totalRequestedSeats = request.Options.Sum(o => Math.Max(0, o.Adults) + Math.Max(0, o.Children));
-        if (totalRequestedSeats < 1)
-            return Results.BadRequest("Cada línea de opción debe tener al menos 1 asiento.");
-        if (totalRequestedSeats > trip.AvailableSeats)
-            return Results.BadRequest("No hay suficientes lugares disponibles para este viaje.");
-
-        foreach (var oi in request.Options)
+        // Total base (con opciones si el modo multi-item esta activo).
+        var itemsMode = optionsMode;
+        decimal baseTotal;
+        if (itemsMode)
         {
-            if (!optionsLookup.TryGetValue(oi.TripOptionId, out var opt))
-                return Results.BadRequest($"Opción {oi.TripOptionId} no válida para este viaje.");
-            if (!opt.IsActive)
-                return Results.BadRequest($"La opción \"{opt.Name}\" ya no está disponible.");
-            if (Math.Max(0, oi.Adults) + Math.Max(0, oi.Children) < 1)
-                return Results.BadRequest("Cada línea de opción debe tener al menos 1 asiento.");
-        }
-    }
-
-    var passengers = new List<TripPassenger>();
-    if (request.Passengers is { Count: > 0 })
-    {
-        if (request.Passengers.Count > request.NumberOfSeats - 1)
-            return Results.BadRequest($"Esta reserva admite máximo {request.NumberOfSeats - 1} pasajero(s) adicional(es).");
-
-        foreach (var input in request.Passengers)
-        {
-            var name = input.Name?.Trim();
-            if (string.IsNullOrWhiteSpace(name))
-                return Results.BadRequest("Todos los pasajeros deben tener nombre.");
-
-            passengers.Add(new TripPassenger
+            baseTotal = 0m;
+            foreach (var oi in requestedOptionLines)
             {
-                Name = name.Length <= 120 ? name : name[..120],
-                Age = input.Age,
-                IsChild = IsChildAge(input.Age),
-                SeatNumber = input.SeatNumber,
-                QrToken = GenerateQrToken()
-            });
+                var opt = optionsLookup[oi.TripOptionId];
+                baseTotal += oi.Adults * opt.PriceAdult
+                           + oi.Children * (opt.PriceChild ?? opt.PriceAdult);
+            }
+            baseTotal = Math.Round(baseTotal, 2);
         }
-    }
-    else if (request.NumberOfSeats > 1)
-    {
-        // reserva multiasiento sin pasajeros: se permite crear y agregarlos después
-    }
-
-    // Total base (con opciones si el modo multi-item esta activo).
-    var itemsMode = (request.UseOptions == true || (request.Options != null && request.Options.Count > 0) || trip.HasOptions)
-                    && request.Options != null && request.Options.Count > 0;
-    decimal baseTotal;
-    if (itemsMode)
-    {
-        baseTotal = 0m;
-        foreach (var oi in request.Options!)
+        else
         {
-            var opt = optionsLookup![oi.TripOptionId];
-            baseTotal += Math.Max(0, oi.Adults) * opt.PriceAdult
-                       + Math.Max(0, oi.Children) * (opt.PriceChild ?? opt.PriceAdult);
+            baseTotal = ComputeBookingTotal(trip, passengers);
         }
-        baseTotal = Math.Round(baseTotal, 2);
-    }
-    else
-    {
-        baseTotal = ComputeBookingTotal(trip, passengers);
-    }
 
     // Descuento: validar y reservar el uso (incremento atomico) antes de crear la reserva.
     Discount? appliedDiscount = null;
@@ -1690,7 +1701,7 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
     {
         UserId = GetUserId(principal),
         TripId = request.TripId,
-        NumberOfSeats = request.NumberOfSeats,
+        NumberOfSeats = totalSeats,
         SeatNumber = request.SeatNumber,
         BookingDate = DateTime.UtcNow,
         Status = BookingStatus.Pending,
@@ -1756,9 +1767,9 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         var bookingItems = new List<TravelAgency.Shared.Models.BookingItem>();
         if (itemsMode)
         {
-            foreach (var oi in request.Options!)
+            foreach (var oi in requestedOptionLines)
             {
-                var opt = optionsLookup![oi.TripOptionId];
+                var opt = optionsLookup[oi.TripOptionId];
                 bookingItems.Add(new TravelAgency.Shared.Models.BookingItem
                 {
                     BookingId = booking.Id,
@@ -1781,7 +1792,6 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
 
         if (passengers.Count > 0)
         {
-            await AssignFreeSeatsAsync(db, trip, passengers, booking.Id);
             foreach (var p in passengers) p.BookingId = booking.Id;
             db.TripPassengers.AddRange(passengers);
             await db.SaveChangesAsync();
@@ -1805,6 +1815,11 @@ app.MapPost("/api/bookings", async (CreateBookingRequest request, AppDbContext d
         await SendToStaffAsync(db, $"Necesidades especiales de {userName} para \"{trip.Title}\": {booking.SpecialNeedsNote}");
 
     return Results.Created($"/api/bookings/{booking.Id}", booking);
+    }
+    finally
+    {
+        tripGate.Release();
+    }
 }).RequireAuthorization();
 
 app.MapPost("/api/bookings/{id}/passengers", async (int id, CreatePassengersRequest request, AppDbContext db, ClaimsPrincipal principal) =>
@@ -1836,6 +1851,8 @@ app.MapPost("/api/bookings/{id}/passengers", async (int id, CreatePassengersRequ
         var name = input.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
             return Results.BadRequest("Todos los pasajeros deben tener nombre.");
+        if (input.Age is not (>= 0 and <= 110))
+            return Results.BadRequest("Indica una edad válida (0 a 110) para cada pasajero.");
 
         passengers.Add(new TripPassenger
         {
@@ -1858,7 +1875,8 @@ app.MapPost("/api/bookings/{id}/passengers", async (int id, CreatePassengersRequ
     if (trip is not null)
     {
         var all = await db.TripPassengers.Where(p => p.BookingId == id).ToListAsync();
-        booking.TotalAmount = ComputeBookingTotal(trip, all);
+        var items = await db.BookingItems.Where(i => i.BookingId == id).ToListAsync();
+        booking.TotalAmount = ComputeBookingTotal(trip, all, items);
         await db.SaveChangesAsync();
     }
 
@@ -3092,23 +3110,29 @@ app.MapPost("/api/trips/{tripId}/options", async (int tripId, TripOptionDto dto,
         return Results.BadRequest("El nombre de la opción es obligatorio.");
     if (dto.Name.Length > 80)
         return Results.BadRequest("El nombre de la opción no puede superar los 80 caracteres.");
+    if (dto.Description?.Length > 400)
+        return Results.BadRequest("La descripción de la opción no puede superar los 400 caracteres.");
     if (dto.PriceAdult < 0)
         return Results.BadRequest("El precio no puede ser negativo.");
     if (dto.PriceChild < 0)
         return Results.BadRequest("El precio de niño no puede ser negativo.");
 
+    var maxOrder = await db.TripOptions
+        .Where(o => o.TripId == tripId)
+        .MaxAsync(o => (int?)o.Order) ?? 0;
+
     var opt = new TravelAgency.Shared.Models.TripOption
     {
         TripId = tripId,
         Name = dto.Name.Trim(),
-        Description = dto.Description,
+        Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
         PriceAdult = dto.PriceAdult,
         PriceChild = dto.PriceChild,
         Capacity = trip.BookableCapacity,
         AvailableSeats = trip.AvailableSeats,
         Benefits = dto.Benefits,
         IsActive = dto.IsActive,
-        Order = dto.Order,
+        Order = maxOrder + 1,
         CapacityMode = TravelAgency.Shared.Models.TripOptionCapacityMode.Shared,
         CreatedAt = DateTime.UtcNow
     };
@@ -3129,13 +3153,15 @@ app.MapPut("/api/trips/{tripId}/options/{optionId}", async (int tripId, int opti
         return Results.BadRequest("El nombre de la opción es obligatorio.");
     if (dto.Name.Length > 80)
         return Results.BadRequest("El nombre de la opción no puede superar los 80 caracteres.");
+    if (dto.Description?.Length > 400)
+        return Results.BadRequest("La descripción de la opción no puede superar los 400 caracteres.");
     if (dto.PriceAdult < 0)
         return Results.BadRequest("El precio no puede ser negativo.");
     if (dto.PriceChild < 0)
         return Results.BadRequest("El precio de niño no puede ser negativo.");
 
     opt.Name = dto.Name.Trim();
-    opt.Description = dto.Description;
+    opt.Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim();
     opt.PriceAdult = dto.PriceAdult;
     opt.PriceChild = dto.PriceChild;
     opt.Benefits = dto.Benefits;
@@ -3600,18 +3626,18 @@ static async Task<Dictionary<int, TripSeat>> GetOccupiedSeatsAsync(AppDbContext 
 
 static async Task<HashSet<int>> GetTakenSeatNumbersAsync(AppDbContext db, Trip trip, int? ignoreBookingId = null)
 {
-    var occupied = await GetOccupiedSeatsAsync(db, trip.Id, Math.Max(0, trip.Capacity), ignoreBookingId);
+    var occupied = await GetOccupiedSeatsAsync(db, trip.Id, Math.Max(0, trip.BookableCapacity), ignoreBookingId);
     return new HashSet<int>(occupied.Keys);
 }
 
 static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList<TripPassenger> passengers, int? bookingId = null)
 {
     var pending = passengers.Where(p => !p.SeatNumber.HasValue).ToList();
-    if (pending.Count == 0 || trip.Capacity <= 0) return;
+    if (pending.Count == 0 || trip.BookableCapacity <= 0) return;
 
     var taken = await GetTakenSeatNumbersAsync(db, trip, bookingId);
 
-    var free = Enumerable.Range(1, trip.Capacity)
+    var free = Enumerable.Range(1, trip.BookableCapacity)
         .Where(n => !taken.Contains(n))
         .Take(pending.Count)
         .ToList();
