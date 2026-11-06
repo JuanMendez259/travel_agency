@@ -31,11 +31,20 @@ public sealed class RoomBookingRulesTests
     }
 
     [Fact]
-    public void Validate_AllowsOptionsWithoutRoomOccupancy()
+    public void Validate_AllowsOptionsWithoutRoomOccupancyOutsideHotels()
+    {
+        var error = RoomBookingRules.Validate(null, false, 2, 1, out var rooms);
+
+        Assert.Null(error);
+        Assert.Null(rooms);
+    }
+
+    [Fact]
+    public void Validate_RejectsMissingOccupancyForHotelTrips()
     {
         var error = RoomBookingRules.Validate(null, true, 2, 1, out var rooms);
 
-        Assert.Null(error);
+        Assert.NotNull(error);
         Assert.Null(rooms);
     }
 

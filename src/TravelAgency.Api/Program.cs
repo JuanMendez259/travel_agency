@@ -3860,7 +3860,10 @@ static async Task AssignFreeSeatsAsync(AppDbContext db, Trip trip, IReadOnlyList
 
 static string? ValidateRoomOccupancy(int? roomOccupancy, bool tripIncludesHotel)
 {
-    if (roomOccupancy is null) return null;
+    if (roomOccupancy is null)
+        return tripIncludesHotel
+            ? "Indica cuántas personas caben por habitación (1 a 8)."
+            : null;
     if (!tripIncludesHotel)
         return "La opción tiene habitación pero el viaje no incluye hotel.";
     if (roomOccupancy is < RoomBookingRules.MinOccupancy or > RoomBookingRules.MaxOccupancy)

@@ -416,29 +416,13 @@ public partial class ClientTripDetailPage : ContentPage
         OptionsPanel.Children.Clear();
         _optionSelections.Clear();
 
-        var firstActive = true;
         foreach (var opt in _trip.Options.Where(o => o.IsActive).OrderBy(o => o.Order))
         {
             var isRoom = opt.RoomOccupancy is > 0;
+            var unconfiguredRoom = _trip.IncludesHotel && !isRoom;
             var rooms = 0;
             var adults = 0;
             var children = 0;
-            if (firstActive)
-            {
-                if (isRoom)
-                {
-                    if (opt.RoomOccupancy!.Value <= Math.Max(0, _availableSeats))
-                    {
-                        rooms = 1;
-                        adults = opt.RoomOccupancy.Value;
-                    }
-                }
-                else
-                {
-                    adults = 1;
-                }
-                firstActive = false;
-            }
 
             _optionSelections.Add((opt, rooms, adults, children));
 
@@ -485,9 +469,30 @@ public partial class ClientTripDetailPage : ContentPage
 
             int TotalSeats() => _optionSelections.Sum(x => x.Adults + x.Children);
 
-            if (isRoom)
+            if (unconfiguredRoom)
+            {
+                stack.Add(new Label
+                {
+                    Text = "Esta opción no tiene ocupación de habitación configurada. Pide a la agencia que la actualice.",
+                    FontSize = 12,
+                    TextColor = Color.FromArgb("#78350F")
+                });
+            }
+            else if (isRoom)
             {
                 var occupancy = opt.RoomOccupancy!.Value;
+                var selectButton = new Button
+                {
+                    Text = $"Seleccionar {opt.Name} · {occupancy} boleto(s)",
+                    FontSize = 13,
+                    FontAttributes = FontAttributes.Bold,
+                    BackgroundColor = Color.FromArgb("#006C49"),
+                    TextColor = Colors.White,
+                    CornerRadius = 12,
+                    HeightRequest = 42,
+                    IsVisible = rooms == 0
+                };
+                grid.IsVisible = rooms > 0;
                 var roomsCount = new Label { Text = rooms.ToString(), WidthRequest = 26, HorizontalTextAlignment = TextAlignment.Center, VerticalOptions = LayoutOptions.Center };
                 var roomsLbl = new Label { Text = "Habitaciones", VerticalOptions = LayoutOptions.Center };
                 var roomsMinus = new Button { Text = "−", WidthRequest = 34, HeightRequest = 34, CornerRadius = 17, BackgroundColor = Colors.White, TextColor = Color.FromArgb("#131B2E"), BorderWidth = 1, BorderColor = Color.FromArgb("#E2E7FF") };
@@ -524,6 +529,8 @@ public partial class ClientTripDetailPage : ContentPage
                     roomsCount.Text = newRooms.ToString();
                     adultsLbl.Text = $"Adultos: {newAdults}";
                     childCount.Text = newChildren.ToString();
+                    selectButton.IsVisible = newRooms == 0;
+                    grid.IsVisible = newRooms > 0;
                     UpdateBookingSummary();
                 }
 
@@ -544,6 +551,9 @@ public partial class ClientTripDetailPage : ContentPage
                 roomsPlus.Clicked += (_, __) => ApplyRoomDelta(1);
                 childMinus.Clicked += (_, __) => ApplyChildDelta(-1);
                 childPlus.Clicked += (_, __) => ApplyChildDelta(1);
+                selectButton.Clicked += (_, __) => ApplyRoomDelta(1);
+                stack.Add(selectButton);
+                stack.Add(grid);
             }
             else
             {
@@ -584,9 +594,9 @@ public partial class ClientTripDetailPage : ContentPage
                 adultsPlus.Clicked += (_, __) => ApplyDelta(1, 0);
                 childMinus.Clicked += (_, __) => ApplyDelta(0, -1);
                 childPlus.Clicked += (_, __) => ApplyDelta(0, 1);
+                stack.Add(grid);
             }
 
-            stack.Add(grid);
             frame.Content = stack;
             OptionsPanel.Children.Add(frame);
         }

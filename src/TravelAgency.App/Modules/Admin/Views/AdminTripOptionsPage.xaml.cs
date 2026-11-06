@@ -165,6 +165,17 @@ public partial class AdminTripOptionsPage : ContentPage
             });
         }
 
+        if (_trip?.IncludesHotel == true && opt.IsActive && opt.RoomOccupancy is null)
+        {
+            stack.Children.Add(new Label
+            {
+                Text = "Falta ocupación de habitación: edítala antes de venderla.",
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#BA1A1A")
+            });
+        }
+
         foreach (var line in opt.BenefitLines)
         {
             stack.Children.Add(new Label

@@ -421,6 +421,86 @@ public sealed class BookingOptionsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CrearOpcionDeHotel_SinOcupacion_Rechaza()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+
+        var response = await _admin.PostAsJsonAsync($"/api/trips/{tripId}/options", new
+        {
+            name = "Habitación sin ocupación",
+            description = (string?)null,
+            priceAdult = 500m,
+            priceChild = (decimal?)null,
+            benefits = (string?)null,
+            isActive = true,
+            order = 2,
+            roomOccupancy = (int?)null,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ActualizarOpcionDeHotel_SinOcupacion_Rechaza()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        var room = await CreateRoomOptionAsync(tripId, "Habitación doble", occupancy: 2);
+
+        var response = await _admin.PutAsJsonAsync($"/api/trips/{tripId}/options/{room.GetProperty("id").GetInt32()}", new
+        {
+            name = "Habitación doble",
+            description = (string?)null,
+            priceAdult = 500m,
+            priceChild = (decimal?)null,
+            benefits = (string?)null,
+            isActive = true,
+            order = 2,
+            roomOccupancy = (int?)null,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReservarOpcionDeHotelSinOcupacion_Rechaza()
+    {
+        var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");
+        int optionId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var option = new TripOption
+            {
+                TripId = tripId,
+                Name = "Habitación sin ocupación",
+                PriceAdult = 500m,
+                PriceChild = null,
+                Capacity = 10,
+                AvailableSeats = 10,
+                IsActive = true,
+                Order = 2,
+                IsBase = false,
+                CreatedAt = DateTime.UtcNow,
+            };
+            db.TripOptions.Add(option);
+            await db.SaveChangesAsync();
+            optionId = option.Id;
+        }
+
+        var response = await _client.PostAsJsonAsync("/api/bookings", new
+        {
+            tripId,
+            numberOfSeats = 1,
+            seatNumber = 1,
+            passengers = Array.Empty<object>(),
+            options = new[] { new { tripOptionId = optionId, adults = 1, children = 0 } },
+            useOptions = true,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ReservarHabitacionDoble_GuardaHabitacionesYSnapshot()
     {
         var tripId = await CreateTripAsync(includesHotel: true, hotelCapacity: 10, hotelName: "Hotel de prueba");

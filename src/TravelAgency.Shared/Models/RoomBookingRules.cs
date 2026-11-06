@@ -14,7 +14,12 @@ public static class RoomBookingRules
     {
         rooms = null;
 
-        if (roomOccupancy is null) return null;
+        if (roomOccupancy is null)
+        {
+            return tripIncludesHotel
+                ? "La opción no tiene configurada la ocupación de habitación."
+                : null;
+        }
 
         if (!tripIncludesHotel)
             return "La opción tiene habitación pero el viaje no incluye hotel.";
